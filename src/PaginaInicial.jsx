@@ -12,7 +12,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import { useNavigate } from 'react-router-dom';
 
 // Ícones Lucide-React
-import { CalendarCheck, Clock, FileText, Bell, UserCheck } from 'lucide-react';
+import { CalendarCheck, Clock, FileText, Bell, UserCheck, Bot } from 'lucide-react';
 
 // Imagens
 import calendarioAcademico from './assets/images/destaque-calendario.jpg';
@@ -189,6 +189,22 @@ const PaginaInicial = ({ userInfo }) => {
             <Typography variant="subtitle1" gutterBottom color="text.secondary">Visão Geral do Sistema</Typography>
 
             <Grid container spacing={3} sx={{ mt: 1 }}>
+                {userInfo?.role === 'coordenador' && (
+                    <Grid item xs={12} sm={6} md={4}>
+                        <Card elevation={3} sx={{ p: 3, display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', border: `2px solid ${theme.palette.primary.main}` }}>
+                            <CardActionArea onClick={() => navigate('/assistente-ia')}>
+                                <Box sx={{ color: theme.palette.primary.main, mb: 1 }}><Bot size={48} /></Box>
+                                <Typography variant="h5" component="p" sx={{ fontWeight: 'bold', color: theme.palette.primary.main }}>Ferramenta Experimental</Typography>
+                                <Typography color="text.secondary" sx={{ mt: 1, fontSize: '0.8rem' }}>
+                                    Opção auxiliar de IA. Use para consultas e agendamentos rápidos.
+                                    <br />
+                                    **Atenção:** Em caso de falha ou esgotamento de tokens, realize as ações manualmente.
+                                </Typography>
+                                <Button size="small" variant="contained" sx={{ mt: 2 }}>Acessar IA</Button>
+                            </CardActionArea>
+                        </Card>
+                    </Grid>
+                )}
                 <Grid item xs={12} sm={6} md={4}>
                     <Card elevation={3} sx={{ p: 3, display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
                         <Box sx={{ color: theme.palette.info.main, mb: 1 }}><Clock size={48} /></Box>

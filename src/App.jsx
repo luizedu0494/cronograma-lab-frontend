@@ -302,7 +302,7 @@ function App() {
                                         <Route path="/gerenciar-aulas" element={<GerenciarAulasAvancado />} />
                                         <Route path="/analise-aulas" element={<AnaliseAulas />} />
                                         <Route path="/verificar-integridade" element={<VerificarIntegridadeDados />} />
-                                        <Route path="/assistente-ia" element={<AssistenteIA userInfo={userProfileData} currentUser={user} />} />
+                                        <Route path="/assistente-ia" element={<AssistenteIA userInfo={userProfileData} currentUser={user} mode={darkMode ? 'dark' : 'light'} />} />
                                     </>)}
                                     {isCoordenadorOrTecnico && (
                                         <Route path="/download-cronograma" element={<DownloadCronograma />} />
