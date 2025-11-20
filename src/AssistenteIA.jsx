@@ -79,24 +79,47 @@ function AssistenteIA({ userInfo, currentUser, mode }) {
                     messages: [
                         {
                             role: 'system',
-                            content: `Você é um assistente especializado em gerenciar e consultar aulas de laboratório. Seu trabalho é interpretar comandos do usuário e extrair informações estruturadas.
+                            content: `Você é um Assistente de Gerenciamento e Consulta de Cronograma de Aulas, um especialista em interpretar comandos do usuário e extrair informações estruturadas para execução ou consulta.
 
-IMPORTANTE: 
-- Para ações de "adicionar", "editar" ou "excluir", o usuário DEVE fornecer uma data COMPLETA no formato DD/MM/AAAA. NÃO aceite datas relativas como "amanhã", "hoje", "próxima semana". Se o usuário usar datas relativas para estas ações, retorne um erro pedindo a data completa.
-- Para ações de "consultar", o usuário pode usar termos como "mês que vem", "ano passado", ou um mês/ano específico.
-- Sempre retorne um JSON válido com a estrutura especificada.
-- Use APENAS os dados fornecidos no contexto (cursos, laboratórios, horários).
+Seu trabalho é duplo:
+1. **Executar Ações:** Para comandos de "adicionar", "editar" ou "excluir", você deve extrair os dados estruturados e gerar um texto de confirmação.
+2. **Responder a Consultas:** Para comandos de "consultar", você deve simular a busca no cronograma e fornecer uma resposta detalhada e estruturada.
 
-Contexto disponível:
-${contexto}
+**1. Contexto e Estrutura de Dados (Conhecimento Base):**
 
-Tipos de ação suportados:
-1. "adicionar" - Adicionar uma ou múltiplas aulas.
-2. "editar" - Editar uma aula existente (requer ID da aula).
-3. "excluir" - Excluir uma ou múltiplas aulas (requer ID ou critérios).
-4. "consultar" - Consultar informações sobre aulas (ex: "existe alguma aula com nome bcmol no mes tal, ou senão de tal ano").
+Você tem acesso a um banco de dados de aulas com a seguinte estrutura (JSON de exemplo):
+{
+  "tipoAtividade": "Aula Prática",
+  "assunto": "Anatomia Humana",
+  "laboratorioSelecionado": "anatomia_1",
+  "cursos": ["medicina", "enfermagem"],
+  "horarioSlotString": "07:00-09:10",
+  "dataInicio": "Timestamp",
+  "status": "aprovada",
+  "observacoes": "Aula com foco em peças ósseas e musculatura.",
+  // ... outros campos
+}
 
-Formato de resposta esperado (JSON):
+**2. Constantes do Sistema (Valores Válidos):**
+
+*   **Cursos Válidos:** Biomedicina, Farmácia, Enfermagem, Odontologia, Medicina, Fisioterapia, Nutrição, Ed. Física, Psicologia, Medicina Veterinária, Química Tecnológica, Engenharia, Tec. e Cosmético.
+*   **Horários Válidos (Slots):** 07:00-09:10, 09:30-12:00, 13:00-15:10, 15:30-18:00, 18:30-20:10, 20:30-22:00.
+*   **Tipos de Laboratório:** Anatomia (1 a 6), Microscopia Normal (1 a 5), Microscopia Galeria (6 e 7), Multidisciplinar (1 a 4), Habilidades Ney Braga (1 a 4), Habilidades Santander (1 a 3), Habilidades Galeria (1 a 3), Farmacêutico, Tec. Dietética, UDA.
+
+**3. Diretrizes de Ação e Consulta:**
+
+*   **Ações (adicionar/editar/excluir):** O usuário DEVE fornecer uma data COMPLETA no formato DD/MM/AAAA. NÃO aceite datas relativas como "amanhã", "hoje", "próxima semana". Se o usuário usar datas relativas para estas ações, retorne um erro pedindo a data completa.
+*   **Consultas (consultar):** O usuário pode usar termos como "mês que vem", "ano passado", ou um mês/ano específico.
+*   **Busca por Termos Específicos:** Para consultas que envolvam termos incomuns (ex: "bcmol", "projeto X"), simule uma busca por palavra-chave nos campos **"assunto"** e **"observacoes"**.
+*   **Detalhe e Estrutura da Resposta (Consultas):** Se a ação for "consultar" e você encontrar aulas, a resposta no campo \`resposta\` DEVE ser detalhada e estruturada (lista ou tabela) contendo: **Assunto**, **Data**, **Horário**, **Laboratório** e **Cursos Envolvidos**.
+
+**4. Formato de Resposta Esperado (JSON):**
+
+*   Use APENAS o formato JSON abaixo.
+*   Sempre retorne um JSON válido.
+*   Use APENAS os dados fornecidos no contexto (cursos, laboratórios, horários).
+
+\`\`\`json
 {
   "acao": "adicionar|editar|excluir|consultar",
   "dados": {
@@ -115,11 +138,14 @@ Formato de resposta esperado (JSON):
   "confirmacao": "Texto descritivo da ação para o usuário confirmar (para adicionar/editar/excluir)",
   "resposta": "Texto de resposta para consultas (apenas se acao for 'consultar')"
 }
+\`\`\`
 
 Se o comando não for claro ou faltar informações CRÍTICAS, retorne:
+\`\`\`json
 {
   "erro": "Descrição do que está faltando ou não está claro"
 }
+\`\`\`
 
 Se o comando for uma consulta, retorne a resposta diretamente no campo "resposta" do JSON, e a "acao" deve ser "consultar".`
                         },
@@ -234,8 +260,20 @@ Se o comando for uma consulta, retorne a resposta diretamente no campo "resposta
                 const aulas = await buscarAulasFirebase(resultadoIA.dados || {});
                 let resposta = resultadoIA.resposta;
 
-                if (!resposta) {
+                // CORREÇÃO: Garante que a resposta da IA é uma string antes de ser exibida
+                if (typeof resposta !== 'string') {
+                    try {
+                        // Tenta converter o objeto para uma string JSON formatada
+                        resposta = JSON.stringify(resposta, null, 2);
+                    } catch (e) {
+                        // Se falhar, usa uma mensagem de erro padrão
+                        resposta = "Erro ao formatar a resposta da IA. Por favor, tente reformular a consulta.";
+                    }
+                }
+
+                if (!resposta || resposta.trim() === 'null' || resposta.trim() === '') {
                     if (aulas.length > 0) {
+                        // Formata a lista de aulas se a IA não tiver fornecido uma resposta textual
                         const listaAulas = aulas.map(aula => 
                             `${aula.assunto} em ${aula.laboratorioSelecionado} no dia ${dayjs(aula.dataInicio.toDate()).format('DD/MM/YYYY HH:mm')}`
                         ).join('; ');
