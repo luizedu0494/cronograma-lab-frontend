@@ -20,12 +20,14 @@ import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import dayjs from 'dayjs';
 import 'dayjs/locale/pt-br';
 
-
 import { LISTA_LABORATORIOS } from './constants/laboratorios';
 import ProporAulaForm from './ProporAulaForm';
 import DialogConfirmacao from './components/DialogConfirmacao';
 import { LISTA_CURSOS } from './constants/cursos';
 import { getHolidays } from './utils/holiday-api';
+
+// --- IMPORTAÇÃO PARA LER O LINK DA URL ---
+import { useSearchParams } from 'react-router-dom';
 
 // --- IMPORTAÇÃO DO NOTIFICADOR ---
 import { notificadorTelegram } from './ia-estruturada/NotificadorTelegram';
@@ -42,7 +44,6 @@ const CURSO_COLORS = {
     'tec_cosmetico': '#3F51B5', 'default': '#616161'
 };
 
-// ID DO CHAT DO TELEGRAM
 const TELEGRAM_CHAT_ID = import.meta.env.VITE_TELEGRAM_CHAT_ID;
 
 // Componente de Visualização de Ocupação por Hora
@@ -207,12 +208,18 @@ const AulaCard = ({ aula, onEdit, onDelete, isCoordenador }) => {
 
 
 function CalendarioCronograma({ userInfo }) {
+    const [searchParams] = useSearchParams();
+    
+    const [currentDate, setCurrentDate] = useState(() => {
+        const dateParam = searchParams.get('date');
+        return dateParam ? dayjs(dateParam) : dayjs();
+    });
 
     const logActivity = async (type, aulaData, user) => {
         try {
             const safeAulaData = {
                 disciplina: aulaData.disciplina || aulaData.assunto || 'Assunto não informado',
-                cursos: aulaData.cursos || [], 
+                cursos: aulaData.cursos || [], // Correção Firebase
                 ano: aulaData.ano || dayjs().year(),
                 status: aulaData.status || 'pendente',
                 dataInicio: aulaData.dataInicio || null,
@@ -236,7 +243,6 @@ function CalendarioCronograma({ userInfo }) {
     const [aulas, setAulas] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [currentDate, setCurrentDate] = useState(dayjs());
     const [holidays, setHolidays] = useState([]);
     const [selectedDayFilter, setSelectedDayFilter] = useState('');
 
@@ -319,7 +325,7 @@ function CalendarioCronograma({ userInfo }) {
     const handleCloseModals = () => { setIsEditModalOpen(false); setIsDeleteModalOpen(false); setIsAddModalOpen(false); setAulaParaAcao(null); };
     const handleEditFormChange = (field, value) => setAulaParaAcao(prev => ({ ...prev, [field]: value }));
 
-    // --- FUNÇÃO SAVE (EDIÇÃO) COM NOTIFICAÇÃO ---
+    // --- EDIÇÃO COM DATA ISO ---
     const handleSaveChanges = async () => {
         if (!aulaParaAcao) return;
         setActionLoading(true);
@@ -332,13 +338,13 @@ function CalendarioCronograma({ userInfo }) {
                 ...(aulaParaAcao.status === 'pendente' && { status: 'aprovada' })
             });
 
-            // Notificar Telegram
             if (TELEGRAM_CHAT_ID) {
                 await notificadorTelegram.enviarNotificacao(TELEGRAM_CHAT_ID, {
                     assunto: aulaParaAcao.title,
                     laboratorio: aulaParaAcao.laboratorio,
                     cursos: aulaParaAcao.cursos,
                     data: dayjs(aulaParaAcao.start).format('DD/MM/YYYY'),
+                    dataISO: dayjs(aulaParaAcao.start).format('YYYY-MM-DD'), // Link corrigido
                     horario: `${dayjs(aulaParaAcao.start).format('HH:mm')} - ${dayjs(aulaParaAcao.end).format('HH:mm')}`,
                     observacoes: aulaParaAcao.observacoes || ''
                 }, 'editar');
@@ -354,7 +360,6 @@ function CalendarioCronograma({ userInfo }) {
         }
     };
 
-    // --- FUNÇÃO DELETE (EXCLUSÃO) COM NOTIFICAÇÃO ---
     const handleDeleteConfirm = async () => {
         if (!aulaParaAcao) return;
         setActionLoading(true);
@@ -362,7 +367,6 @@ function CalendarioCronograma({ userInfo }) {
             await deleteDoc(doc(db, 'aulas', aulaParaAcao.id));
             logActivity('exclusao', aulaParaAcao, { uid: userInfo.uid, nome: userInfo.name });
             
-            // Notificar Telegram
             if (TELEGRAM_CHAT_ID) {
                 await notificadorTelegram.enviarNotificacao(TELEGRAM_CHAT_ID, {
                     assunto: aulaParaAcao.title || aulaParaAcao.assunto,
@@ -386,7 +390,7 @@ function CalendarioCronograma({ userInfo }) {
     if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}><CircularProgress /></Box>;
     if (error) return <Alert severity="error" sx={{ mt: 4 }}>{error}</Alert>;
 
-    // --- FUNÇÃO DRAG (MOVER) COM NOTIFICAÇÃO ---
+    // --- ARRASTAR COM DATA ISO ---
     const handleDragEnd = async (event) => {
         const { active, over } = event;
 
@@ -412,13 +416,13 @@ function CalendarioCronograma({ userInfo }) {
                 ...(userInfo?.role === 'coordenador' && { status: 'aprovada' })
             });
 
-            // Notificar Telegram
             if (TELEGRAM_CHAT_ID) {
                 await notificadorTelegram.enviarNotificacao(TELEGRAM_CHAT_ID, {
                     assunto: draggedAula.assunto,
                     laboratorio: draggedAula.laboratorioSelecionado,
                     cursos: draggedAula.cursos,
-                    data: dayjs(newStart).format('DD/MM/YYYY'), // Nova data
+                    data: dayjs(newStart).format('DD/MM/YYYY'),
+                    dataISO: dayjs(newStart).format('YYYY-MM-DD'), // Link corrigido
                     horario: `${dayjs(newStart).format('HH:mm')} - ${dayjs(newEnd).format('HH:mm')}`,
                     observacoes: "Aula movida (arrastada) no calendário"
                 }, 'editar');
