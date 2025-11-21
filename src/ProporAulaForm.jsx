@@ -19,8 +19,6 @@ import { LISTA_LABORATORIOS } from './constants/laboratorios';
 import { LISTA_CURSOS as LISTA_CURSOS_CONSTANTS } from './constants/cursos';
 import PropTypes from 'prop-types';
 import DialogConfirmacao from './components/DialogConfirmacao';
-
-// --- CORREÇÃO DA IMPORTAÇÃO (Caminho correto baseado na sua imagem) ---
 import { notificadorTelegram } from './ia-estruturada/NotificadorTelegram';
 
 dayjs.locale('pt-br');
@@ -34,7 +32,6 @@ const BLOCOS_HORARIO = [
     { "value": "20:30-22:00", "label": "20:30 - 22:00", "turno": "Noturno" },
 ];
 
-// ID DO CHAT (Certifique-se de ter isso no .env)
 const TELEGRAM_CHAT_ID = import.meta.env.VITE_TELEGRAM_CHAT_ID;
 
 function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCancel, isModal, formTitle }) {
@@ -62,7 +59,6 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
     const [mesVisivel, setMesVisivel] = useState(dayjs());
     const [loadingCalendario, setLoadingCalendario] = useState(false);
 
-    // NOVOS ESTADOS PARA CONTROLE DE FLUXO
     const [secao1Completa, setSecao1Completa] = useState(false);
     const [secao2Completa, setSecao2Completa] = useState(false);
 
@@ -70,26 +66,38 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
     const location = useLocation();
     const { aulaId } = useParams();
 
-    // --- FUNÇÃO AUXILIAR PARA ENVIO DO TELEGRAM ---
+    // --- FUNÇÃO DE NOTIFICAÇÃO CORRIGIDA ---
     const notificarTelegramBatch = async (aulas, tipoAcao) => {
-        if (!TELEGRAM_CHAT_ID) {
-            console.warn('VITE_TELEGRAM_CHAT_ID não configurado. Notificação não enviada.');
-            return;
-        }
+        if (!TELEGRAM_CHAT_ID) return;
         
-        // Itera sobre as aulas salvas e envia notificação para cada uma
         for (const aula of aulas) {
-            // Formata a data que vem do Firestore (Timestamp) ou do Form (Dayjs)
             let dataFormatada = 'N/A';
-            if (aula.dataInicio && typeof aula.dataInicio.toDate === 'function') {
-                dataFormatada = dayjs(aula.dataInicio.toDate()).format('DD/MM/YYYY');
-            } else if (dayjs.isDayjs(aula.dataInicio)) {
+            let dataISO = null;
+            
+            // Verifica se é um objeto Dayjs
+            if (dayjs.isDayjs(aula.dataInicio)) {
                 dataFormatada = aula.dataInicio.format('DD/MM/YYYY');
+                dataISO = aula.dataInicio.format('YYYY-MM-DD');
+            } 
+            // Verifica se é Timestamp do Firebase
+            else if (aula.dataInicio && typeof aula.dataInicio.toDate === 'function') {
+                const dateObj = dayjs(aula.dataInicio.toDate());
+                dataFormatada = dateObj.format('DD/MM/YYYY');
+                dataISO = dateObj.format('YYYY-MM-DD');
+            }
+            // Verifica se é Date nativo ou string
+            else if (aula.dataInicio) {
+                const dateObj = dayjs(aula.dataInicio);
+                if (dateObj.isValid()) {
+                    dataFormatada = dateObj.format('DD/MM/YYYY');
+                    dataISO = dateObj.format('YYYY-MM-DD');
+                }
             }
 
             const dadosNotificacao = {
                 assunto: aula.assunto,
                 data: dataFormatada,
+                dataISO: dataISO, // Envia a data para o link
                 horario: aula.horarioSlotString,
                 laboratorio: aula.laboratorioSelecionado,
                 cursos: aula.cursos,
@@ -100,7 +108,6 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
         }
     };
 
-    // Efeito para verificar Seção 1
     useEffect(() => {
         if (isEditMode) {
             setSecao1Completa(true);
@@ -112,7 +119,6 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
         setSecao1Completa(completa);
     }, [formData.tipoAtividade, formData.assunto, formData.cursos, isEditMode]);
 
-    // Efeito para verificar Seção 2
     useEffect(() => {
         if (isEditMode) {
             setSecao2Completa(true);
@@ -321,7 +327,6 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
                 const aulaAtualizada = { ...aulasParaConfirmar[0], updatedAt: serverTimestamp() };
                 await updateDoc(docRef, aulaAtualizada);
                 
-                // --- NOTIFICAR EDIÇÃO ---
                 await notificarTelegramBatch([aulaAtualizada], 'editar');
 
                 setSnackbarMessage("Aula atualizada com sucesso!");
@@ -334,7 +339,6 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
                 });
                 await batch.commit();
 
-                // --- NOTIFICAR ADIÇÃO ---
                 await notificarTelegramBatch(aulasParaConfirmar, 'adicionar');
 
                 setSnackbarMessage(`${aulasParaConfirmar.length} aula(s) ${isCoordenador ? 'agendada(s)!' : 'proposta(s)!'}`);
@@ -361,13 +365,9 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
         const aulasParaAdicionar = [...aulasParaConfirmar];
         let mensagemSucesso = aulasParaConfirmar.length > 0 ? `${aulasParaConfirmar.length} aula(s) disponível(is) foi(ram) agendada(s). ` : "";
         
-        // Aulas que substituíram conflitos também precisam ser notificadas
-        const aulasSubstituidas = [];
-
         if (shouldReplace) {
             const novas = conflitos.map(c => c.novaAula);
             aulasParaAdicionar.push(...novas);
-            aulasSubstituidas.push(...novas);
             mensagemSucesso += `${conflitos.length} aula(s) com conflito foram substituídas.`;
         } else if (conflitos.length > 0) {
             mensagemSucesso += `${conflitos.length} agendamento(s) com conflito foram ignorados.`;
@@ -388,7 +388,6 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
             aulasParaAdicionar.forEach(aula => batch.set(doc(aulasCollection), { ...aula, createdAt: serverTimestamp() }));
             await batch.commit();
 
-            // --- NOTIFICAR ADIÇÃO EM LOTE (INCLUINDO SUBSTITUIÇÕES) ---
             await notificarTelegramBatch(aulasParaAdicionar, 'adicionar');
 
             setSnackbarMessage(mensagemSucesso);
