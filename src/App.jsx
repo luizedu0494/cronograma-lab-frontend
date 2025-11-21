@@ -43,6 +43,7 @@ const VerificarIntegridadeDados = lazy(() => import('./VerificarIntegridadeDados
 const HistoricoAulas = lazy(() => import('./HistoricoAulas'));
 const AssistenteIA = lazy(() => import('./AssistenteIA'));
 const AssistenteIATecnico = lazy(() => import('./AssistenteIATecnico'));
+const ConsultaEstruturada = lazy(() => import('./ia-estruturada/ConsultaEstruturada'));
 
 // Componente para mostrar enquanto as páginas carregam
 const LoadingFallback = () => (
@@ -223,7 +224,8 @@ function App() {
         <Divider key="div1" sx={{ my: 0.5 }} />,
         ...(role === 'coordenador' && !approvalPending ? [
             <MenuItem key="agend" component={Link} to="/propor-aula" onClick={handleMenuClose}><PlusCircle size={18} style={{marginRight: 10}}/> Agendar Aula</MenuItem>,
-            <MenuItem key="assistente-ia" component={Link} to="/assistente-ia" onClick={handleMenuClose}><Bot size={18} style={{marginRight: 10}}/> Assistente IA</MenuItem>,
+            <MenuItem key="assistente-ia" component={Link} to="/assistente-ia" onClick={handleMenuClose}><Bot size={18} style={{marginRight: 10}}/> Assistente IA (Chat)</MenuItem>,
+            <MenuItem key="consulta-estruturada" component={Link} to="/consulta-estruturada" onClick={handleMenuClose}><Bot size={18} style={{marginRight: 10}}/> Consulta Estruturada</MenuItem>,
             <MenuItem key="gerenciar-menu" onClick={handleCoordenadorMenuOpen}><ListTodo size={18} style={{marginRight: 10}}/> Gerenciar</MenuItem>,
             <MenuItem key="users" component={Link} to="/gerenciar-usuarios" onClick={handleMenuClose}><Users size={18} style={{marginRight: 10}}/> Usuários</MenuItem>,
             <MenuItem key="grupos" component={Link} to="/gerenciar-grupos" onClick={handleMenuClose}><Group size={18} style={{marginRight: 10}}/> Gerir Grupos</MenuItem>,
@@ -306,6 +308,7 @@ function App() {
                                         <Route path="/analise-aulas" element={<AnaliseAulas />} />
                                         <Route path="/verificar-integridade" element={<VerificarIntegridadeDados />} />
                                         <Route path="/assistente-ia" element={<AssistenteIA userInfo={userProfileData} currentUser={user} mode={darkMode ? 'dark' : 'light'} />} />
+                                        <Route path="/consulta-estruturada" element={<ConsultaEstruturada userInfo={userProfileData} currentUser={user} mode={darkMode ? 'dark' : 'light'} />} />
                                     </>)}
                                     {isCoordenadorOrTecnico && (
                                         <Route path="/download-cronograma" element={<DownloadCronograma />} />
