@@ -42,6 +42,7 @@ const AnaliseAulas = lazy(() => import('./AnaliseAulas'));
 const VerificarIntegridadeDados = lazy(() => import('./VerificarIntegridadeDados'));
 const HistoricoAulas = lazy(() => import('./HistoricoAulas'));
 const AssistenteIA = lazy(() => import('./AssistenteIA'));
+const AssistenteIATecnico = lazy(() => import('./AssistenteIATecnico'));
 
 // Componente para mostrar enquanto as páginas carregam
 const LoadingFallback = () => (
@@ -233,6 +234,7 @@ function App() {
             <MenuItem key="aula" component={Link} to="/propor-aula" onClick={handleMenuClose}><PlusCircle size={18} style={{marginRight: 10}}/> Propor Aula</MenuItem>,
             <MenuItem key="design" component={Link} to="/minhas-designacoes" onClick={handleMenuClose}><UserCheck size={18} style={{marginRight: 10}}/> Minhas Designações</MenuItem>,
             <MenuItem key="prop" component={Link} to="/minhas-propostas" onClick={handleMenuClose}><ListTodo size={18} style={{marginRight: 10}}/> Minhas Propostas</MenuItem>,
+            <MenuItem key="assistente-ia-tec" component={Link} to="/assistente-ia-consulta" onClick={handleMenuClose}><Bot size={18} style={{marginRight: 10}}/> Assistente IA (Consulta)</MenuItem>,
         ] : []),
         <Divider key="div2" sx={{ my: 0.5 }} />,
         isCoordenadorOrTecnico && !approvalPending ? (
@@ -292,6 +294,7 @@ function App() {
                                     {role === 'tecnico' && (<>
                                         <Route path="/minhas-propostas" element={<MinhasPropostas />} />
                                         <Route path="/minhas-designacoes" element={<MinhasDesignacoes />} />
+                                        <Route path="/assistente-ia-consulta" element={<AssistenteIATecnico userInfo={userProfileData} currentUser={user} mode={darkMode ? 'dark' : 'light'} />} />
                                     </>)}
                                     {role === 'coordenador' && (<>
                                         <Route path="/gerenciar-aprovacoes" element={<GerenciarAprovacoes />} />
