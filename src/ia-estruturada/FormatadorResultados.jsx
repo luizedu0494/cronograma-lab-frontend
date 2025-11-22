@@ -1,414 +1,127 @@
-/**
- * FormatadorResultados.jsx
- * 
- * Componente responsável por renderizar os resultados de forma estruturada e visual.
- * Suporta diferentes tipos de visualização: cards, tabelas, gráficos e confirmações.
- */
-
 import React from 'react';
+import { Box, Card, Typography, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip, Alert, Grid } from '@mui/material';
 import {
-  Box, Card, CardContent, Typography, Table, TableBody, TableCell,
-  TableContainer, TableHead, TableRow, Paper, Chip, Alert, Grid,
-  Divider, List, ListItem, ListItemText, ListItemIcon
-} from '@mui/material';
-import {
-  Event, AccessTime, Science, CheckCircle, Error as ErrorIcon,
-  School, TrendingUp
-} from '@mui/icons-material';
-import { Bar } from 'react-chartjs-2';
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend
+  Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement
 } from 'chart.js';
+import { Bar, Pie } from 'react-chartjs-2';
 
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend
-);
+// Registra componentes do Chart.js
+ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement);
 
 const FormatadorResultados = ({ resultado, mode }) => {
-  if (!resultado) {
-    return null;
-  }
+    if (!resultado) return null;
 
-  // Se houver erro, exibe mensagem de erro
-  if (resultado.erro) {
-    return (
-      <Box sx={{ mt: 3 }}>
-        <Alert severity="error" icon={<ErrorIcon />}>
-          <Typography variant="h6" gutterBottom>Erro no Processamento</Typography>
-          <Typography variant="body1">{resultado.erro}</Typography>
-          {resultado.sugestao && (
-            <Typography variant="body2" sx={{ mt: 1, fontStyle: 'italic' }}>
-              💡 {resultado.sugestao}
-            </Typography>
-          )}
-        </Alert>
-      </Box>
-    );
-  }
+    if (resultado.erro) return <Alert severity="error">{resultado.erro}</Alert>;
+    if (resultado.tipo === 'aviso_acao') return <Alert severity="success" sx={{mt: 2}}>{resultado.mensagem}</Alert>;
 
-  const { tipo } = resultado;
+    const bgCard = mode === 'dark' ? '#1e1e1e' : '#fff';
+    const textSecondary = mode === 'dark' ? '#aaa' : '#666';
 
-  switch (tipo) {
-    case 'card_resumo':
-      return <CardResumo resultado={resultado} mode={mode} />;
-    
-    case 'tabela_aulas':
-      return <TabelaAulas resultado={resultado} mode={mode} />;
-    
-    case 'grafico_estatisticas':
-      return <GraficoEstatisticas resultado={resultado} mode={mode} />;
-    
-    case 'confirmacao_acao':
-      return <ConfirmacaoAcao resultado={resultado} mode={mode} />;
-    
-    default:
-      return <ResultadoGenerico resultado={resultado} mode={mode} />;
-  }
-};
+    switch (resultado.tipo) {
+        case 'kpi_numero':
+            return (
+                <Card elevation={6} sx={{ textAlign: 'center', p: 5, borderRadius: 4, bgcolor: bgCard, maxWidth: 450, mx: 'auto' }}>
+                    <Typography variant="h6" color={textSecondary} gutterBottom textTransform="uppercase" letterSpacing={1}>
+                        {resultado.descricao}
+                    </Typography>
+                    <Typography variant="h1" fontWeight="900" color="primary" sx={{ fontSize: '6rem', lineHeight: 1 }}>
+                        {resultado.valor}
+                    </Typography>
+                    <Typography variant="h6" color={textSecondary} sx={{ mt: 2 }}>Registros</Typography>
+                </Card>
+            );
 
-/**
- * Card de Resumo - Para consultas de quantidade/estatísticas
- */
-const CardResumo = ({ resultado, mode }) => {
-  const { titulo, dados_consulta } = resultado;
+        case 'tabela_aulas':
+            return <TabelaResultados data={resultado} mode={mode} />;
 
-  return (
-    <Box sx={{ mt: 3 }}>
-      <Typography variant="h5" gutterBottom fontWeight="bold" color="primary">
-        {titulo || 'Resumo da Consulta'}
-      </Typography>
-      
-      <Grid container spacing={3} sx={{ mt: 1 }}>
-        <Grid item xs={12} md={4}>
-          <Card elevation={3} sx={{ height: '100%', backgroundColor: mode === 'dark' ? '#1e1e1e' : '#fff' }}>
-            <CardContent sx={{ textAlign: 'center' }}>
-              <Event color="primary" sx={{ fontSize: 48, mb: 2 }} />
-              <Typography variant="h3" color="primary" fontWeight="bold">
-                {dados_consulta?.total_aulas || 0}
-              </Typography>
-              <Typography variant="body1" color="text.secondary" sx={{ mt: 1 }}>
-                Total de Aulas
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
+        case 'grafico_estatisticas':
+            return <GraficoResultados data={resultado} mode={mode} />;
 
-        <Grid item xs={12} md={4}>
-          <Card elevation={3} sx={{ height: '100%', backgroundColor: mode === 'dark' ? '#1e1e1e' : '#fff' }}>
-            <CardContent sx={{ textAlign: 'center' }}>
-              <AccessTime color="secondary" sx={{ fontSize: 48, mb: 2 }} />
-              <Typography variant="body1" fontWeight="bold" sx={{ minHeight: 60, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                {dados_consulta?.proxima_aula || 'Nenhuma aula agendada'}
-              </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                Próxima Aula
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        <Grid item xs={12} md={4}>
-          <Card elevation={3} sx={{ height: '100%', backgroundColor: mode === 'dark' ? '#1e1e1e' : '#fff' }}>
-            <CardContent sx={{ textAlign: 'center' }}>
-              <Science color="success" sx={{ fontSize: 48, mb: 2 }} />
-              <Typography variant="h6" fontWeight="bold" sx={{ minHeight: 60, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                {dados_consulta?.laboratorio_mais_usado || 'N/A'}
-              </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                Laboratório Mais Utilizado
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
-    </Box>
-  );
-};
-
-/**
- * Tabela de Aulas - Para listagem detalhada
- */
-const TabelaAulas = ({ resultado, mode }) => {
-  const { titulo, dados_consulta } = resultado;
-
-  if (!dados_consulta || dados_consulta.length === 0) {
-    return (
-      <Box sx={{ mt: 3 }}>
-        <Alert severity="info">
-          Nenhuma aula encontrada com os critérios especificados.
-        </Alert>
-      </Box>
-    );
-  }
-
-  return (
-    <Box sx={{ mt: 3 }}>
-      <Typography variant="h5" gutterBottom fontWeight="bold" color="primary">
-        {titulo || 'Lista de Aulas'}
-      </Typography>
-      
-      <TableContainer component={Paper} elevation={3} sx={{ mt: 2, backgroundColor: mode === 'dark' ? '#1e1e1e' : '#fff' }}>
-        <Table>
-          <TableHead>
-            <TableRow sx={{ backgroundColor: mode === 'dark' ? '#2d2d2d' : '#f5f5f5' }}>
-              <TableCell><strong>Assunto</strong></TableCell>
-              <TableCell><strong>Data</strong></TableCell>
-              <TableCell><strong>Horário</strong></TableCell>
-              <TableCell><strong>Laboratório</strong></TableCell>
-              <TableCell><strong>Cursos</strong></TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {dados_consulta.map((aula, index) => (
-              <TableRow 
-                key={aula.id || index}
-                sx={{ 
-                  '&:hover': { backgroundColor: mode === 'dark' ? '#2a2a2a' : '#f9f9f9' },
-                  '&:last-child td, &:last-child th': { border: 0 }
-                }}
-              >
-                <TableCell>
-                  <Typography variant="body1" fontWeight="medium">
-                    {aula.assunto}
-                  </Typography>
-                </TableCell>
-                <TableCell>
-                  <Chip 
-                    icon={<Event />} 
-                    label={aula.data} 
-                    size="small" 
-                    color="primary" 
-                    variant="outlined" 
-                  />
-                </TableCell>
-                <TableCell>
-                  <Chip 
-                    icon={<AccessTime />} 
-                    label={aula.horario} 
-                    size="small" 
-                    color="secondary" 
-                    variant="outlined" 
-                  />
-                </TableCell>
-                <TableCell>
-                  <Chip 
-                    icon={<Science />} 
-                    label={aula.laboratorio} 
-                    size="small" 
-                  />
-                </TableCell>
-                <TableCell>
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                    {aula.cursos && aula.cursos.length > 0 ? (
-                      aula.cursos.map((curso, i) => (
-                        <Chip 
-                          key={i} 
-                          label={curso} 
-                          size="small" 
-                          icon={<School />}
-                          sx={{ fontSize: '0.75rem' }}
-                        />
-                      ))
-                    ) : (
-                      <Typography variant="caption" color="text.secondary">-</Typography>
-                    )}
-                  </Box>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
-    </Box>
-  );
-};
-
-/**
- * Gráfico de Estatísticas - Para análises visuais
- */
-const GraficoEstatisticas = ({ resultado, mode }) => {
-  const { titulo, dados_consulta } = resultado;
-
-  if (!dados_consulta || !dados_consulta.labels || !dados_consulta.valores) {
-    return (
-      <Box sx={{ mt: 3 }}>
-        <Alert severity="warning">
-          Dados insuficientes para gerar gráfico.
-        </Alert>
-      </Box>
-    );
-  }
-
-  const chartData = {
-    labels: dados_consulta.labels,
-    datasets: [
-      {
-        label: 'Número de Aulas',
-        data: dados_consulta.valores,
-        backgroundColor: 'rgba(63, 81, 181, 0.6)',
-        borderColor: 'rgba(63, 81, 181, 1)',
-        borderWidth: 2
-      }
-    ]
-  };
-
-  const options = {
-    responsive: true,
-    plugins: {
-      legend: {
-        position: 'top',
-        labels: {
-          color: mode === 'dark' ? '#fff' : '#000'
-        }
-      },
-      title: {
-        display: false
-      }
-    },
-    scales: {
-      y: {
-        beginAtZero: true,
-        ticks: {
-          color: mode === 'dark' ? '#fff' : '#000'
-        },
-        grid: {
-          color: mode === 'dark' ? '#333' : '#e0e0e0'
-        }
-      },
-      x: {
-        ticks: {
-          color: mode === 'dark' ? '#fff' : '#000'
-        },
-        grid: {
-          color: mode === 'dark' ? '#333' : '#e0e0e0'
-        }
-      }
+        default:
+            return <Alert severity="warning">Formato desconhecido.</Alert>;
     }
-  };
-
-  return (
-    <Box sx={{ mt: 3 }}>
-      <Typography variant="h5" gutterBottom fontWeight="bold" color="primary">
-        <TrendingUp sx={{ mr: 1, verticalAlign: 'middle' }} />
-        {titulo || 'Estatísticas'}
-      </Typography>
-      
-      <Paper elevation={3} sx={{ p: 3, mt: 2, backgroundColor: mode === 'dark' ? '#1e1e1e' : '#fff' }}>
-        <Bar data={chartData} options={options} />
-      </Paper>
-    </Box>
-  );
 };
 
-/**
- * Confirmação de Ação - Para adicionar/editar/excluir
- */
-const ConfirmacaoAcao = ({ resultado, mode }) => {
-  const { acao, status, mensagem, dados_afetados } = resultado;
+// COMPONENTE DE TABELA
+const TabelaResultados = ({ data, mode }) => {
+    const rows = data.dados_consulta || [];
+    if (!rows.length) return <Alert severity="info">Nenhum dado encontrado.</Alert>;
 
-  const isSuccess = status === 'sucesso';
-  const severity = isSuccess ? 'success' : 'error';
-  const icon = isSuccess ? <CheckCircle /> : <ErrorIcon />;
-
-  return (
-    <Box sx={{ mt: 3 }}>
-      <Alert severity={severity} icon={icon}>
-        <Typography variant="h6" gutterBottom>
-          {acao === 'adicionar' && 'Aula Adicionada'}
-          {acao === 'editar' && 'Aula Editada'}
-          {acao === 'excluir' && 'Aula Excluída'}
-        </Typography>
-        <Typography variant="body1">{mensagem}</Typography>
-      </Alert>
-
-      {dados_afetados && (
-        <Card elevation={3} sx={{ mt: 2, backgroundColor: mode === 'dark' ? '#1e1e1e' : '#fff' }}>
-          <CardContent>
-            <Typography variant="h6" gutterBottom color="primary">
-              Detalhes da Operação
-            </Typography>
-            <Divider sx={{ mb: 2 }} />
-            
-            <List dense>
-              {dados_afetados.assunto && (
-                <ListItem>
-                  <ListItemIcon>
-                    <School color="primary" />
-                  </ListItemIcon>
-                  <ListItemText 
-                    primary="Assunto" 
-                    secondary={dados_afetados.assunto}
-                  />
-                </ListItem>
-              )}
-              
-              {dados_afetados.data && (
-                <ListItem>
-                  <ListItemIcon>
-                    <Event color="primary" />
-                  </ListItemIcon>
-                  <ListItemText 
-                    primary="Data" 
-                    secondary={dados_afetados.data}
-                  />
-                </ListItem>
-              )}
-              
-              {dados_afetados.total_aulas_adicionadas && (
-                <ListItem>
-                  <ListItemIcon>
-                    <CheckCircle color="success" />
-                  </ListItemIcon>
-                  <ListItemText 
-                    primary="Total de Aulas Adicionadas" 
-                    secondary={dados_afetados.total_aulas_adicionadas}
-                  />
-                </ListItem>
-              )}
-
-              {dados_afetados.alteracoes && (
-                <ListItem>
-                  <ListItemIcon>
-                    <CheckCircle color="success" />
-                  </ListItemIcon>
-                  <ListItemText 
-                    primary="Campos Alterados" 
-                    secondary={dados_afetados.alteracoes.join(', ')}
-                  />
-                </ListItem>
-              )}
-            </List>
-          </CardContent>
-        </Card>
-      )}
-    </Box>
-  );
+    return (
+        <Paper elevation={3} sx={{ borderRadius: 3, overflow: 'hidden', mt: 2 }}>
+            <Box sx={{ p: 2, bgcolor: 'primary.main', color: '#fff' }}>
+                <Typography variant="h6">{data.titulo}</Typography>
+            </Box>
+            <TableContainer sx={{ maxHeight: 500 }}>
+                <Table stickyHeader>
+                    <TableHead>
+                        <TableRow>
+                            <TableCell>Data</TableCell>
+                            <TableCell>Horário</TableCell>
+                            <TableCell>Assunto</TableCell>
+                            <TableCell>Laboratório</TableCell>
+                            <TableCell>Cursos</TableCell>
+                        </TableRow>
+                    </TableHead>
+                    <TableBody>
+                        {rows.map((row, i) => (
+                            <TableRow key={i} hover>
+                                <TableCell>{row.data}</TableCell>
+                                <TableCell>{row.horario}</TableCell>
+                                <TableCell sx={{fontWeight: 'bold'}}>{row.assunto}</TableCell>
+                                <TableCell>{row.laboratorio}</TableCell>
+                                <TableCell>{row.cursos?.join(', ')}</TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </TableContainer>
+        </Paper>
+    );
 };
 
-/**
- * Resultado Genérico - Fallback para tipos não especificados
- */
-const ResultadoGenerico = ({ resultado, mode }) => {
-  return (
-    <Box sx={{ mt: 3 }}>
-      <Paper elevation={3} sx={{ p: 3, backgroundColor: mode === 'dark' ? '#1e1e1e' : '#fff' }}>
-        <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
-          {resultado.resposta || JSON.stringify(resultado, null, 2)}
-        </Typography>
-      </Paper>
-    </Box>
-  );
+// COMPONENTE DE GRÁFICO
+const GraficoResultados = ({ data, mode }) => {
+    const { labels, valores, tipo_grafico } = data.dados_consulta;
+    const colorText = mode === 'dark' ? '#fff' : '#000';
+
+    const chartData = {
+        labels,
+        datasets: [{
+            label: 'Quantidade de Aulas',
+            data: valores,
+            backgroundColor: [
+                'rgba(54, 162, 235, 0.7)',
+                'rgba(255, 99, 132, 0.7)',
+                'rgba(255, 206, 86, 0.7)',
+                'rgba(75, 192, 192, 0.7)',
+                'rgba(153, 102, 255, 0.7)',
+            ],
+            borderColor: 'rgba(54, 162, 235, 1)',
+            borderWidth: 1,
+        }],
+    };
+
+    const options = {
+        responsive: true,
+        plugins: {
+            legend: { labels: { color: colorText } },
+            title: { display: true, text: data.titulo, color: colorText }
+        },
+        scales: {
+            y: { ticks: { color: colorText }, grid: { color: mode === 'dark' ? '#444' : '#ddd' } },
+            x: { ticks: { color: colorText } }
+        }
+    };
+
+    return (
+        <Paper elevation={4} sx={{ p: 3, mt: 2, bgcolor: mode === 'dark' ? '#1e1e1e' : '#fff', borderRadius: 3 }}>
+            <Typography variant="h6" gutterBottom align="center" color="primary">{data.titulo}</Typography>
+            <Box sx={{ height: 400, display: 'flex', justifyContent: 'center' }}>
+                {tipo_grafico === 'pie' ? <Pie data={chartData} options={options} /> : <Bar data={chartData} options={options} />}
+            </Box>
+        </Paper>
+    );
 };
 
 export default FormatadorResultados;
