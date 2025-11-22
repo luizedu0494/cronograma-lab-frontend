@@ -5,49 +5,76 @@ import { collection, query, where, getDocs, doc, getDoc, setDoc, onSnapshot } fr
 import {
     Container, Grid, Paper, Typography, Box, CircularProgress, Alert, Button,
     FormControlLabel, Switch, Dialog, DialogContent, IconButton, Badge,
-    Card, CardActionArea, Divider
+    Card, CardActionArea, Divider, Chip
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import CloseIcon from '@mui/icons-material/Close';
 import { useNavigate } from 'react-router-dom';
+
+// Ícones
 import { CalendarCheck, Clock, FileText, Bell, UserCheck } from 'lucide-react';
+
+// Imagens
 import calendarioAcademico from './assets/images/destaque-calendario.jpg';
+
+// Componentes
 import UltimasAulasCard from './components/UltimasAulasCard';
 import UltimasExclusoesCard from './components/UltimasExclusoesCard';
 
-// IMPORTAÇÃO DA IA
-import AssistenteIA from './components/AssistenteIA'; 
+// IMPORTAÇÃO DA IA (Localizada em src/AssistenteIA.jsx)
+import AssistenteIA from './AssistenteIA'; 
 
 const PaginaInicial = ({ userInfo }) => {
+
     const theme = useTheme();
     const navigate = useNavigate();
     const mode = theme.palette.mode; 
 
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+
+    // Dados do Dashboard (Contadores)
     const [aulasHoje, setAulasHoje] = useState(0);
     const [propostasPendentes, setPropostasPendentes] = useState(0);
     const [totalAulasNoCronograma, setTotalAulasNoCronograma] = useState(0);
     const [minhasPropostasCount, setMinhasPropostasCount] = useState(0);
     const [avisosNaoLidos, setAvisosNaoLidos] = useState(0);
+
+    // Estados de UI
     const [isCalendarEnabled, setIsCalendarEnabled] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [showWelcomeAlert, setShowWelcomeAlert] = useState(true);
 
+    // 1. Monitoramento de Avisos em Tempo Real
     useEffect(() => {
         if (!userInfo?.uid) return;
+
         const avisosRef = collection(db, 'avisos');
         const unsubscribe = onSnapshot(avisosRef, async (avisosSnapshot) => {
             const todosAvisosIds = avisosSnapshot.docs.map(doc => doc.id);
-            if (todosAvisosIds.length === 0) { setAvisosNaoLidos(0); return; }
-            const leituraPromises = todosAvisosIds.map(avisoId => getDoc(doc(db, 'avisos', avisoId, 'leituras', userInfo.uid)));
+
+            if (todosAvisosIds.length === 0) {
+                setAvisosNaoLidos(0);
+                return;
+            }
+
+            // Verifica quais avisos o usuário já leu na subcoleção 'leituras'
+            const leituraPromises = todosAvisosIds.map(avisoId => {
+                const leituraDocRef = doc(db, 'avisos', avisoId, 'leituras', userInfo.uid);
+                return getDoc(leituraDocRef);
+            });
+
             const leituraDocs = await Promise.all(leituraPromises);
             const unreadCount = leituraDocs.filter(snap => !snap.exists()).length;
+            
             setAvisosNaoLidos(unreadCount);
         });
+
         return () => unsubscribe();
     }, [userInfo]);
 
+
+    // 2. Busca de Dados Estatísticos (Aulas Hoje, Totais, etc)
     const fetchData = useCallback(async () => {
         setError(null);
         try {
@@ -56,6 +83,7 @@ const PaginaInicial = ({ userInfo }) => {
             const aulasRef = collection(db, 'aulas');
             const configDocRef = doc(db, 'config', 'geral');
 
+            // Query: Aulas de hoje aprovadas
             const qAulasHoje = query(
                 aulasRef,
                 where('status', '==', 'aprovada'),
@@ -63,22 +91,29 @@ const PaginaInicial = ({ userInfo }) => {
                 where('dataInicio', '<', tomorrow.toDate())
             );
 
+            // Prepara promises básicas
             const promises = [getDocs(qAulasHoje), getDoc(configDocRef)];
 
+            // Se for Coordenador, busca totais e pendentes
             if (userInfo?.role === 'coordenador') {
-                promises.push(getDocs(aulasRef)); 
-                promises.push(getDocs(query(aulasRef, where('status', '==', 'pendente'))));
+                promises.push(getDocs(aulasRef)); // Total geral
+                promises.push(getDocs(query(aulasRef, where('status', '==', 'pendente')))); // Pendentes
             }
 
+            // Se for Técnico, busca as propostas dele
             if (userInfo?.role === 'tecnico') {
                 promises.push(getDocs(query(aulasRef, where('propostoPorUid', '==', userInfo.uid))));
             }
 
             const results = await Promise.all(promises);
             
+            // Atualiza estados
             setAulasHoje(results[0].size);
+            
             const configDoc = results[1];
-            if (configDoc.exists()) setIsCalendarEnabled(configDoc.data().isCalendarEnabled || false);
+            if (configDoc.exists()) {
+                setIsCalendarEnabled(configDoc.data().isCalendarEnabled || false);
+            }
 
             let promiseIndex = 2;
             if (userInfo?.role === 'coordenador') {
@@ -91,8 +126,8 @@ const PaginaInicial = ({ userInfo }) => {
             }
 
         } catch (err) {
-            console.error("Erro:", err);
-            setError("Erro ao carregar os dados.");
+            console.error("Erro ao buscar dados da Pagina Inicial:", err);
+            setError("Erro ao carregar os dados do painel.");
         } finally {
             setLoading(false);
         }
@@ -100,30 +135,45 @@ const PaginaInicial = ({ userInfo }) => {
 
     useEffect(() => {
         setLoading(true);
-        if (userInfo) fetchData(); else setLoading(false);
+        if (userInfo) {
+            fetchData();
+        } else {
+            setLoading(false);
+        }
     }, [fetchData, userInfo]);
 
+    // Função para Coordenador ligar/desligar calendário para alunos
     const handleUpdateCalendarStatus = async (event) => {
         const newStatus = event.target.checked;
         try {
-            await setDoc(doc(db, 'config', 'geral'), { isCalendarEnabled: newStatus }, { merge: true });
+            const configDocRef = doc(db, 'config', 'geral');
+            await setDoc(configDocRef, { isCalendarEnabled: newStatus }, { merge: true });
             setIsCalendarEnabled(newStatus);
-            alert("Status atualizado!");
-        } catch (error) { alert("Erro ao atualizar status."); }
+            alert("Status do calendário atualizado com sucesso!");
+        } catch (error) {
+            console.error("Erro:", error);
+            alert("Erro ao atualizar o status.");
+        }
     };
 
     const handleImageClick = () => setIsModalOpen(true);
     const handleCloseModal = () => setIsModalOpen(false);
 
-    if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}><CircularProgress /></Box>;
-    if (error) return <Box sx={{ mt: 4 }}><Alert severity="error">{error}</Alert></Box>;
+    if (loading) {
+        return <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}><CircularProgress /></Box>;
+    }
 
-    // --- VERIFICA SE PODE MOSTRAR A IA ---
+    if (error) {
+        return <Box sx={{ mt: 4 }}><Alert severity="error">{error}</Alert></Box>;
+    }
+
+    // Permissão para ver a IA: Coordenador ou Técnico
     const canUseAI = userInfo?.role === 'coordenador' || userInfo?.role === 'tecnico';
 
     return (
         <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
             
+            {/* ALERTA DE BOAS-VINDAS */}
             {showWelcomeAlert && userInfo && (
                 <Alert
                     severity={userInfo.approvalPending ? "warning" : "info"}
@@ -135,23 +185,26 @@ const PaginaInicial = ({ userInfo }) => {
                 </Alert>
             )}
 
-            {/* --- INTEGRAÇÃO DO ASSISTENTE IA PARA COORDENADOR E TÉCNICO --- */}
+            {/* --- INTEGRAÇÃO DO ASSISTENTE IA (NO TOPO) --- */}
             {canUseAI && (
-                <Box sx={{ mb: 6 }}>
+                <Box sx={{ mb: 4 }}>
                     <AssistenteIA 
                         userInfo={userInfo} 
                         currentUser={userInfo} 
                         mode={mode} 
                     />
-                    <Divider sx={{ mt: 6, mb: 2 }}>
-                        <Typography variant="caption" color="text.secondary">VISÃO GERAL</Typography>
+                    <Divider sx={{ mt: 2, mb: 2 }}>
+                        <Chip label="DASHBOARD GERAL" size="small" sx={{ fontWeight: 'bold', fontSize: '0.7rem' }} />
                     </Divider>
                 </Box>
             )}
+            {/* --------------------------------------------- */}
 
             <Typography variant="h5" component="h1" gutterBottom>Dashboard Principal</Typography>
 
             <Grid container spacing={3} sx={{ mt: 1 }}>
+                
+                {/* CARD 1: AULAS HOJE (Todos veem) */}
                 <Grid item xs={12} sm={6} md={4}>
                     <Card elevation={3} sx={{ p: 3, display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
                         <Box sx={{ color: theme.palette.info.main, mb: 1 }}><Clock size={48} /></Box>
@@ -161,6 +214,7 @@ const PaginaInicial = ({ userInfo }) => {
                     </Card>
                 </Grid>
 
+                {/* CARDS DE COORDENADOR */}
                 {userInfo?.role === 'coordenador' && (
                     <>
                         <Grid item xs={12} sm={6} md={4}>
@@ -182,6 +236,7 @@ const PaginaInicial = ({ userInfo }) => {
                     </>
                 )}
 
+                {/* CARD DE TÉCNICO */}
                 {userInfo?.role === 'tecnico' && (
                     <Grid item xs={12} sm={6} md={4}>
                         <Card elevation={3} sx={{ p: 3, display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
@@ -193,6 +248,7 @@ const PaginaInicial = ({ userInfo }) => {
                     </Grid>
                 )}
 
+                {/* CARD DE AVISOS (Se aprovado) */}
                 {!userInfo?.approvalPending && (
                     <Grid item xs={12} sm={6} md={4}>
                         <Card elevation={3} sx={{ p: 3, display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
@@ -206,17 +262,20 @@ const PaginaInicial = ({ userInfo }) => {
                     </Grid>
                 )}
 
+                {/* CARDS DE ATIVIDADE RECENTE (Listas) */}
                 {!userInfo?.approvalPending && (
                     <>
                         <Grid item xs={12} md={6} lg={4}>
                             <UltimasAulasCard />
                         </Grid>
+                        
                         <Grid item xs={12} md={6} lg={4}>
                             <UltimasExclusoesCard />
                         </Grid>
                     </>
                 )}
 
+                {/* CALENDÁRIO ACADÊMICO (Imagem) */}
                 <Grid item xs={12}>
                     <Paper elevation={2} sx={{ p: 2, mt: 2 }}>
                         <Typography variant="h6" gutterBottom>Calendário Acadêmico</Typography>
@@ -235,9 +294,10 @@ const PaginaInicial = ({ userInfo }) => {
                 </Grid>
             </Grid>
 
+            {/* MODAL DE CALENDÁRIO */}
             <Dialog open={isModalOpen} onClose={handleCloseModal} maxWidth="lg" fullWidth>
                 <DialogContent sx={{ p: 0, position: 'relative' }}>
-                    <img src={calendarioAcademico} alt="Calendário Acadêmico" style={{ width: '100%' }} />
+                    <img src={calendarioAcademico} alt="Calendário Acadêmico em tela cheia" style={{ width: '100%' }} />
                     <IconButton onClick={handleCloseModal} sx={{ position: 'absolute', right: 8, top: 8, color: 'white', bgcolor: 'rgba(0,0,0,0.5)' }}>
                         <CloseIcon />
                     </IconButton>
