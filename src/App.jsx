@@ -2,16 +2,14 @@ import React, { useState, useEffect, useMemo, useCallback, lazy, Suspense } from
 import { BrowserRouter as Router, Routes, Route, Link, Navigate, Outlet } from 'react-router-dom';
 import { auth, db, googleProvider } from './firebaseConfig';
 import { signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
-import { collection, query, where, onSnapshot } from 'firebase/firestore'; // Importação adicionada para onSnapshot
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
-
-// Componentes e Utilitários Essenciais
 import getAppTheme from './theme';
 import cesmacLogo from './assets/images/cesmac-logo.png';
 import {
     AppBar, Toolbar, Typography, Button, Container, Box,
     CircularProgress, Snackbar, Alert, IconButton, Menu, MenuItem, Badge,
-    ThemeProvider, CssBaseline, useMediaQuery, Avatar, Divider, Paper
+    ThemeProvider, CssBaseline, useMediaQuery, Avatar, Divider
 } from '@mui/material';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -21,7 +19,7 @@ import {
     Menu as MenuIcon, Sun, Moon, LogOut, User, HelpCircle, UserCheck, Users, Group, CalendarOff, Settings, Bell, ListTodo, Calendar, LayoutDashboard, ThumbsUp, PlusCircle, Download, BarChart, Bug, History, Bot
 } from 'lucide-react';
 
-// --- LAZY LOADING DAS PÁGINAS (Sua implementação já estava perfeita) ---
+// --- LAZY LOADING ---
 const ProporAulaForm = lazy(() => import('./ProporAulaForm'));
 const MinhasPropostas = lazy(() => import('./MinhasPropostas'));
 const GerenciarAprovacoes = lazy(() => import('./GerenciarAprovacoes'));
@@ -42,46 +40,14 @@ const AnaliseAulas = lazy(() => import('./AnaliseAulas'));
 const VerificarIntegridadeDados = lazy(() => import('./VerificarIntegridadeDados'));
 const HistoricoAulas = lazy(() => import('./HistoricoAulas'));
 const AssistenteIA = lazy(() => import('./AssistenteIA'));
-const AssistenteIATecnico = lazy(() => import('./AssistenteIATecnico'));
-const ConsultaEstruturada = lazy(() => import('./ia-estruturada/ConsultaEstruturada'));
 
-// Componente para mostrar enquanto as páginas carregam
-const LoadingFallback = () => (
-    <Box display="flex" justifyContent="center" alignItems="center" height="80vh">
-        <CircularProgress />
-    </Box>
-);
-
-// Layout principal que inclui o Container para as páginas
-const MainLayout = () => (
-    <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
-        <Outlet /> {/* As rotas filhas serão renderizadas aqui */}
-    </Container>
-);
-
+const LoadingFallback = () => (<Box display="flex" justifyContent="center" alignItems="center" height="80vh"><CircularProgress /></Box>);
+const MainLayout = () => (<Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}><Outlet /></Container>);
 
 function App() {
-    
-
     const [user, setUser] = useState(null);
     const [userProfileData, setUserProfileData] = useState(null);
     const [pendingProposalsCount, setPendingProposalsCount] = useState(0);
-
-    // Efeito para escutar o número de propostas pendentes em tempo real
-    useEffect(() => {
-        // Apenas coordenadores precisam deste contador
-        if (userProfileData?.role !== 'coordenador') return;
-
-        const q = query(collection(db, 'aulas'), where('status', '==', 'pendente'));
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            setPendingProposalsCount(snapshot.size);
-        }, (error) => {
-            console.error("Erro ao buscar propostas pendentes:", error);
-        });
-
-        return () => unsubscribe();
-    }, [userProfileData?.role]);
-
     const [loading, setLoading] = useState(true);
     const [openSnackbar, setOpenSnackbar] = useState(false);
     const [snackbarMessage, setSnackbarMessage] = useState('');
@@ -94,30 +60,14 @@ function App() {
     const theme = useMemo(() => getAppTheme(darkMode ? 'dark' : 'light'), [darkMode]);
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
-    const handleThemeChange = () => {
-        const newMode = !darkMode;
-        setDarkMode(newMode);
-        localStorage.setItem('themeMode', newMode ? 'dark' : 'light');
-    };
-
+    const handleThemeChange = () => { const newMode = !darkMode; setDarkMode(newMode); localStorage.setItem('themeMode', newMode ? 'dark' : 'light'); };
     const fetchUserProfileData = useCallback(async (firebaseUser) => {
-        if (!firebaseUser) {
-            setUserProfileData(null);
-            return;
-        }
+        if (!firebaseUser) { setUserProfileData(null); return; }
         const userDocRef = doc(db, 'users', firebaseUser.uid);
         const userDocSnap = await getDoc(userDocRef);
-        if (userDocSnap.exists()) {
-            setUserProfileData({ uid: firebaseUser.uid, ...userDocSnap.data() });
-        } else {
-            const newUserProfile = {
-                email: firebaseUser.email,
-                name: firebaseUser.displayName || firebaseUser.email.split('@')[0],
-                role: null,
-                approvalPending: true,
-                createdAt: serverTimestamp(),
-                photoURL: firebaseUser.photoURL || null
-            };
+        if (userDocSnap.exists()) { setUserProfileData({ uid: firebaseUser.uid, ...userDocSnap.data() }); }
+        else {
+            const newUserProfile = { email: firebaseUser.email, name: firebaseUser.displayName || firebaseUser.email.split('@')[0], role: null, approvalPending: true, createdAt: serverTimestamp(), photoURL: firebaseUser.photoURL || null };
             await setDoc(userDocRef, newUserProfile);
             setUserProfileData({ uid: firebaseUser.uid, ...newUserProfile });
         }
@@ -127,42 +77,30 @@ function App() {
         setLoading(true);
         const unsubscribe = onAuthStateChanged(auth, async (currentUserAuth) => {
             setUser(currentUserAuth);
-            if (currentUserAuth) {
-                await fetchUserProfileData(currentUserAuth);
-            } else {
-                setUserProfileData(null);
-            }
+            if (currentUserAuth) await fetchUserProfileData(currentUserAuth);
+            else setUserProfileData(null);
             setLoading(false);
         });
         return () => unsubscribe();
     }, [fetchUserProfileData]);
+
+    useEffect(() => {
+        if (userProfileData?.role !== 'coordenador') return;
+        const q = query(collection(db, 'aulas'), where('status', '==', 'pendente'));
+        const unsubscribe = onSnapshot(q, (snapshot) => setPendingProposalsCount(snapshot.size));
+        return () => unsubscribe();
+    }, [userProfileData?.role]);
     
     const [isLoggingIn, setIsLoggingIn] = useState(false);
-
     const handleGoogleLogin = async () => {
-        if (isLoggingIn) return;
-        setIsLoggingIn(true);
+        if (isLoggingIn) return; setIsLoggingIn(true);
         try {
             googleProvider.setCustomParameters({ prompt: 'select_account' });
             await signInWithPopup(auth, googleProvider);
-            setSnackbarMessage("Login realizado com sucesso!");
-            setSnackbarSeverity("success");
-            setOpenSnackbar(true);
-        } catch (error) {
-            if (error.code !== 'auth/popup-closed-by-user') {
-                setSnackbarMessage(`Erro no login: ${error.message}`);
-                setSnackbarSeverity("error");
-                setOpenSnackbar(true);
-            }
-        } finally {
-            setIsLoggingIn(false);
-        }
+            setSnackbarMessage("Login realizado com sucesso!"); setSnackbarSeverity("success"); setOpenSnackbar(true);
+        } catch (error) { if (error.code !== 'auth/popup-closed-by-user') { setSnackbarMessage(`Erro: ${error.message}`); setSnackbarSeverity("error"); setOpenSnackbar(true); } } finally { setIsLoggingIn(false); }
     };
-
-    const handleLogout = () => {
-        signOut(auth).then(() => handleMenuClose());
-    };
-
+    const handleLogout = () => { signOut(auth).then(() => handleMenuClose()); };
     const handleCloseSnackbar = (event, reason) => { if (reason === 'clickaway') return; setOpenSnackbar(false); };
     const handleProfileMenuOpen = (event) => setAnchorEl(event.currentTarget);
     const handleMenuClose = () => { setAnchorEl(null); setMobileMoreAnchorEl(null); setCoordenadorMenuAnchorEl(null); };
@@ -173,45 +111,18 @@ function App() {
     const approvalPending = userProfileData?.approvalPending;
     const isCoordenadorOrTecnico = role === 'coordenador' || role === 'tecnico';
     
-    if (loading) {
-        return <LoadingFallback />;
-    }
+    if (loading) return <LoadingFallback />;
     
-    const PendingApprovalScreen = () => (
-        <Container sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh' }}>
-            <Paper elevation={3} sx={{ p: 4, textAlign: 'center', maxWidth: 400 }}>
-                <Typography variant="h5" gutterBottom>Acesso Pendente</Typography>
-                <Typography sx={{ my: 2 }}>Sua conta está aguardando aprovação de um coordenador.</Typography>
-                <Button variant="contained" onClick={handleLogout}>Sair</Button>
-            </Paper>
-        </Container>
-    );
-
-    const LoginScreen = () => (
-        <Container sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh' }}>
-            <Paper elevation={3} sx={{ p: 4, textAlign: 'center' }}>
-                <img src={cesmacLogo} alt="Logo CESMAC" style={{ height: '50px', marginBottom: '16px' }} />
-                <Typography variant="h5" gutterBottom>Cronograma Lab</Typography>
-                <Typography sx={{ my: 2 }}>Faça login para continuar</Typography>
-                <Button variant="contained" sx={{ mt: 2 }} onClick={handleGoogleLogin} disabled={isLoggingIn} startIcon={isLoggingIn ? <CircularProgress size={20} /> : null}>
-                    {isLoggingIn ? 'Fazendo login...' : 'Login com Google'}
-                </Button>
-            </Paper>
-        </Container>
-    );
+    const PendingApprovalScreen = () => (<Container sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh' }}><Paper elevation={3} sx={{ p: 4, textAlign: 'center', maxWidth: 400 }}><Typography variant="h5" gutterBottom>Acesso Pendente</Typography><Button variant="contained" onClick={handleLogout}>Sair</Button></Paper></Container>);
+    const LoginScreen = () => (<Container sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh' }}><Paper elevation={3} sx={{ p: 4, textAlign: 'center' }}><img src={cesmacLogo} alt="Logo" style={{ height: '50px', marginBottom: '16px' }} /><Typography variant="h5">Cronograma Lab</Typography><Button variant="contained" sx={{ mt: 2 }} onClick={handleGoogleLogin} disabled={isLoggingIn}>{isLoggingIn ? 'Entrando...' : 'Login com Google'}</Button></Paper></Container>);
 
     const CoordenadorGerenciarMenu = () => (
         <Menu anchorEl={coordenadorMenuAnchorEl} open={Boolean(coordenadorMenuAnchorEl)} onClose={handleMenuClose}>
             <MenuItem component={Link} to="/gerenciar-aulas" onClick={handleMenuClose}><ListTodo size={18} style={{marginRight: 10}}/> Gerenciar Aulas</MenuItem>
-            <MenuItem component={Link} to="/gerenciar-aprovacoes" onClick={handleMenuClose}>
-                <Badge badgeContent={pendingProposalsCount} color="error" sx={{ mr: 1 }}>
-                    <ThumbsUp size={18} style={{marginRight: 10}}/>
-                </Badge>
-                Aprovações de Aulas
-            </MenuItem>
+            <MenuItem component={Link} to="/gerenciar-aprovacoes" onClick={handleMenuClose}><Badge badgeContent={pendingProposalsCount} color="error" sx={{ mr: 1 }}><ThumbsUp size={18} style={{marginRight: 10}}/></Badge>Aprovações</MenuItem>
             <MenuItem component={Link} to="/analise-aulas" onClick={handleMenuClose}><BarChart size={18} style={{marginRight: 10}}/> Análise de Aulas</MenuItem>
             <Divider sx={{ my: 0.5 }} />
-            <MenuItem component={Link} to="/verificar-integridade" onClick={handleMenuClose}><Bug size={18} style={{marginRight: 10}}/> Verificar Integridade</MenuItem>
+            <MenuItem component={Link} to="/verificar-integridade" onClick={handleMenuClose}><Bug size={18} style={{marginRight: 10}}/> Integridade</MenuItem>
         </Menu>
     );
     
@@ -219,31 +130,24 @@ function App() {
         <MenuItem key="painel" component={Link} to="/" onClick={handleMenuClose}><LayoutDashboard size={18} style={{marginRight: 10}}/> Painel</MenuItem>,
         <MenuItem key="cal" component={Link} to="/calendario" onClick={handleMenuClose}><Calendar size={18} style={{marginRight: 10}}/> Calendário</MenuItem>,
         !approvalPending ? <MenuItem key="list" component={Link} to="/listagem-mensal" onClick={handleMenuClose}><ListTodo size={18} style={{marginRight: 10}}/> Listagem Mensal</MenuItem> : null,
-        !approvalPending ? <MenuItem key="historico" component={Link} to="/historico-aulas" onClick={handleMenuClose}><History size={18} style={{marginRight: 10}}/> Histórico de Aulas</MenuItem> : null,
+        !approvalPending ? <MenuItem key="historico" component={Link} to="/historico-aulas" onClick={handleMenuClose}><History size={18} style={{marginRight: 10}}/> Histórico</MenuItem> : null,
         !approvalPending ? <MenuItem key="avisos" component={Link} to="/avisos" onClick={handleMenuClose}><Bell size={18} style={{marginRight: 10}}/> Avisos</MenuItem> : null,
         <Divider key="div1" sx={{ my: 0.5 }} />,
         ...(role === 'coordenador' && !approvalPending ? [
             <MenuItem key="agend" component={Link} to="/propor-aula" onClick={handleMenuClose}><PlusCircle size={18} style={{marginRight: 10}}/> Agendar Aula</MenuItem>,
-            <MenuItem key="assistente-ia" component={Link} to="/assistente-ia" onClick={handleMenuClose}><Bot size={18} style={{marginRight: 10}}/> Assistente IA (Chat)</MenuItem>,
-            <MenuItem key="consulta-estruturada" component={Link} to="/consulta-estruturada" onClick={handleMenuClose}><Bot size={18} style={{marginRight: 10}}/> Consulta Estruturada</MenuItem>,
             <MenuItem key="gerenciar-menu" onClick={handleCoordenadorMenuOpen}><ListTodo size={18} style={{marginRight: 10}}/> Gerenciar</MenuItem>,
             <MenuItem key="users" component={Link} to="/gerenciar-usuarios" onClick={handleMenuClose}><Users size={18} style={{marginRight: 10}}/> Usuários</MenuItem>,
-            <MenuItem key="grupos" component={Link} to="/gerenciar-grupos" onClick={handleMenuClose}><Group size={18} style={{marginRight: 10}}/> Gerir Grupos</MenuItem>,
-            <MenuItem key="periodos" component={Link} to="/gerenciar-periodos" onClick={handleMenuClose}><CalendarOff size={18} style={{marginRight: 10}}/> Períodos Inativos</MenuItem>,
+            <MenuItem key="grupos" component={Link} to="/gerenciar-grupos" onClick={handleMenuClose}><Group size={18} style={{marginRight: 10}}/> Grupos</MenuItem>,
+            <MenuItem key="periodos" component={Link} to="/gerenciar-periodos" onClick={handleMenuClose}><CalendarOff size={18} style={{marginRight: 10}}/> Períodos</MenuItem>,
             <MenuItem key="gerenciar-avisos" component={Link} to="/gerenciar-avisos" onClick={handleMenuClose}><Settings size={18} style={{marginRight: 10}}/> Gerenciar Avisos</MenuItem>,
         ] : []),
         ...(role === 'tecnico' && !approvalPending ? [
             <MenuItem key="aula" component={Link} to="/propor-aula" onClick={handleMenuClose}><PlusCircle size={18} style={{marginRight: 10}}/> Propor Aula</MenuItem>,
-            <MenuItem key="design" component={Link} to="/minhas-designacoes" onClick={handleMenuClose}><UserCheck size={18} style={{marginRight: 10}}/> Minhas Designações</MenuItem>,
+            <MenuItem key="design" component={Link} to="/minhas-designacoes" onClick={handleMenuClose}><UserCheck size={18} style={{marginRight: 10}}/> Designações</MenuItem>,
             <MenuItem key="prop" component={Link} to="/minhas-propostas" onClick={handleMenuClose}><ListTodo size={18} style={{marginRight: 10}}/> Minhas Propostas</MenuItem>,
-            <MenuItem key="assistente-ia-tec" component={Link} to="/assistente-ia-consulta" onClick={handleMenuClose}><Bot size={18} style={{marginRight: 10}}/> Assistente IA (Consulta)</MenuItem>,
         ] : []),
         <Divider key="div2" sx={{ my: 0.5 }} />,
-        isCoordenadorOrTecnico && !approvalPending ? (
-            <MenuItem key="download-cronograma" component={Link} to="/download-cronograma" onClick={handleMenuClose}>
-                <Download size={18} style={{marginRight: 10}}/> Baixar Cronograma
-            </MenuItem>
-        ) : null,
+        isCoordenadorOrTecnico && !approvalPending ? (<MenuItem key="download-cronograma" component={Link} to="/download-cronograma" onClick={handleMenuClose}><Download size={18} style={{marginRight: 10}}/> Baixar Cronograma</MenuItem>) : null,
         !approvalPending ? <MenuItem key="ajuda" component={Link} to="/ajuda" onClick={handleMenuClose}><HelpCircle size={18} style={{marginRight: 10}}/> Ajuda/FAQ</MenuItem> : null
     ].filter(Boolean);
 
@@ -263,25 +167,17 @@ function App() {
                                     {!isMobile && <Typography variant="h6" noWrap>Cronograma Lab</Typography>}
                                 </Box>
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                    <IconButton sx={{ ml: 1 }} onClick={handleThemeChange} color="inherit" title="Mudar Tema">{darkMode ? <Sun size={20}/> : <Moon size={20}/>}</IconButton>
+                                    <IconButton sx={{ ml: 1 }} onClick={handleThemeChange} color="inherit">{darkMode ? <Sun size={20}/> : <Moon size={20}/>}</IconButton>
                                     <IconButton size="large" onClick={handleProfileMenuOpen} color="inherit">{userProfileData?.photoURL ? <Avatar src={userProfileData.photoURL} sx={{ width: 32, height: 32 }} /> : <AccountCircle />}</IconButton>
                                     <IconButton size="large" edge="end" onClick={handleMobileMenuOpen} color="inherit"><MenuIcon /></IconButton>
                                 </Box>
                             </Toolbar>
                         </AppBar>
                     )}
-
-                    {renderMobileMenu}
-                    {renderProfileMenu}
-                    {role === 'coordenador' && <CoordenadorGerenciarMenu />}
-                    
+                    {renderMobileMenu} {renderProfileMenu} {role === 'coordenador' && <CoordenadorGerenciarMenu />}
                     <Suspense fallback={<LoadingFallback />}>
                         <Routes>
-                            {!user ? (
-                                <Route path="*" element={<LoginScreen onLogin={handleGoogleLogin} isLoggingIn={isLoggingIn} />} />
-                            ) : approvalPending ? (
-                                <Route path="*" element={<PendingApprovalScreen onLogout={handleLogout} />} />
-                            ) : (
+                            {!user ? (<Route path="*" element={<LoginScreen />} />) : approvalPending ? (<Route path="*" element={<PendingApprovalScreen />} />) : (
                                 <Route element={<MainLayout />}>
                                     <Route path="/" element={<PaginaInicial userInfo={userProfileData}/>} />
                                     <Route path="/calendario" element={<CalendarioCronograma userInfo={userProfileData} />} />
@@ -292,12 +188,7 @@ function App() {
                                     <Route path="/avisos" element={<PainelAvisos />} />
                                     <Route path="/ajuda" element={<AjudaFAQ />} />
                                     <Route path="/perfil" element={<ConfiguracoesPerfil />} />
-                                    
-                                    {role === 'tecnico' && (<>
-                                        <Route path="/minhas-propostas" element={<MinhasPropostas />} />
-                                        <Route path="/minhas-designacoes" element={<MinhasDesignacoes />} />
-                                        <Route path="/assistente-ia-consulta" element={<AssistenteIATecnico userInfo={userProfileData} currentUser={user} mode={darkMode ? 'dark' : 'light'} />} />
-                                    </>)}
+                                    {role === 'tecnico' && (<><Route path="/minhas-propostas" element={<MinhasPropostas />} /><Route path="/minhas-designacoes" element={<MinhasDesignacoes />} /></>)}
                                     {role === 'coordenador' && (<>
                                         <Route path="/gerenciar-aprovacoes" element={<GerenciarAprovacoes />} />
                                         <Route path="/gerenciar-usuarios" element={<GerenciarUsuarios />} />
@@ -307,12 +198,10 @@ function App() {
                                         <Route path="/gerenciar-aulas" element={<GerenciarAulasAvancado />} />
                                         <Route path="/analise-aulas" element={<AnaliseAulas />} />
                                         <Route path="/verificar-integridade" element={<VerificarIntegridadeDados />} />
-                                        <Route path="/assistente-ia" element={<AssistenteIA userInfo={userProfileData} currentUser={user} mode={darkMode ? 'dark' : 'light'} />} />
-                                        <Route path="/consulta-estruturada" element={<ConsultaEstruturada userInfo={userProfileData} currentUser={user} mode={darkMode ? 'dark' : 'light'} />} />
                                     </>)}
-                                    {isCoordenadorOrTecnico && (
-                                        <Route path="/download-cronograma" element={<DownloadCronograma />} />
-                                    )}
+                                    {/* Rota aberta para ambos */}
+                                    <Route path="/assistente-ia" element={<AssistenteIA userInfo={userProfileData} currentUser={user} mode={darkMode ? 'dark' : 'light'} />} />
+                                    {isCoordenadorOrTecnico && (<Route path="/download-cronograma" element={<DownloadCronograma />} />)}
                                     <Route path="*" element={<Navigate to="/" />} />
                                 </Route>
                             )}
@@ -324,5 +213,4 @@ function App() {
         </ThemeProvider>
     );
 }
-
 export default App;

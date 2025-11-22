@@ -5,83 +5,49 @@ import { collection, query, where, getDocs, doc, getDoc, setDoc, onSnapshot } fr
 import {
     Container, Grid, Paper, Typography, Box, CircularProgress, Alert, Button,
     FormControlLabel, Switch, Dialog, DialogContent, IconButton, Badge,
-    Card, CardActionArea
+    Card, CardActionArea, Divider
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import CloseIcon from '@mui/icons-material/Close';
 import { useNavigate } from 'react-router-dom';
-
-// Ícones Lucide-React
-import { CalendarCheck, Clock, FileText, Bell, UserCheck, Bot } from 'lucide-react';
-
-// Imagens
+import { CalendarCheck, Clock, FileText, Bell, UserCheck } from 'lucide-react';
 import calendarioAcademico from './assets/images/destaque-calendario.jpg';
-
-// Componentes
 import UltimasAulasCard from './components/UltimasAulasCard';
 import UltimasExclusoesCard from './components/UltimasExclusoesCard';
 
-// NOVO: Importa o componente de monitoramento de uso
-
+// IMPORTAÇÃO DA IA
+import AssistenteIA from './components/AssistenteIA'; 
 
 const PaginaInicial = ({ userInfo }) => {
-
     const theme = useTheme();
     const navigate = useNavigate();
+    const mode = theme.palette.mode; 
 
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-
-    // Dados do Dashboard
     const [aulasHoje, setAulasHoje] = useState(0);
     const [propostasPendentes, setPropostasPendentes] = useState(0);
     const [totalAulasNoCronograma, setTotalAulasNoCronograma] = useState(0);
     const [minhasPropostasCount, setMinhasPropostasCount] = useState(0);
     const [avisosNaoLidos, setAvisosNaoLidos] = useState(0);
-
-    // Configuração do Calendário Acadêmico
     const [isCalendarEnabled, setIsCalendarEnabled] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
-
-    // Estado para o aviso de boas-vindas
     const [showWelcomeAlert, setShowWelcomeAlert] = useState(true);
 
-    // useEffect separado para a contagem de avisos, usando a melhor abordagem possível no Plano Spark
     useEffect(() => {
         if (!userInfo?.uid) return;
-
         const avisosRef = collection(db, 'avisos');
-        // Escuta em tempo real as mudanças na coleção de avisos
         const unsubscribe = onSnapshot(avisosRef, async (avisosSnapshot) => {
-            // Pega o ID de todos os avisos
             const todosAvisosIds = avisosSnapshot.docs.map(doc => doc.id);
-
-            if (todosAvisosIds.length === 0) {
-                setAvisosNaoLidos(0);
-                return;
-            }
-
-            // Cria um array de Promises, onde cada promise é uma verificação de leitura (getDoc)
-            const leituraPromises = todosAvisosIds.map(avisoId => {
-                const leituraDocRef = doc(db, 'avisos', avisoId, 'leituras', userInfo.uid);
-                return getDoc(leituraDocRef);
-            });
-
-            // Executa todas as verificações em paralelo para otimizar o tempo de resposta
+            if (todosAvisosIds.length === 0) { setAvisosNaoLidos(0); return; }
+            const leituraPromises = todosAvisosIds.map(avisoId => getDoc(doc(db, 'avisos', avisoId, 'leituras', userInfo.uid)));
             const leituraDocs = await Promise.all(leituraPromises);
-
-            // Conta quantos documentos de leitura NÃO existem
             const unreadCount = leituraDocs.filter(snap => !snap.exists()).length;
-            
             setAvisosNaoLidos(unreadCount);
         });
-
-        // Limpa o listener quando o componente é desmontado para evitar vazamentos de memória
         return () => unsubscribe();
     }, [userInfo]);
 
-
-    // Função para buscar os dados principais do dashboard
     const fetchData = useCallback(async () => {
         setError(null);
         try {
@@ -99,11 +65,10 @@ const PaginaInicial = ({ userInfo }) => {
 
             const promises = [getDocs(qAulasHoje), getDoc(configDocRef)];
 
-	            if (userInfo?.role === 'coordenador') {
-	                // Modificado para contar TODAS as aulas no cronograma (aprovadas, pendentes, etc.)
-	                promises.push(getDocs(aulasRef)); 
-	                promises.push(getDocs(query(aulasRef, where('status', '==', 'pendente'))));
-	            }
+            if (userInfo?.role === 'coordenador') {
+                promises.push(getDocs(aulasRef)); 
+                promises.push(getDocs(query(aulasRef, where('status', '==', 'pendente'))));
+            }
 
             if (userInfo?.role === 'tecnico') {
                 promises.push(getDocs(query(aulasRef, where('propostoPorUid', '==', userInfo.uid))));
@@ -113,23 +78,21 @@ const PaginaInicial = ({ userInfo }) => {
             
             setAulasHoje(results[0].size);
             const configDoc = results[1];
-            if (configDoc.exists()) {
-                setIsCalendarEnabled(configDoc.data().isCalendarEnabled || false);
-            }
+            if (configDoc.exists()) setIsCalendarEnabled(configDoc.data().isCalendarEnabled || false);
 
-	            let promiseIndex = 2;
-	            if (userInfo?.role === 'coordenador') {
-	                setTotalAulasNoCronograma(results[promiseIndex].size);
-	                setPropostasPendentes(results[promiseIndex + 1].size);
-	                promiseIndex += 2;
-	            }
+            let promiseIndex = 2;
+            if (userInfo?.role === 'coordenador') {
+                setTotalAulasNoCronograma(results[promiseIndex].size);
+                setPropostasPendentes(results[promiseIndex + 1].size);
+                promiseIndex += 2;
+            }
             if (userInfo?.role === 'tecnico') {
                 setMinhasPropostasCount(results[promiseIndex].size);
             }
 
         } catch (err) {
-            console.error("Erro ao buscar dados da Pagina Inicial:", err);
-            setError("Erro ao carregar os dados. Por favor, tente novamente.");
+            console.error("Erro:", err);
+            setError("Erro ao carregar os dados.");
         } finally {
             setLoading(false);
         }
@@ -137,74 +100,58 @@ const PaginaInicial = ({ userInfo }) => {
 
     useEffect(() => {
         setLoading(true);
-        if (userInfo) {
-            fetchData();
-        } else {
-            setLoading(false); // Garante que o loading pare se não houver usuário
-        }
+        if (userInfo) fetchData(); else setLoading(false);
     }, [fetchData, userInfo]);
 
     const handleUpdateCalendarStatus = async (event) => {
         const newStatus = event.target.checked;
         try {
-            const configDocRef = doc(db, 'config', 'geral');
-            await setDoc(configDocRef, { isCalendarEnabled: newStatus }, { merge: true });
+            await setDoc(doc(db, 'config', 'geral'), { isCalendarEnabled: newStatus }, { merge: true });
             setIsCalendarEnabled(newStatus);
-            alert("Status do calendário atualizado com sucesso!");
-        } catch (error) {
-            console.error("Erro ao atualizar o status do calendário:", error);
-            alert("Erro ao atualizar o status do calendário.");
-        }
+            alert("Status atualizado!");
+        } catch (error) { alert("Erro ao atualizar status."); }
     };
 
     const handleImageClick = () => setIsModalOpen(true);
     const handleCloseModal = () => setIsModalOpen(false);
 
-    if (loading) {
-        return <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}><CircularProgress /></Box>;
-    }
+    if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}><CircularProgress /></Box>;
+    if (error) return <Box sx={{ mt: 4 }}><Alert severity="error">{error}</Alert></Box>;
 
-    if (error) {
-        return <Box sx={{ mt: 4 }}><Alert severity="error">{error}</Alert></Box>;
-    }
+    // --- VERIFICA SE PODE MOSTRAR A IA ---
+    const canUseAI = userInfo?.role === 'coordenador' || userInfo?.role === 'tecnico';
 
     return (
         <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
             
-
             {showWelcomeAlert && userInfo && (
                 <Alert
                     severity={userInfo.approvalPending ? "warning" : "info"}
                     onClose={() => setShowWelcomeAlert(false)}
-                    sx={{ mb: 3, mt: userInfo?.role !== 'coordenador' ? 0 : 3 }} // Ajusta a margem superior se o monitor estiver presente
+                    sx={{ mb: 3 }}
                 >
                     Bem-vindo(a), <Typography component="span" fontWeight="bold">{userInfo.name || 'Usuário'}</Typography>!
                   {userInfo.approvalPending && " Sua conta está aguardando aprovação."}
                 </Alert>
             )}
 
+            {/* --- INTEGRAÇÃO DO ASSISTENTE IA PARA COORDENADOR E TÉCNICO --- */}
+            {canUseAI && (
+                <Box sx={{ mb: 6 }}>
+                    <AssistenteIA 
+                        userInfo={userInfo} 
+                        currentUser={userInfo} 
+                        mode={mode} 
+                    />
+                    <Divider sx={{ mt: 6, mb: 2 }}>
+                        <Typography variant="caption" color="text.secondary">VISÃO GERAL</Typography>
+                    </Divider>
+                </Box>
+            )}
 
-            
             <Typography variant="h5" component="h1" gutterBottom>Dashboard Principal</Typography>
-            <Typography variant="subtitle1" gutterBottom color="text.secondary">Visão Geral do Sistema</Typography>
 
             <Grid container spacing={3} sx={{ mt: 1 }}>
-                {userInfo?.role === 'coordenador' && (
-                    <Grid item xs={12} sm={6} md={4}>
-                        <Card elevation={3} sx={{ p: 3, display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', border: `2px solid ${theme.palette.primary.main}` }}>
-                            <CardActionArea onClick={() => navigate('/assistente-ia')}>
-                                <Box sx={{ color: theme.palette.primary.main, mb: 1 }}><Bot size={48} /></Box>
-                                <Typography variant="h5" component="p" sx={{ fontWeight: 'bold', color: theme.palette.primary.main }}>Ferramenta Experimental</Typography>
-                                <Typography color="text.secondary" sx={{ mt: 1, fontSize: '0.8rem' }}>
-                                    Opção auxiliar de IA. Use para consultas e agendamentos rápidos.
-                                    <br />
-                                    **Atenção:** Em caso de falha ou esgotamento de tokens, realize as ações manualmente.
-                                </Typography>
-                                <Button size="small" variant="contained" sx={{ mt: 2 }}>Acessar IA</Button>
-                            </CardActionArea>
-                        </Card>
-                    </Grid>
-                )}
                 <Grid item xs={12} sm={6} md={4}>
                     <Card elevation={3} sx={{ p: 3, display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
                         <Box sx={{ color: theme.palette.info.main, mb: 1 }}><Clock size={48} /></Box>
@@ -226,9 +173,9 @@ const PaginaInicial = ({ userInfo }) => {
                         </Grid>
                         <Grid item xs={12} sm={6} md={4}>
                             <Card elevation={3} sx={{ p: 3, display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
-	                                <Box sx={{ color: theme.palette.success.main, mb: 1 }}><CalendarCheck size={48} /></Box>
-	                                <Typography variant="h4" component="p" sx={{ fontWeight: 'bold' }}>{totalAulasNoCronograma}</Typography>
-	                                <Typography color="text.secondary">Total de Aulas no Cronograma</Typography>
+                                <Box sx={{ color: theme.palette.success.main, mb: 1 }}><CalendarCheck size={48} /></Box>
+                                <Typography variant="h4" component="p" sx={{ fontWeight: 'bold' }}>{totalAulasNoCronograma}</Typography>
+                                <Typography color="text.secondary">Total de Aulas</Typography>
                                 <Button size="small" variant="text" sx={{ mt: 1 }} onClick={() => navigate('/analise-aulas')}>Ver Análise</Button>
                             </Card>
                         </Grid>
@@ -260,15 +207,14 @@ const PaginaInicial = ({ userInfo }) => {
                 )}
 
                 {!userInfo?.approvalPending && (
-                    <Grid item xs={12} md={6} lg={4}>
-                        <UltimasAulasCard />
-                    </Grid>
-                )}
-                
-                {!userInfo?.approvalPending && (
-                    <Grid item xs={12} md={6} lg={4}>
-                        <UltimasExclusoesCard />
-                    </Grid>
+                    <>
+                        <Grid item xs={12} md={6} lg={4}>
+                            <UltimasAulasCard />
+                        </Grid>
+                        <Grid item xs={12} md={6} lg={4}>
+                            <UltimasExclusoesCard />
+                        </Grid>
+                    </>
                 )}
 
                 <Grid item xs={12}>
@@ -281,7 +227,7 @@ const PaginaInicial = ({ userInfo }) => {
                             <Box sx={{ mt: 2, pt: 2, borderTop: 1, borderColor: 'divider' }}>
                                 <FormControlLabel
                                     control={<Switch checked={isCalendarEnabled} onChange={handleUpdateCalendarStatus} />}
-                                    label="Habilitar visualização do calendário"
+                                    label="Habilitar visualização do calendário para todos"
                                 />
                             </Box>
                         )}
@@ -291,8 +237,8 @@ const PaginaInicial = ({ userInfo }) => {
 
             <Dialog open={isModalOpen} onClose={handleCloseModal} maxWidth="lg" fullWidth>
                 <DialogContent sx={{ p: 0, position: 'relative' }}>
-                    <img src={calendarioAcademico} alt="Calendário Acadêmico em tela cheia" style={{ width: '100%' }} />
-                    <IconButton onClick={handleCloseModal} sx={{ position: 'absolute', right: 8, top: 8, color: 'white', bgcolor: 'rgba(0,0,0,0.5)', '&:hover': { bgcolor: 'rgba(0,0,0,0.7)' } }}>
+                    <img src={calendarioAcademico} alt="Calendário Acadêmico" style={{ width: '100%' }} />
+                    <IconButton onClick={handleCloseModal} sx={{ position: 'absolute', right: 8, top: 8, color: 'white', bgcolor: 'rgba(0,0,0,0.5)' }}>
                         <CloseIcon />
                     </IconButton>
                 </DialogContent>

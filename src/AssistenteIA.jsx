@@ -1,17 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import {
     Container, Typography, Box, Paper, TextField, IconButton, 
-    CircularProgress, Fade, Alert, Tooltip, Dialog, DialogTitle, 
-    DialogContent, DialogActions, Button
+    CircularProgress, Fade, Alert, Tooltip, Chip
 } from '@mui/material';
-import { Search, Mic, Stop, Clear, AutoAwesome, Warning } from '@mui/icons-material';
+import { Search, Mic, Stop, Clear, AutoGraph, Analytics } from '@mui/icons-material'; // Ícones mais analíticos
 import { useNavigate } from 'react-router-dom';
 
-// --- CORREÇÃO DAS IMPORTAÇÕES ---
-// Mudamos de '../' para './' pois a pasta ia-estruturada está no mesmo nível deste arquivo dentro de src/
-import ProcessadorConsultas from './ia-estruturada/ProcessadorConsultas';
-import ExecutorAcoes from './ia-estruturada/ExecutorAcoes';
-import FormatadorResultados from './ia-estruturada/FormatadorResultados';
+import ProcessadorConsultas from '../ia-estruturada/ProcessadorConsultas';
+import ExecutorAcoes from '../ia-estruturada/ExecutorAcoes';
+import FormatadorResultados from '../ia-estruturada/FormatadorResultados';
 
 const AssistenteIA = ({ userInfo, currentUser, mode }) => {
     const [queryInput, setQueryInput] = useState('');
@@ -20,20 +17,18 @@ const AssistenteIA = ({ userInfo, currentUser, mode }) => {
     const [isRecording, setIsRecording] = useState(false);
     const [erro, setErro] = useState(null);
 
-    // Estados para Ações de Escrita (Adicionar/Editar/Excluir)
-    const [openConfirmDialog, setOpenConfirmDialog] = useState(false);
-    const [acaoPendente, setAcaoPendente] = useState(null);
-
     const navigate = useNavigate();
+    // Se quiser liberar para outros perfis no futuro, ajuste aqui
     const isCoordenador = userInfo?.role === 'coordenador';
 
-    // Instâncias lógicas
     const processador = new ProcessadorConsultas();
     const executor = new ExecutorAcoes(currentUser);
 
+    // Se for integrar no Dashboard, talvez não precise desse redirecionamento
+    // Mas mantive por segurança se for acessado via rota direta
     useEffect(() => {
         if (!isCoordenador) {
-            setTimeout(() => navigate('/'), 2000);
+            // setTimeout(() => navigate('/'), 2000); 
         }
     }, [isCoordenador, navigate]);
 
@@ -54,46 +49,32 @@ const AssistenteIA = ({ userInfo, currentUser, mode }) => {
                 return;
             }
 
-            // 2. Decisão de Execução
-            if (plano.acao === 'consultar') {
-                // Consultas são executadas direto
+            // 2. Verificação de Segurança Visual
+            // Se a IA entender que é uma ação de escrita, o Executor vai bloquear,
+            // mas já avisamos visualmente aqui também.
+            if (['adicionar', 'editar', 'excluir'].includes(plano.acao)) {
+                setResultado({
+                    tipo: 'aviso_acao',
+                    titulo: 'Modo Leitura',
+                    mensagem: 'Sou seu Analista de Dados. Para alterações no cronograma, utilize o Calendário Oficial.',
+                });
+            } else {
+                // É consulta, manda bala
                 const dados = await executor.executar(plano);
                 setResultado(dados);
-            } else {
-                // Ações de escrita (Adicionar/Editar/Excluir) exigem confirmação
-                setAcaoPendente(plano);
-                setOpenConfirmDialog(true);
             }
 
         } catch (error) {
             console.error(error);
-            setErro("Não consegui processar essa informação no momento.");
+            setErro("Não foi possível analisar os dados no momento.");
         } finally {
             setLoading(false);
-        }
-    };
-
-    const handleConfirmarAcao = async () => {
-        if (!acaoPendente) return;
-        
-        setOpenConfirmDialog(false);
-        setLoading(true); 
-
-        try {
-            // Músculo executa a gravação real
-            const dados = await executor.executar(acaoPendente);
-            setResultado(dados); 
-        } catch (e) {
-            setErro(`Erro ao executar ação: ${e.message}`);
-        } finally {
-            setLoading(false);
-            setAcaoPendente(null);
         }
     };
 
     const handleMic = () => {
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (!SpeechRecognition) return alert("Navegador sem suporte a voz.");
+        if (!SpeechRecognition) return alert("Seu navegador não suporta comandos de voz.");
         
         const recognition = new SpeechRecognition();
         recognition.lang = 'pt-BR';
@@ -107,42 +88,45 @@ const AssistenteIA = ({ userInfo, currentUser, mode }) => {
             recognition.onresult = (e) => {
                 const text = e.results[0][0].transcript;
                 setQueryInput(text);
+                // handleSearch(); // Descomente se quiser busca automática ao falar
             };
             recognition.onend = () => setIsRecording(false);
         }
     };
 
-    if (!isCoordenador) return <Alert severity="error" sx={{ mt: 4 }}>Acesso Restrito a Coordenadores</Alert>;
+    if (!isCoordenador) return null; // Ou uma mensagem discreta
 
     return (
-        <Container maxWidth="lg" sx={{ mt: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', minHeight: '80vh' }}>
+        <Container maxWidth="lg" sx={{ mt: 4, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             
-            <Box sx={{ textAlign: 'center', mb: 5 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 2, gap: 1 }}>
-                    <AutoAwesome sx={{ fontSize: 40, color: 'primary.main' }} />
-                    <Typography variant="h3" fontWeight="800" sx={{ background: 'linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                        Analista Inteligente
+            {/* CABEÇALHO - Foco em Dados */}
+            <Box sx={{ textAlign: 'center', mb: 4 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 1, gap: 1 }}>
+                    <AutoGraph sx={{ fontSize: 36, color: 'secondary.main' }} />
+                    <Typography variant="h4" fontWeight="800" sx={{ color: mode === 'dark' ? '#fff' : '#333' }}>
+                        Insights & Analytics
                     </Typography>
                 </Box>
-                <Typography variant="h6" color="text.secondary" sx={{ maxWidth: 600, mx: 'auto', opacity: 0.8 }}>
-                    Gerencie e consulte seu cronograma com linguagem natural.
+                <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 600, mx: 'auto', opacity: 0.8 }}>
+                    Consulte métricas, verifique ocupação e gere relatórios instantâneos.
                 </Typography>
             </Box>
 
-            {/* BARRA DE PESQUISA */}
+            {/* BARRA DE PESQUISA - Estilo "Spotlight" */}
             <Paper 
-                elevation={6}
+                elevation={8}
                 sx={{ 
                     p: '4px 8px', 
                     display: 'flex', 
                     alignItems: 'center', 
                     width: '100%', 
-                    maxWidth: 750,
+                    maxWidth: 800,
                     borderRadius: 50,
                     border: '1px solid',
                     borderColor: mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
+                    background: mode === 'dark' ? 'linear-gradient(145deg, #2a2a2a, #1e1e1e)' : '#fff',
                     transition: '0.3s',
-                    '&:hover': { boxShadow: 10 }
+                    '&:hover': { transform: 'translateY(-2px)', boxShadow: 12 }
                 }}
             >
                 <IconButton color={isRecording ? "error" : "default"} onClick={handleMic} sx={{ p: '12px' }}>
@@ -152,16 +136,24 @@ const AssistenteIA = ({ userInfo, currentUser, mode }) => {
                 <TextField
                     fullWidth
                     variant="standard"
-                    placeholder={isRecording ? "Ouvindo..." : "Ex: Adicionar aula de anatomia amanhã às 07:00"}
+                    // Placeholder focado em perguntas de dados
+                    placeholder={isRecording ? "Ouvindo..." : "Ex: Qual a taxa de ocupação este mês? / Gráfico de cursos..."}
                     value={queryInput}
                     onChange={(e) => setQueryInput(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-                    InputProps={{ disableUnderline: true, sx: { ml: 1, flex: 1, fontSize: '1.1rem' } }}
+                    InputProps={{
+                        disableUnderline: true,
+                        sx: { ml: 1, flex: 1, fontSize: '1.1rem' }
+                    }}
                 />
                 
-                {queryInput && <IconButton onClick={() => { setQueryInput(''); setResultado(null); setErro(null); }}><Clear /></IconButton>}
+                {queryInput && (
+                    <IconButton onClick={() => { setQueryInput(''); setResultado(null); setErro(null); }}>
+                        <Clear />
+                    </IconButton>
+                )}
 
-                <Box sx={{ m: 0.5, backgroundColor: 'primary.main', borderRadius: '50%', transition: '0.2s', '&:hover': { transform: 'scale(1.05)' } }}>
+                <Box sx={{ m: 0.5, backgroundColor: 'secondary.main', borderRadius: '50%', transition: '0.2s', '&:hover': { transform: 'scale(1.1)' } }}>
                     <IconButton onClick={handleSearch} sx={{ color: 'white', p: '12px' }} disabled={loading}>
                         {loading ? <CircularProgress size={24} color="inherit" /> : <Search />}
                     </IconButton>
@@ -169,42 +161,56 @@ const AssistenteIA = ({ userInfo, currentUser, mode }) => {
             </Paper>
 
             {/* ÁREA DE RESULTADO */}
-            <Box sx={{ width: '100%', maxWidth: 900, mt: 6 }}>
-                {erro && <Fade in={true}><Alert severity="warning" sx={{ mb: 2, borderRadius: 2, fontSize: '1rem' }} variant="outlined">{erro}</Alert></Fade>}
-                <Fade in={!!resultado} timeout={500}><Box>{resultado && <FormatadorResultados resultado={resultado} mode={mode} />}</Box></Fade>
-            </Box>
+            <Box sx={{ width: '100%', maxWidth: 950, mt: 5, minHeight: 300 }}>
+                
+                {erro && (
+                    <Fade in={true}>
+                        <Alert severity="warning" sx={{ mb: 2, borderRadius: 2, mx: 'auto', maxWidth: 600 }} variant="filled">
+                            {erro}
+                        </Alert>
+                    </Fade>
+                )}
 
-            {/* MODAL DE CONFIRMAÇÃO DE AÇÃO */}
-            <Dialog 
-                open={openConfirmDialog} 
-                onClose={() => setOpenConfirmDialog(false)}
-                PaperProps={{ sx: { borderRadius: 3, p: 1, bgcolor: mode === 'dark' ? '#1e1e1e' : '#fff' } }}
-            >
-                <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'warning.main' }}>
-                    <Warning /> Confirmação Necessária
-                </DialogTitle>
-                <DialogContent>
-                    <Typography variant="h6" paragraph>
-                        {acaoPendente?.confirmacao || "Deseja realmente realizar esta alteração no cronograma?"}
-                    </Typography>
-                    
-                    {/* Detalhes técnicos */}
-                    {acaoPendente?.dados_novos && (
-                        <Box sx={{ bgcolor: mode === 'dark' ? '#333' : '#f5f5f5', p: 2, borderRadius: 2, fontSize: '0.9rem', border: '1px solid divider' }}>
-                            <Typography variant="caption" color="text.secondary" fontWeight="bold">DADOS A SEREM GRAVADOS:</Typography>
-                            <ul style={{ margin: '8px 0', paddingLeft: '20px' }}>
-                                {Object.entries(acaoPendente.dados_novos).map(([key, value]) => (
-                                    value && <li key={key}><strong>{key}:</strong> {JSON.stringify(value).replace(/"/g, '')}</li>
-                                ))}
-                            </ul>
+                <Fade in={!!resultado} timeout={500}>
+                    <Box>
+                        {resultado && (
+                            <FormatadorResultados resultado={resultado} mode={mode} />
+                        )}
+                    </Box>
+                </Fade>
+
+                {/* SUGESTÕES VISUAIS (Chips) - Só aparece se não tiver resultado */}
+                {!resultado && !loading && !erro && (
+                    <Box sx={{ textAlign: 'center', mt: 6 }}>
+                        <Typography variant="caption" color="text.secondary" sx={{ mb: 2, display: 'block', letterSpacing: 1, fontWeight: 'bold' }}>
+                            ANÁLISES RÁPIDAS
+                        </Typography>
+                        
+                        <Box sx={{ display: 'flex', gap: 1.5, justifyContent: 'center', flexWrap: 'wrap' }}>
+                            {[
+                                { icon: <Analytics fontSize="small"/>, text: "Taxa de Ocupação Mensal" },
+                                { icon: <AutoGraph fontSize="small"/>, text: "Gráfico de Labs mais usados" },
+                                { icon: <Search fontSize="small"/>, text: "Horários vagos amanhã" },
+                                { icon: <Search fontSize="small"/>, text: "Evolução de aulas em 2025" }
+                            ].map((sugestao, index) => (
+                                <Chip 
+                                    key={index}
+                                    icon={sugestao.icon}
+                                    label={sugestao.text}
+                                    onClick={() => { setQueryInput(sugestao.text); handleSearch(); }}
+                                    sx={{ 
+                                        cursor: 'pointer', 
+                                        py: 2.5, px: 1,
+                                        fontSize: '0.9rem',
+                                        bgcolor: mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
+                                        '&:hover': { bgcolor: 'secondary.main', color: '#fff', '& .MuiChip-icon': { color: '#fff' } }
+                                    }}
+                                />
+                            ))}
                         </Box>
-                    )}
-                </DialogContent>
-                <DialogActions sx={{ px: 3, pb: 2 }}>
-                    <Button onClick={() => setOpenConfirmDialog(false)} color="inherit" variant="outlined" sx={{ borderRadius: 2 }}>Cancelar</Button>
-                    <Button onClick={handleConfirmarAcao} color="primary" variant="contained" sx={{ borderRadius: 2, px: 3 }} autoFocus>Confirmar</Button>
-                </DialogActions>
-            </Dialog>
+                    </Box>
+                )}
+            </Box>
         </Container>
     );
 };
