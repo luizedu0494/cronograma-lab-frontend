@@ -1,4 +1,4 @@
-# 🧪 Cronograma Lab: Sistema Inteligente de Gestão Acadêmica
+![Banner](./imgbanner.png)
 
 <p align="center">
   <a href="#sobre">Sobre</a> •
