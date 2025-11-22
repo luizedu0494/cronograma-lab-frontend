@@ -1,15 +1,9 @@
-/**
- * ProcessadorConsultas.js
- * Cérebro da IA: Interpreta linguagem natural e converte em JSON técnico.
- * Suporta: Gráficos (Barra, Pizza, Linha), KPIs, Tabelas e Ações de Gestão.
- */
-
 import ClassificadorIntencao, { TIPOS_INTENCAO } from './ClassificadorIntencao';
 import ExtratorParametros from './ExtratorParametros';
 import dayjs from 'dayjs';
 
 const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY;
-const GROQ_MODEL = 'llama-3.3-70b-versatile'; // Modelo potente para lógica complexa
+const GROQ_MODEL = 'llama-3.3-70b-versatile';
 
 class ProcessadorConsultas {
   constructor() {
@@ -17,85 +11,50 @@ class ProcessadorConsultas {
     this.extrator = new ExtratorParametros();
   }
 
-  /**
-   * Ponto de entrada principal
-   */
   async processar(textoUsuario) {
     try {
-      // 1. Tentativa Local (Rápida para comandos simples de Adicionar)
-      const intencao = this.classificador.classificar(textoUsuario);
-      const parametros = this.extrator.extrair(textoUsuario);
-      const validacao = this.extrator.validar(parametros, intencao);
-
-      // Se for ADICIONAR e tiver todos os dados, não gasta token da IA
-      if (validacao.valido && intencao === TIPOS_INTENCAO.ADICIONAR_AULA && parametros.data && parametros.assunto) {
-        return {
-            acao: 'adicionar',
-            dados_novos: { ...parametros },
-            criterios_busca: {},
-            tipo_visual: 'confirmacao_acao'
-        };
-      }
-
-      // 2. Processamento Inteligente (Groq) para todo o resto
+      // IGNORA AÇÕES DE ESCRITA LOCAIS
+      // Vamos direto para o Groq apenas para consultas
       return await this.processarComGroq(textoUsuario);
-      
     } catch (error) {
-      console.error('Erro no Processador:', error);
-      return { erro: 'Erro interno ao processar consulta: ' + error.message };
+      return { erro: 'Erro interno: ' + error.message };
     }
   }
 
   async processarComGroq(textoUsuario) {
-    if (!GROQ_API_KEY) return { erro: "Chave API Groq não configurada no .env." };
+    if (!GROQ_API_KEY) return { erro: "Chave API Groq não configurada." };
 
-    // Injeta contexto temporal para a IA não se perder
     const agora = dayjs();
     const contextoTemporal = `
-    DATA DE HOJE: ${agora.format('DD/MM/YYYY')} (${agora.format('dddd')})
-    HORA ATUAL: ${agora.format('HH:mm')}
+    DATA HOJE: ${agora.format('DD/MM/YYYY')} (${agora.format('dddd')})
     ANO ATUAL: ${agora.year()}
     `;
 
     const systemPrompt = `
-    Você é um Cientista de Dados e Especialista em Gestão de Cronogramas Acadêmicos.
+    Você é um Analista de Dados de Cronograma Acadêmico.
     ${contextoTemporal}
 
-    SUA MISSÃO: Traduzir a pergunta do usuário em um JSON técnico de busca ou ação.
-    NÃO responda a pergunta. Apenas gere os parâmetros para o sistema.
+    SUA MISSÃO: Apenas CONSULTAR dados. Você NÃO PODE agendar, editar ou excluir.
 
-    **REGRAS DE INTERPRETAÇÃO AVANÇADA (BI):**
+    **REGRAS DE INTERPRETAÇÃO:**
 
-    1. **ANÁLISES DE TENDÊNCIA (EVOLUÇÃO):**
-       - Palavras: "evolução", "crescimento", "tendência", "histórico", "ao longo do tempo", "mensal", "anual".
-       - Ação: "tipo_visual": "grafico_linha".
-       - Agrupamento: "mes" (padrão) ou "ano".
+    1. **SE O USUÁRIO PEDIR PARA ADICIONAR/EDITAR/EXCLUIR:**
+       - Retorne: "tipo_visual": "aviso_acao".
+       - Mensagem: "Sou um assistente de consulta. Para alterar o cronograma, use o calendário oficial."
 
-    2. **ANÁLISES DE EFICIÊNCIA E OCIOSIDADE:**
-       - **Taxa de Ocupação:** "eficiência", "taxa de uso", "ocupação", "porcentagem de uso".
-         -> "analise_especial": "taxa_ocupacao", "tipo_visual": "kpi_numero".
-       - **Ociosidade:** "não usados", "nunca usados", "vazios o mês todo", "sem aula".
-         -> "analise_especial": "nao_utilizados", "tipo_visual": "tabela_aulas".
-       - **Vagas/Disponibilidade:** "horários vagos", "buracos na agenda", "livres amanhã".
-         -> "analise_especial": "horarios_vagos", "tipo_visual": "tabela_aulas".
-       - **Intensidade:** "média por dia", "frequência diária".
-         -> "analise_especial": "media_diaria", "tipo_visual": "kpi_numero".
-       - **Saturação:** "dias lotados", "dias de pico", "mais cheios".
-         -> "analise_especial": "dias_lotados", "tipo_visual": "tabela_aulas".
+    2. **ANÁLISES E GRÁFICOS (PERMITIDO):**
+       - "Gráfico", "Ranking", "Evolução" -> "tipo_visual": "grafico_estatisticas" ou "grafico_linha".
+       - "Taxa de Ocupação" -> "analise_especial": "taxa_ocupacao".
+       - "Vagas/Livres" -> "analise_especial": "horarios_vagos".
+       - "Ociosidade" -> "analise_especial": "nao_utilizados".
 
-    3. **COMPARAÇÕES E RANKINGS (GRÁFICOS):**
-       - Palavras: "gráfico", "ranking", "distribuição", "comparar", "quais mais usados".
-       - Ação: "tipo_visual": "grafico_estatisticas".
-       - Agrupamento: "laboratorio" | "curso" | "dia_semana" | "turno" | "horario".
-       - Se falar "tempo", "horas", "duração" -> "metrica": "duracao".
+    3. **CONSULTAS PADRÃO:**
+       - "Quantas..." -> "tipo_visual": "kpi_numero".
+       - "Listar..." -> "tipo_visual": "tabela_aulas".
 
-    4. **CONSULTAS PADRÃO:**
-       - "Quantas..." -> "tipo_visual": "kpi_numero", "metrica": "quantidade".
-       - "Listar...", "Agenda...", "Ver aulas..." -> "tipo_visual": "tabela_aulas".
-
-    **FORMATO JSON OBRIGATÓRIO:**
+    JSON DE SAÍDA:
     {
-      "acao": "consultar|adicionar|editar|excluir",
+      "acao": "consultar", 
       "criterios_busca": {
         "data": "DD/MM/YYYY",
         "mes": "MM/YYYY",
@@ -104,13 +63,12 @@ class ProcessadorConsultas {
         "laboratorio": "string",
         "cursos": ["string"]
       },
-      "dados_novos": { ... },
-      "tipo_visual": "grafico_estatisticas|grafico_linha|kpi_numero|tabela_aulas",
+      "tipo_visual": "grafico_estatisticas|grafico_linha|kpi_numero|tabela_aulas|aviso_acao",
       "agrupar_por": "laboratorio|curso|mes|dia_semana|turno|horario",
       "analise_especial": "taxa_ocupacao|horarios_vagos|nao_utilizados|media_diaria|dias_lotados|null",
-      "metrica": "quantidade|duracao|diversidade",
-      "titulo_sugerido": "Título curto para o gráfico/tabela",
-      "confirmacao": "Texto descritivo se for ação de escrita"
+      "metrica": "quantidade|duracao",
+      "titulo_sugerido": "Título",
+      "mensagem": "Mensagem de erro caso tente escrever"
     }
     `;
 
@@ -127,21 +85,16 @@ class ProcessadorConsultas {
                     { role: 'system', content: systemPrompt },
                     { role: 'user', content: textoUsuario }
                 ],
-                temperature: 0.1, // Baixa temperatura para precisão técnica
+                temperature: 0.1,
                 response_format: { type: "json_object" }
             })
         });
 
-        if (!response.ok) throw new Error(`Erro API Groq: ${response.status}`);
-
         const data = await response.json();
-        const conteudo = data.choices[0].message.content;
-        
-        return JSON.parse(conteudo);
+        return JSON.parse(data.choices[0].message.content);
 
     } catch (error) {
-        console.error("Erro Groq:", error);
-        return { erro: "Falha na inteligência do processador. Verifique a conexão." };
+        return { erro: "Falha na IA." };
     }
   }
 }

@@ -1,27 +1,22 @@
-/**
- * ExecutorAcoes.js
- * Executa a lógica pesada: Banco de dados, Cálculos Estatísticos e Notificações.
- */
-
 import { db } from '../firebaseConfig';
 import { 
-    collection, query, where, getDocs, Timestamp, writeBatch, doc, updateDoc, deleteDoc, serverTimestamp, addDoc 
+    collection, query, where, getDocs, Timestamp, writeBatch, doc, updateDoc, deleteDoc, serverTimestamp 
 } from 'firebase/firestore';
 import dayjs from 'dayjs';
 import 'dayjs/locale/pt-br';
 import { notificadorTelegram } from './NotificadorTelegram';
-// Importante: Lista de labs para calcular ociosidade
+// Importante: Lista de labs para calcular ociosidade e normalizar nomes
 import { LISTA_LABORATORIOS } from '../constants/laboratorios'; 
 
 dayjs.locale('pt-br');
 
-// Horários oficiais para cálculo de vagas
+// Horários oficiais para cálculo de vagas e normalização
 const TODOS_HORARIOS = [
     "07:00-09:10", "09:30-12:00", "13:00-15:10", 
     "15:30-18:00", "18:30-20:10", "20:30-22:00"
 ];
 
-// Helper para ordenar meses corretamente no gráfico de linha
+// Helper para ordenação de meses
 const ORDEM_MESES = { 'jan':1, 'fev':2, 'mar':3, 'abr':4, 'mai':5, 'jun':6, 'jul':7, 'ago':8, 'set':9, 'out':10, 'nov':11, 'dez':12 };
 
 class ExecutorAcoes {
@@ -61,10 +56,10 @@ class ExecutorAcoes {
   // =========================================================================
 
   async consultar(criterios, tipoVisual, agruparPor, analiseEspecial, metrica, tituloSugerido) {
-    // 1. Busca os dados brutos no Firebase (com filtragem inteligente)
+    // 1. Busca os dados brutos no Firebase (com filtro inteligente)
     const aulas = await this.buscarAulas(criterios);
 
-    // 2. Roteamento para Análises Especiais (Perguntas Difíceis)
+    // 2. Roteamento para Análises Especiais (Hardcore)
     if (analiseEspecial === 'taxa_ocupacao') return this.analisarTaxaOcupacao(aulas, criterios);
     if (analiseEspecial === 'horarios_vagos') return this.analisarHorariosVagos(aulas, criterios);
     if (analiseEspecial === 'nao_utilizados') return this.analisarOciosidade(aulas, criterios);
@@ -105,7 +100,7 @@ class ExecutorAcoes {
       let q = collection(db, "aulas");
       const constraints = [];
 
-      // A. Filtros de Data (Firebase - Rápido)
+      // A. Filtros de Data no Firebase (Rápido)
       if (criterios.data) {
         const d = dayjs(criterios.data, 'DD/MM/YYYY');
         constraints.push(where("dataInicio", ">=", Timestamp.fromDate(d.startOf('day').toDate())));
@@ -164,6 +159,7 @@ class ExecutorAcoes {
       
       aulas.forEach(aula => {
           if (!aula.dataInicio) return;
+          // Agrupa por Mês/Ano (ex: "nov/2025")
           const chave = dayjs(aula.dataInicio.toDate()).format('MMM/YY').toLowerCase();
           
           if (!dadosTemporais[chave]) dadosTemporais[chave] = 0;
@@ -246,7 +242,7 @@ class ExecutorAcoes {
       }
 
       const valores = labels.map(l => metrica === 'duracao' ? parseFloat((contagem[l].minutos/60).toFixed(1)) : contagem[l].qtd);
-      if (metrica === 'duracao') tituloGrafico += " (Horas)";
+      if (metrica === 'duracao') tituloGrafico += " (Horas Totais)";
 
       return {
           tipo: 'grafico_estatisticas',
@@ -306,7 +302,7 @@ class ExecutorAcoes {
       return {
           tipo: 'tabela_aulas',
           titulo: `Laboratórios Ociosos (Sem Uso)`,
-          dados_consulta: vazios.map(l => ({ assunto: 'SEM USO', data: '-', horario: '-', laboratorio: l, cursos: ['Ocioso'] }))
+          dados_consulta: vazios.map(l => ({ assunto: 'LIVRE', data: '-', horario: '-', laboratorio: l, cursos: ['Ocioso'] }))
       };
   }
 
@@ -325,7 +321,7 @@ class ExecutorAcoes {
   }
 
   // =========================================================================
-  // UTILITÁRIOS E AÇÕES DE ESCRITA
+  // UTILITÁRIOS
   // =========================================================================
 
   calcularDuracaoAula(slot) {
@@ -366,13 +362,37 @@ class ExecutorAcoes {
       };
   }
 
-  // --- ESCRITA NO FIREBASE + TELEGRAM ---
+  // =========================================================================
+  // AÇÕES DE ESCRITA (ADICIONAR / EDITAR / EXCLUIR)
+  // =========================================================================
 
   async adicionar(dados) {
-      if (!dados.data || !dados.assunto) throw new Error('Dados incompletos.');
+      // 1. Validação Flexível
+      if (!dados.data || !dados.assunto) {
+          throw new Error('Dados incompletos. Preciso de Data e Assunto.');
+      }
+      
       const batch = writeBatch(db);
-      const labs = dados.laboratorios || ['multidisciplinar_1'];
-      const horarios = dados.horarios || ['07:00-09:10'];
+      
+      // 2. Normalização Inteligente (Correção de erros da IA)
+      // Garante que se a IA mandar "07:00", usamos "07:00-09:10"
+      let labs = (dados.laboratorios && dados.laboratorios.length) ? dados.laboratorios : ['multidisciplinar_1'];
+      let horarios = (dados.horarios && dados.horarios.length) ? dados.horarios : ['07:00-09:10'];
+
+      horarios = horarios.map(h => {
+          const match = TODOS_HORARIOS.find(slot => slot.startsWith(h.substring(0, 5)));
+          return match || h;
+      });
+
+      // Busca Fuzzy no nome do lab (Ex: "Anatomia" -> "anatomia_1")
+      labs = labs.map(l => {
+          const match = LISTA_LABORATORIOS.find(labOficial => 
+              labOficial.name.toLowerCase().includes(l.toLowerCase()) || 
+              labOficial.tipo.toLowerCase().includes(l.toLowerCase())
+          );
+          return match ? match.name : l;
+      });
+
       const dataISO = dayjs(dados.data, 'DD/MM/YYYY').format('YYYY-MM-DD');
       let count = 0;
 
@@ -387,7 +407,7 @@ class ExecutorAcoes {
                   cursos: dados.cursos || [],
                   status: 'aprovada',
                   createdAt: serverTimestamp(),
-                  observacoes: dados.observacoes || 'Via IA',
+                  observacoes: dados.observacoes || 'Agendado via Assistente IA',
                   propostoPorUid: this.currentUser?.uid || 'sys',
                   propostoPorNome: this.currentUser?.displayName || 'IA'
               });
@@ -395,13 +415,21 @@ class ExecutorAcoes {
           }
       }
       await batch.commit();
+      
+      // Notificação com Link
       this.notificar(dados, horarios, labs, 'adicionar', dataISO);
-      return { tipo: 'aviso_acao', titulo: 'Sucesso', mensagem: `${count} aula(s) agendada(s).` };
+      
+      return { 
+          tipo: 'aviso_acao', 
+          titulo: 'Agendamento Realizado', 
+          mensagem: `${count} aula(s) de "${dados.assunto}" criada(s) para ${dados.data}.` 
+      };
   }
 
   async editar(criterios, dadosNovos) {
       const aulas = await this.buscarAulas(criterios);
-      if (aulas.length === 0) throw new Error('Nenhuma aula encontrada.');
+      if (aulas.length === 0) throw new Error('Nenhuma aula encontrada para editar.');
+      // Edita apenas a primeira encontrada para segurança
       const aula = aulas[0];
       
       const updateData = { updatedAt: serverTimestamp() };
@@ -416,17 +444,20 @@ class ExecutorAcoes {
       const dataISO = dayjs(updateData.dataInicio ? updateData.dataInicio.toDate() : aula.dataInicio.toDate()).format('YYYY-MM-DD');
       this.notificar({...aula, ...updateData}, [updateData.horarioSlotString || aula.horarioSlotString], [updateData.laboratorioSelecionado || aula.laboratorioSelecionado], 'editar', dataISO);
       
-      return { tipo: 'aviso_acao', titulo: 'Sucesso', mensagem: 'Aula editada.' };
+      return { tipo: 'aviso_acao', titulo: 'Sucesso', mensagem: 'Aula editada com sucesso.' };
   }
 
   async excluir(criterios) {
       const aulas = await this.buscarAulas(criterios);
-      if (aulas.length === 0) throw new Error('Nenhuma aula para excluir.');
+      if (aulas.length === 0) throw new Error('Nenhuma aula encontrada para excluir.');
+      
       const batch = writeBatch(db);
       aulas.forEach(a => batch.delete(doc(db, "aulas", a.id)));
       await batch.commit();
       
-      if (aulas.length === 1) this.notificar(aulas[0], [aulas[0].horarioSlotString], [aulas[0].laboratorioSelecionado], 'excluir', null);
+      if (aulas.length === 1) {
+          this.notificar(aulas[0], [aulas[0].horarioSlotString], [aulas[0].laboratorioSelecionado], 'excluir', null);
+      }
       
       return { tipo: 'aviso_acao', titulo: 'Sucesso', mensagem: `${aulas.length} aula(s) excluída(s).` };
   }
