@@ -22,28 +22,33 @@ O Cronograma Lab é uma plataforma web desenvolvida para revolucionar o agendame
 </div>
 </div>
 
-## ✨ Funcionalidades
+## ✨ Funcionalidades (Fase 1 - Implementada)
 
-### 🤖 Fase 5: Inovação e Inteligência (NEW!)
+Esta seção detalha as funcionalidades essenciais que já estão implementadas no sistema, representando a base de agendamento e gestão do Cronograma Lab.
 
-| Funcionalidade | Descrição | Impacto |
+| Funcionalidade | Descrição | Status |
 | :--- | :--- | :--- |
-| 🧠 **Assistente IA** | NLP integrada ao Dashboard. Pergunte: "Qual a taxa de ocupação este mês?" e receba gráficos instantâneos. | Elimina a criação manual de relatórios. |
-| 🔍 **Busca "Fuzzy"** | Busca inteligente que entende contexto (ex: "anatômia" encontra "Lab. Anatomia"). | Melhora a UX de pesquisa drasticamente. |
-| 📱 **Bot Telegram 2.0** | Notificações automáticas com links diretos para o calendário no momento da ação. | Comunicação instantânea com a coordenação. |
-| 🔮 **Predição de Ociosidade** | A IA identifica laboratórios subutilizados e sugere otimizações. | Melhor aproveitamento de recursos físicos. |
+| **Controle de Acesso** | Autenticação de usuários (Coordenadores, Professores) via Firebase Auth e perfis de acesso. | **Implementado** |
+| **Proposta de Aula** | Formulário detalhado para propor aulas, com seleção de laboratório, curso e horário. | **Implementado** |
+| **Verificação de Conflito** | Sistema que verifica automaticamente conflitos de horário e laboratório antes de finalizar o agendamento. | **Implementado** |
+| **Visualização de Calendário** | Exibição do cronograma em formato de calendário semanal com navegação. | **Implementado** |
+| **Notificação Telegram** | Envio de notificações automáticas via Telegram para ações de agendamento, edição e exclusão. | **Implementado** |
+| **Edição e Exclusão** | Opções para Coordenadores editarem ou excluírem aulas diretamente do calendário. | **Implementado** |
+| **Gestão de Dados** | Páginas de gestão para usuários, períodos, avisos e manutenção (GerenciarUsuarios.jsx, GerenciarPeriodos.jsx, etc.). | **Implementado** |
 
 ## 🗺️ Roadmap de Desenvolvimento
 
 O projeto está em constante evolução. As próximas fases de desenvolvimento focam em aprimorar a experiência do usuário e expandir as capacidades de análise e gestão.
 
-### 🛠️ Fase 1: Estrutura Base e Agendamento Essencial
+### 🛠️ Fase 1: Estrutura Base e Agendamento Essencial (Concluída)
+
+Esta fase representa a fundação do sistema, com as funcionalidades detalhadas na seção acima.
 
 | Funcionalidade | Descrição | Benefício |
 | :--- | :--- | :--- |
 | **Agendamento Básico** | Funcionalidade principal de agendamento de laboratórios com controle de datas e horários. | Permite o uso fundamental do sistema para a gestão de recursos. |
 | **Controle de Acesso** | Autenticação de usuários (coordenadores, professores) via Firebase Auth. | Garante a segurança e a integridade dos dados de agendamento. |
-| **Visualização de Calendário** | Exibição do cronograma em formato de calendário mensal e semanal. | Oferece uma visão clara da disponibilidade dos laboratórios. |
+| **Visualização de Calendário** | Exibição do cronograma em formato de calendário semanal. | Oferece uma visão clara da disponibilidade dos laboratórios. |
 
 ### 🚀 Fases 2 e 3: Melhorias de UX e Interface
 
@@ -63,6 +68,15 @@ O projeto está em constante evolução. As próximas fases de desenvolvimento f
 | **Exportação para Calendário (.ics)** | Permite aos usuários exportar o cronograma filtrado para seus calendários pessoais (Google Calendar, Outlook, Apple Calendar) via arquivo `.ics`. | Facilita a organização pessoal e a integração com ferramentas de produtividade. |
 | **Integração de Feriados** | O calendário agora exibe e destaca automaticamente os feriados nacionais, estaduais e municipais (com base em dados mockados/API). | Evita agendamentos em dias não letivos, melhorando a precisão do cronograma. |
 | **Otimização de Consultas** | Implementação de indexação e normalização de dados para consultas mais rápidas e eficientes no Firebase Firestore. | Reduz a latência e o custo operacional do banco de dados. |
+
+### 🤖 Fase 5: Inovação e Inteligência (NEW!)
+
+| Funcionalidade | Descrição | Impacto |
+| :--- | :--- | :--- |
+| 🧠 **Assistente IA** | NLP integrada ao Dashboard. Pergunte: "Qual a taxa de ocupação este mês?" e receba gráficos instantâneos. | Elimina a criação manual de relatórios. |
+| 🔍 **Busca "Fuzzy"** | Busca inteligente que entende contexto (ex: "anatômia" encontra "Lab. Anatomia"). | Melhora a UX de pesquisa drasticamente. |
+| 📱 **Bot Telegram 2.0** | Notificações automáticas com links diretos para o calendário no momento da ação. | Comunicação instantânea com a coordenação. |
+| 🔮 **Predição de Ociosidade** | A IA identifica laboratórios subutilizados e sugere otimizações. | Melhor aproveitamento de recursos físicos. |
 
 ## 🛠️ Tecnologias
 
