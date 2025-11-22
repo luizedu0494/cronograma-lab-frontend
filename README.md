@@ -3,6 +3,7 @@
 <p align="center">
   <a href="#-sobre">Sobre</a> •
   <a href="#-funcionalidades">Funcionalidades</a> •
+  <a href="#-roadmap-de-desenvolvimento">Roadmap</a> •
   <a href="#-screenshots">Screenshots</a> •
   <a href="#️-tecnologias">Tecnologias</a> •
   <a href="#️-instalação">Instalação</a>
@@ -16,39 +17,73 @@ O Cronograma Lab é uma plataforma web desenvolvida para revolucionar o agendame
 
 <div align="center">
   <img src="./src/assets/images/image.png" alt="Dashboard do Cronograma Lab" width="700"/>
+  <br>
   <em>Painel Principal com Gráficos e Assistente de IA</em>
 </div>
+</div>
 
-## ✨ Funcionalidades
+## ✨ Funcionalidades (Fase 1 - Implementada)
 
-### 🤖 Inovação e Inteligência (Fase 5 - NEW!)
+Esta seção detalha as funcionalidades essenciais que já estão implementadas no sistema, representando a base de agendamento e gestão do Cronograma Lab.
+
+| Funcionalidade | Descrição | Status |
+| :--- | :--- | :--- |
+| **Controle de Acesso** | Autenticação de usuários (Coordenadores, Professores) via Firebase Auth e perfis de acesso. | **Implementado** |
+| **Proposta de Aula** | Formulário detalhado para propor aulas, com seleção de laboratório, curso e horário. | **Implementado** |
+| **Verificação de Conflito** | Sistema que verifica automaticamente conflitos de horário e laboratório antes de finalizar o agendamento. | **Implementado** |
+| **Visualização de Calendário** | Exibição do cronograma em formato de calendário semanal com navegação. | **Implementado** |
+| **Notificação Telegram** | Envio de notificações automáticas via Telegram para ações de agendamento, edição e exclusão. | **Implementado** |
+| **Edição e Exclusão** | Opções para Coordenadores editarem ou excluírem aulas diretamente do calendário. | **Implementado** |
+| **Gestão de Dados** | Páginas de gestão para usuários, períodos, avisos e manutenção (GerenciarUsuarios.jsx, GerenciarPeriodos.jsx, etc.). | **Implementado** |
+
+## 🗺️ Roadmap de Desenvolvimento
+
+O projeto está em constante evolução. As próximas fases de desenvolvimento focam em aprimorar a experiência do usuário e expandir as capacidades de análise e gestão.
+
+### 🛠️ Fase 1: Estrutura Base e Agendamento Essencial (Concluída)
+
+Esta fase representa a fundação do sistema, com as funcionalidades detalhadas na seção acima.
+
+| Funcionalidade | Descrição | Benefício |
+| :--- | :--- | :--- |
+| **Agendamento Básico** | Funcionalidade principal de agendamento de laboratórios com controle de datas e horários. | Permite o uso fundamental do sistema para a gestão de recursos. |
+| **Controle de Acesso** | Autenticação de usuários (coordenadores, professores) via Firebase Auth. | Garante a segurança e a integridade dos dados de agendamento. |
+| **Visualização de Calendário** | Exibição do cronograma em formato de calendário semanal. | Oferece uma visão clara da disponibilidade dos laboratórios. |
+
+### 🚀 Fases 2 e 3: Melhorias de UX e Interface
+
+| Funcionalidade | Descrição | Benefício |
+| :--- | :--- | :--- |
+| **Filtros Dinâmicos** | Adição de filtros por laboratório, curso, status e dia da semana na visualização do cronograma. | Permite aos usuários localizar rapidamente as informações de interesse, melhorando a navegabilidade. |
+| **Visualização de Ocupação** | Mapa de calor simplificado que exibe a ocupação horária do laboratório, indicando aulas simultâneas. | Ajuda coordenadores e proponentes a identificar horários de pico e janelas de disponibilidade. |
+| **Drag-and-Drop (D&D)** | Funcionalidade de arrastar e soltar para propostas de aula pendentes, permitindo que coordenadores as movam facilmente no calendário. | Agiliza o processo de aprovação e reagendamento de propostas. |
+| **Contador de Pendências** | Notificação visual no painel de avisos e na navegação principal para propostas de aula aguardando aprovação. | Garante que nenhuma proposta seja esquecida, melhorando o tempo de resposta. |
+| **Atualização em Tempo Real** | Uso de `onSnapshot` do Firestore para garantir que o painel de avisos e o calendário reflitam as alterações instantaneamente. | Elimina a necessidade de recarregar a página, proporcionando uma experiência fluida. |
+
+### 📊 Fase 4: Novas Funcionalidades Estratégicas
+
+| Funcionalidade | Descrição | Benefício |
+| :--- | :--- | :--- |
+| **Dashboard de Análise** | Novo módulo com gráficos e métricas de uso dos laboratórios (por curso, tipo de atividade, turno, mês). Inclui a métrica de **Proposta vs. Aprovação**. | Fornece dados valiosos para a gestão, auxiliando na tomada de decisões sobre recursos e planejamento. |
+| **Exportação para Calendário (.ics)** | Permite aos usuários exportar o cronograma filtrado para seus calendários pessoais (Google Calendar, Outlook, Apple Calendar) via arquivo `.ics`. | Facilita a organização pessoal e a integração com ferramentas de produtividade. |
+| **Integração de Feriados** | O calendário agora exibe e destaca automaticamente os feriados nacionais, estaduais e municipais (com base em dados mockados/API). | Evita agendamentos em dias não letivos, melhorando a precisão do cronograma. |
+| **Otimização de Consultas** | Implementação de indexação e normalização de dados para consultas mais rápidas e eficientes no Firebase Firestore. | Reduz a latência e o custo operacional do banco de dados. |
+
+### 🤖 Fase 5: Inovação e Inteligência (NEW!)
 
 | Funcionalidade | Descrição | Impacto |
-| --- | --- | --- |
+| :--- | :--- | :--- |
 | 🧠 **Assistente IA** | NLP integrada ao Dashboard. Pergunte: "Qual a taxa de ocupação este mês?" e receba gráficos instantâneos. | Elimina a criação manual de relatórios. |
 | 🔍 **Busca "Fuzzy"** | Busca inteligente que entende contexto (ex: "anatômia" encontra "Lab. Anatomia"). | Melhora a UX de pesquisa drasticamente. |
 | 📱 **Bot Telegram 2.0** | Notificações automáticas com links diretos para o calendário no momento da ação. | Comunicação instantânea com a coordenação. |
 | 🔮 **Predição de Ociosidade** | A IA identifica laboratórios subutilizados e sugere otimizações. | Melhor aproveitamento de recursos físicos. |
-
-### 📊 Dashboard e Gestão
-
-- **Análise de Dados:** Métricas de Proposta vs. Aprovação, uso por turno e curso.
-- **Exportação .ICS:** Integração nativa com Google Calendar, Outlook e Apple Calendar.
-- **Gestão de Feriados:** Bloqueio automático de dias não letivos nacionais e locais.
-
-### 🚀 Experiência do Usuário (UX)
-
-- **Filtros Dinâmicos:** Refinamento por status, laboratório e curso em tempo real.
-- **Mapa de Calor:** Visualização rápida de horários de pico.
-- **Drag-and-Drop:** Reagendamento intuitivo arrastando cards no calendário.
-- **Real-time:** Sincronização instantânea via WebSocket (Firestore).
 
 ## 🛠️ Tecnologias
 
 O projeto foi construído utilizando as melhores práticas de desenvolvimento moderno:
 
 | Categoria | Tecnologias |
-| --- | --- |
+| :--- | :--- |
 | **Frontend** | React (CRA), Material-UI (MUI), Context API |
 | **Backend / DB** | Firebase (Firestore, Auth, Hosting) |
 | **Inteligência Artificial** | Groq API (Model: Llama 3.3 70b Versatile) |
