@@ -11,7 +11,13 @@
 
 ## 🎯 Sobre
 
-O Cronograma Lab é uma plataforma web desenvolvida para revolucionar o agendamento de laboratórios em instituições de ensino. Mais do que um simples calendário, o sistema evoluiu para uma ferramenta de Business Intelligence (BI), integrando Inteligência Artificial (Llama 3.3) para análise de dados e Notificações via Telegram, garantindo que coordenadores e professores tenham insights estratégicos e comunicação em tempo real.
+O **Cronograma Lab** nasceu de uma necessidade real do dia a dia de trabalho no **CESMAC**, com o objetivo de otimizar a rotina dos técnicos de laboratório e demais colaboradores. A ideia surgiu ao observar a necessidade de uma ferramenta dedicada para agilizar o agendamento de laboratórios, substituindo processos manuais e propensos a erros por uma solução centralizada, inteligente e eficiente.
+
+O que começou como um simples sistema de agendamento evoluiu para uma plataforma robusta de **Business Intelligence (BI)**. A busca contínua por melhorias e a implementação de novas ideias transformaram o Cronograma Lab em uma ferramenta estratégica. Hoje, o sistema não apenas organiza os horários, mas também fornece **insights valiosos** através da integração com **Inteligência Artificial (Llama 3.3)** e mantém a equipe informada em tempo real com **notificações via Telegram**.
+
+O desenvolvimento inicial foi pautado na utilização de **ferramentas totalmente gratuitas**, demonstrando a viabilidade e o potencial da solução sem a necessidade de grandes investimentos. Atualmente, com o amadurecimento do projeto, estamos em uma fase de transição, planejando a incorporação de tecnologias pagas com o apoio da instituição. Essa evolução visa garantir a **escalabilidade, segurança e performance** da plataforma, consolidando o Cronograma Lab como uma ferramenta completa e indispensável para a gestão acadêmica do CESMAC.
+
+<br/>
 
 ## 📸 Screenshots
 
