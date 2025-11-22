@@ -1,16 +1,16 @@
-import React from 'react';
-import { Box, Card, Typography, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip, Alert, Grid } from '@mui/material';
+import React, { useRef } from 'react';
+import { Box, Card, Typography, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip, Alert, IconButton, Tooltip } from '@mui/material';
+import { Download } from '@mui/icons-material';
 import {
-  Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement
+  Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip as ChartTooltip, Legend, ArcElement, PointElement, LineElement
 } from 'chart.js';
-import { Bar, Pie } from 'react-chartjs-2';
+import { Bar, Pie, Line } from 'react-chartjs-2';
 
 // Registra componentes do Chart.js
-ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement);
+ChartJS.register(CategoryScale, LinearScale, BarElement, Title, ChartTooltip, Legend, ArcElement, PointElement, LineElement);
 
 const FormatadorResultados = ({ resultado, mode }) => {
     if (!resultado) return null;
-
     if (resultado.erro) return <Alert severity="error">{resultado.erro}</Alert>;
     if (resultado.tipo === 'aviso_acao') return <Alert severity="success" sx={{mt: 2}}>{resultado.mensagem}</Alert>;
 
@@ -27,7 +27,7 @@ const FormatadorResultados = ({ resultado, mode }) => {
                     <Typography variant="h1" fontWeight="900" color="primary" sx={{ fontSize: '6rem', lineHeight: 1 }}>
                         {resultado.valor}
                     </Typography>
-                    <Typography variant="h6" color={textSecondary} sx={{ mt: 2 }}>Registros</Typography>
+                    <Typography variant="h6" color="text.secondary" sx={{ mt: 2 }}>{resultado.titulo}</Typography>
                 </Card>
             );
 
@@ -35,6 +35,7 @@ const FormatadorResultados = ({ resultado, mode }) => {
             return <TabelaResultados data={resultado} mode={mode} />;
 
         case 'grafico_estatisticas':
+        case 'grafico_linha':
             return <GraficoResultados data={resultado} mode={mode} />;
 
         default:
@@ -42,7 +43,6 @@ const FormatadorResultados = ({ resultado, mode }) => {
     }
 };
 
-// COMPONENTE DE TABELA
 const TabelaResultados = ({ data, mode }) => {
     const rows = data.dados_consulta || [];
     if (!rows.length) return <Alert severity="info">Nenhum dado encontrado.</Alert>;
@@ -80,33 +80,44 @@ const TabelaResultados = ({ data, mode }) => {
     );
 };
 
-// COMPONENTE DE GRÁFICO
+// --- COMPONENTE DE GRÁFICO COM DOWNLOAD ---
 const GraficoResultados = ({ data, mode }) => {
+    const chartRef = useRef(null); // Referência para o gráfico
     const { labels, valores, tipo_grafico } = data.dados_consulta;
     const colorText = mode === 'dark' ? '#fff' : '#000';
+
+    // Função de Download
+    const handleDownload = () => {
+        if (chartRef.current) {
+            const link = document.createElement('a');
+            link.download = `${data.titulo || 'grafico'}.png`;
+            link.href = chartRef.current.toBase64Image();
+            link.click();
+        }
+    };
 
     const chartData = {
         labels,
         datasets: [{
-            label: 'Quantidade de Aulas',
+            label: 'Dados',
             data: valores,
             backgroundColor: [
-                'rgba(54, 162, 235, 0.7)',
-                'rgba(255, 99, 132, 0.7)',
-                'rgba(255, 206, 86, 0.7)',
-                'rgba(75, 192, 192, 0.7)',
-                'rgba(153, 102, 255, 0.7)',
+                'rgba(33, 150, 243, 0.7)', 'rgba(255, 87, 34, 0.7)', 'rgba(76, 175, 80, 0.7)',
+                'rgba(255, 193, 7, 0.7)', 'rgba(156, 39, 176, 0.7)'
             ],
-            borderColor: 'rgba(54, 162, 235, 1)',
-            borderWidth: 1,
+            borderColor: 'rgba(33, 150, 243, 1)',
+            borderWidth: 2,
+            tension: 0.3,
+            fill: tipo_grafico === 'line'
         }],
     };
 
     const options = {
         responsive: true,
+        maintainAspectRatio: false,
         plugins: {
             legend: { labels: { color: colorText } },
-            title: { display: true, text: data.titulo, color: colorText }
+            title: { display: false } // Título já está no header do card
         },
         scales: {
             y: { ticks: { color: colorText }, grid: { color: mode === 'dark' ? '#444' : '#ddd' } },
@@ -116,9 +127,22 @@ const GraficoResultados = ({ data, mode }) => {
 
     return (
         <Paper elevation={4} sx={{ p: 3, mt: 2, bgcolor: mode === 'dark' ? '#1e1e1e' : '#fff', borderRadius: 3 }}>
-            <Typography variant="h6" gutterBottom align="center" color="primary">{data.titulo}</Typography>
-            <Box sx={{ height: 400, display: 'flex', justifyContent: 'center' }}>
-                {tipo_grafico === 'pie' ? <Pie data={chartData} options={options} /> : <Bar data={chartData} options={options} />}
+            {/* Header com Título e Botão de Download */}
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Typography variant="h6" color="primary" fontWeight="bold">
+                    {data.titulo}
+                </Typography>
+                <Tooltip title="Baixar Gráfico">
+                    <IconButton onClick={handleDownload} color="primary">
+                        <Download />
+                    </IconButton>
+                </Tooltip>
+            </Box>
+
+            <Box sx={{ height: 400, width: '100%', display: 'flex', justifyContent: 'center' }}>
+                {tipo_grafico === 'pie' ? <Pie ref={chartRef} data={chartData} options={options} /> : 
+                 tipo_grafico === 'line' ? <Line ref={chartRef} data={chartData} options={options} /> : 
+                 <Bar ref={chartRef} data={chartData} options={options} />}
             </Box>
         </Paper>
     );

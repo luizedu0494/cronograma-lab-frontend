@@ -1,8 +1,3 @@
-/**
- * NotificadorTelegram.js
- * Versão: Link Forçado (Sempre envia o link nas adições e edições)
- */
-
 class NotificadorTelegram {
   constructor() {
     this.botToken = import.meta.env.VITE_TELEGRAM_BOT_TOKEN || process.env.VITE_TELEGRAM_BOT_TOKEN;
@@ -10,8 +5,7 @@ class NotificadorTelegram {
   }
 
   async enviarNotificacao(chatId, dados, tipo) {
-    if (!this.botToken) return false;
-    if (!chatId) return false;
+    if (!this.botToken || !chatId) return false;
 
     try {
       const mensagem = this.gerarMensagemTexto(dados, tipo);
@@ -40,18 +34,11 @@ class NotificadorTelegram {
     const assunto = dados.assunto || 'Sem assunto';
     const cursos = Array.isArray(dados.cursos) ? dados.cursos.join(', ') : (dados.cursos || 'Cursos n/a');
 
-    // --- LÓGICA DO LINK (FORÇADA) ---
     let textoLink = '';
-
-    // Se NÃO for exclusão, SEMPRE gera o link
     if (tipo !== 'excluir') {
-        // Pega o link do .env ou usa o atual
         const baseUrl = import.meta.env.VITE_SITE_URL || window.location.origin;
-        
-        // Se tiver a data específica, usa. Se não, manda para o calendário geral.
         const complemento = dados.dataISO ? `?date=${dados.dataISO}` : '';
         const linkFinal = `${baseUrl}/calendario${complemento}`;
-        
         textoLink = `\n🔗 Ver no Cronograma:\n${linkFinal}`;
     }
 
