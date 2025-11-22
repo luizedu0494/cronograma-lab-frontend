@@ -15,7 +15,7 @@ O Cronograma Lab é uma plataforma web desenvolvida para revolucionar o agendame
 ## 📸 Screenshots
 
 <div align="center">
-  <img src="https://i.ibb.co/HD51f7CC/image.png" alt="Dashboard do Cronograma Lab" width="700"/>
+  <img src="./src/assets/images/image.png" alt="Dashboard do Cronograma Lab" width="700"/>
   <em>Painel Principal com Gráficos e Assistente de IA</em>
 </div>
 
