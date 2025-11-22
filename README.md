@@ -2,9 +2,9 @@
 
 <p align="center">
   <a href="#-sobre">Sobre</a> •
-  <a href="#-funcionalidades">Funcionalidades</a> •
-  <a href="#-roadmap-de-desenvolvimento">Roadmap</a> •
   <a href="#-screenshots">Screenshots</a> •
+  <a href="#-funcionalidades-fase-1---implementada">Funcionalidades</a> •
+  <a href="#-roadmap-de-desenvolvimento">Roadmap</a> •
   <a href="#-tecnologias">Tecnologias</a> •
   <a href="#-instalação">Instalação</a>
 </p>
