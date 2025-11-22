@@ -4,8 +4,8 @@
   <a href="#-sobre">Sobre</a> •
   <a href="#-funcionalidades">Funcionalidades</a> •
   <a href="#-screenshots">Screenshots</a> •
-  <a href="#-tecnologias">Tecnologias</a> •
-  <a href="#-instalação">Instalação</a>
+  <a href="#️-tecnologias">Tecnologias</a> •
+  <a href="#️-instalação">Instalação</a>
 </p>
 
 ## 🎯 Sobre
@@ -15,7 +15,7 @@ O Cronograma Lab é uma plataforma web desenvolvida para revolucionar o agendame
 ## 📸 Screenshots
 
 <div align="center">
-  <img src="https://www.google.com/search?q=https://via.placeholder.com/800x400%3Ftext%3DDashboard%2Bcom%2BAnalise%2Bde%2BIA" alt="Dashboard do Cronograma Lab" width="700"/>
+  <img src="https://i.ibb.co/6RjV7Y88/image.png" alt="Dashboard do Cronograma Lab" width="700"/>
   <em>Painel Principal com Gráficos e Assistente de IA</em>
 </div>
 
