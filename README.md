@@ -5,8 +5,8 @@
   <a href="#-funcionalidades">Funcionalidades</a> •
   <a href="#-roadmap-de-desenvolvimento">Roadmap</a> •
   <a href="#-screenshots">Screenshots</a> •
-  <a href="#️-tecnologias">Tecnologias</a> •
-  <a href="#️-instalação">Instalação</a>
+  <a href="#-tecnologias">Tecnologias</a> •
+  <a href="#-instalação">Instalação</a>
 </p>
 
 ## 🎯 Sobre
@@ -15,11 +15,170 @@ O Cronograma Lab é uma plataforma web desenvolvida para revolucionar o agendame
 
 ## 📸 Screenshots
 
+### Dashboard Principal
+
 <div align="center">
-  <img src="./src/assets/images/image.png" alt="Dashboard do Cronograma Lab" width="700"/>
-  <br>
-  <em>Painel Principal com Gráficos e Assistente de IA</em>
+  <table>
+    <tr>
+      <td align="center" width="50%">
+        <img src="./src/assets/images/image.png" alt="Dashboard Desktop" width="100%"/>
+        <br>
+        <em><strong>Versão Desktop:</strong> Painel Principal com Gráficos e Assistente de IA</em>
+      </td>
+      <td align="center" width="50%">
+        <img src="./src/assets/images/imagecel.png" alt="Dashboard Mobile" width="100%"/>
+        <br>
+        <em><strong>Versão Mobile:</strong> Painel Principal Responsivo</em>
+      </td>
+    </tr>
+  </table>
 </div>
+
+### Visualização de Calendário
+
+<div align="center">
+  <table>
+    <tr>
+      <td align="center" width="50%">
+        <img src="./src/assets/images/image2.png" alt="Calendário Desktop" width="100%"/>
+        <br>
+        <em><strong>Versão Desktop:</strong> Visualização Semanal do Cronograma</em>
+      </td>
+      <td align="center" width="50%">
+        <img src="./src/assets/images/image2cel.png" alt="Calendário Mobile" width="100%"/>
+        <br>
+        <em><strong>Versão Mobile:</strong> Calendário Otimizado para Tela Pequena</em>
+      </td>
+    </tr>
+  </table>
+</div>
+
+### Proposta de Aula
+
+<div align="center">
+  <table>
+    <tr>
+      <td align="center" width="50%">
+        <img src="./src/assets/images/image3.png" alt="Formulário Desktop" width="100%"/>
+        <br>
+        <em><strong>Versão Desktop:</strong> Formulário Detalhado de Proposta de Aula</em>
+      </td>
+      <td align="center" width="50%">
+        <img src="./src/assets/images/image3cel.png" alt="Formulário Mobile" width="100%"/>
+        <br>
+        <em><strong>Versão Mobile:</strong> Formulário Responsivo</em>
+      </td>
+    </tr>
+  </table>
+</div>
+
+### Gestão de Propostas
+
+<div align="center">
+  <table>
+    <tr>
+      <td align="center" width="50%">
+        <img src="./src/assets/images/image4.png" alt="Gestão Desktop" width="100%"/>
+        <br>
+        <em><strong>Versão Desktop:</strong> Painel de Gestão de Propostas Pendentes</em>
+      </td>
+      <td align="center" width="50%">
+        <img src="./src/assets/images/image4cel.png" alt="Gestão Mobile" width="100%"/>
+        <br>
+        <em><strong>Versão Mobile:</strong> Painel de Propostas Adaptado</em>
+      </td>
+    </tr>
+  </table>
+</div>
+
+### Análise de Dados
+
+<div align="center">
+  <table>
+    <tr>
+      <td align="center" width="50%">
+        <img src="./src/assets/images/image5.png" alt="Análise Desktop" width="100%"/>
+        <br>
+        <em><strong>Versão Desktop:</strong> Gráficos e Métricas de Ocupação</em>
+      </td>
+      <td align="center" width="50%">
+        <img src="./src/assets/images/image5cel.png" alt="Análise Mobile" width="100%"/>
+        <br>
+        <em><strong>Versão Mobile:</strong> Visualização de Métricas Responsiva</em>
+      </td>
+    </tr>
+  </table>
+</div>
+
+### Assistente de IA
+
+<div align="center">
+  <table>
+    <tr>
+      <td align="center" width="50%">
+        <img src="./src/assets/images/image6.png" alt="IA Desktop" width="100%"/>
+        <br>
+        <em><strong>Versão Desktop:</strong> Assistente IA com Análise Inteligente</em>
+      </td>
+      <td align="center" width="50%">
+        <img src="./src/assets/images/image6cel.png" alt="IA Mobile" width="100%"/>
+        <br>
+        <em><strong>Versão Mobile:</strong> Assistente IA Otimizado</em>
+      </td>
+    </tr>
+  </table>
+</div>
+
+### Gestão de Usuários
+
+<div align="center">
+  <table>
+    <tr>
+      <td align="center" width="50%">
+        <img src="./src/assets/images/image7.png" alt="Usuários Desktop" width="100%"/>
+        <br>
+        <em><strong>Versão Desktop:</strong> Painel de Gestão de Usuários</em>
+      </td>
+      <td align="center" width="50%">
+        <img src="./src/assets/images/image7cel.png" alt="Usuários Mobile" width="100%"/>
+        <br>
+        <em><strong>Versão Mobile:</strong> Gestão de Usuários Responsiva</em>
+      </td>
+    </tr>
+  </table>
+</div>
+
+### Configurações e Manutenção
+
+<div align="center">
+  <table>
+    <tr>
+      <td align="center" width="50%">
+        <img src="./src/assets/images/image8.png" alt="Configurações Desktop" width="100%"/>
+        <br>
+        <em><strong>Versão Desktop:</strong> Painel de Configurações e Manutenção</em>
+      </td>
+    </tr>
+  </table>
+</div>
+
+### Relatórios e Exportação
+
+<div align="center">
+  <table>
+    <tr>
+      <td align="center" width="50%">
+        <img src="./src/assets/images/image9.png" alt="Relatórios Desktop" width="100%"/>
+        <br>
+        <em><strong>Versão Desktop:</strong> Geração de Relatórios e Exportação</em>
+      </td>
+      <td align="center" width="50%">
+        <img src="./src/assets/images/image9cel.png" alt="Relatórios Mobile" width="100%"/>
+        <br>
+        <em><strong>Versão Mobile:</strong> Relatórios Adaptados para Mobile</em>
+      </td>
+    </tr>
+  </table>
 </div>
 
 ## ✨ Funcionalidades (Fase 1 - Implementada)
