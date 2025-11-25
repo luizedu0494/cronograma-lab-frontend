@@ -15,16 +15,31 @@ const CardAulasRecentes = ({ limite = 5 }) => {
     const { aulas, loading, error } = useFetchAulas({ limitCount: limite });
 
     // Função para obter a cor do status
+    // Função para obter a cor do status usando a paleta do tema
     const getStatusColor = (status) => {
         switch (status) {
             case 'aprovada':
-                return '#4caf50';
+                return theme.palette.success.main;
             case 'reprovada':
-                return '#f44336';
+                return theme.palette.error.main;
             case 'pendente':
-                return '#ff9800';
+                return theme.palette.warning.main;
             default:
-                return '#9e9e9e';
+                return theme.palette.grey[500];
+        }
+    };
+
+    // Função para obter a cor do texto do status
+    const getStatusTextColor = (status) => {
+        switch (status) {
+            case 'aprovada':
+                return theme.palette.success.contrastText;
+            case 'reprovada':
+                return theme.palette.error.contrastText;
+            case 'pendente':
+                return theme.palette.warning.contrastText;
+            default:
+                return theme.palette.common.white;
         }
     };
 
@@ -127,19 +142,20 @@ const CardAulasRecentes = ({ limite = 5 }) => {
                             sx={{
                                 p: 1.5,
                                 border: `1px solid ${theme.palette.divider}`,
-                                borderRadius: 1,
-                                backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)',
-                                transition: 'all 0.2s ease',
+                                borderRadius: theme.shape.borderRadius, // Usar o borderRadius do tema (12px)
+                                backgroundColor: theme.palette.background.paper, // Usar a cor de fundo do Paper
+                                transition: 'all 0.3s ease-in-out',
                                 '&:hover': {
-                                    backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.04)',
+                                    transform: 'translateY(-2px)',
+                                    boxShadow: theme.shadows[3], // Adicionar uma sombra sutil no hover
                                     borderColor: theme.palette.primary.main,
                                 }
                             }}
                         >
                             {/* Cabeçalho da aula */}
                             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
-                                <Box sx={{ flex: 1 }}>
-                                    <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 0.5 }}>
+                                <Box sx={{ flex: 1, minWidth: 0 }}>
+                                    <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 0.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                         {aula.titulo || 'Sem título'}
                                     </Typography>
                                     <Typography variant="caption" sx={{ color: theme.palette.text.secondary }}>
@@ -152,9 +168,10 @@ const CardAulasRecentes = ({ limite = 5 }) => {
                                     size="small"
                                     sx={{
                                         backgroundColor: getStatusColor(aula.status),
-                                        color: 'white',
-                                        fontWeight: 500,
-                                        ml: 1
+                                        color: getStatusTextColor(aula.status),
+                                        fontWeight: 600,
+                                        ml: 1,
+                                        borderRadius: '6px', // Ajuste para um visual mais moderno
                                     }}
                                 />
                             </Box>

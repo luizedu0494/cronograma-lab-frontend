@@ -3,14 +3,14 @@ import { createTheme } from '@mui/material/styles';
 
 const lightPalette = {
   primary: {
-    main: '#3f51b5', // Azul corporativo
-    light: '#757de8',
-    dark: '#002984',
+    main: '#1976d2', // Azul mais profundo e profissional (similar ao do Google)
+    light: '#63a4ff',
+    dark: '#004ba0',
   },
   secondary: {
-    main: '#4caf50', // Verde para sucesso/ênfase
-    light: '#80e27e',
-    dark: '#00701a',
+    main: '#009688', // Ciano-verde (Teal) para um toque de sofisticação
+    light: '#52c7b8',
+    dark: '#00675b',
   },
   success: {
     main: '#2e7d32',
@@ -28,27 +28,27 @@ const lightPalette = {
     dark: '#9a0007',
   },
   background: {
-    default: '#f5f5f5', // Cinza claro
+    default: '#fafafa', // Branco mais puro para o fundo
     paper: '#ffffff',
   },
   gradient: {
-    primary: 'linear-gradient(135deg, #3f51b5 0%, #283593 100%)',
-    secondary: 'linear-gradient(135deg, #4caf50 0%, #388e3c 100%)',
+    primary: 'linear-gradient(135deg, #1976d2 0%, #004ba0 100%)',
+    secondary: 'linear-gradient(135deg, #009688 0%, #00675b 100%)',
     success: 'linear-gradient(135deg, #2e7d32 0%, #1b5e20 100%)',
-    card: 'linear-gradient(135deg, #ffffff 0%, #f5f5f5 100%)',
+    card: 'linear-gradient(135deg, #ffffff 0%, #f0f0f0 100%)',
   }
 };
 
 const darkPalette = {
   primary: {
-    main: '#7986cb', // Azul mais claro para modo escuro
-    light: '#aab6fe',
-    dark: '#49599a',
+    main: '#90caf9', // Azul claro para modo escuro
+    light: '#c3fdff',
+    dark: '#5a99d2',
   },
   secondary: {
-    main: '#81c784', // Verde mais claro
-    light: '#b2fab4',
-    dark: '#519657',
+    main: '#4db6ac', // Ciano-verde claro para modo escuro
+    light: '#82e9de',
+    dark: '#00867d',
   },
   success: {
     main: '#66bb6a',
@@ -66,18 +66,18 @@ const darkPalette = {
     dark: '#af4448',
   },
   background: {
-    default: '#303030', // Cinza escuro
-    paper: '#424242',   // Cinza um pouco mais claro que o fundo
+    default: '#121212', // Preto mais profundo para o fundo
+    paper: '#1e1e1e',   // Cinza escuro para papel/cartões
   },
   text: {
     primary: '#ffffff',
     secondary: '#bdbdbd',
   },
   gradient: {
-    primary: 'linear-gradient(135deg, #303f9f 0%, #1a237e 100%)',
-    secondary: 'linear-gradient(135deg, #2e7d32 0%, #1b5e20 100%)',
+    primary: 'linear-gradient(135deg, #1565c0 0%, #0d47a1 100%)',
+    secondary: 'linear-gradient(135deg, #00897b 0%, #00695c 100%)',
     success: 'linear-gradient(135deg, #1b5e20 0%, #003300 100%)',
-    card: 'linear-gradient(135deg, #424242 0%, #303030 100%)',
+    card: 'linear-gradient(135deg, #1e1e1e 0%, #121212 100%)',
   }
 };
 
@@ -87,7 +87,7 @@ const getAppTheme = (mode) => createTheme({
     ...(mode === 'light' ? lightPalette : darkPalette),
   },
   typography: {
-    fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
+    fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
     h1: {
       fontWeight: 700,
       fontSize: '2.5rem',
@@ -128,24 +128,24 @@ const getAppTheme = (mode) => createTheme({
     },
   },
   shape: {
-    borderRadius: 8,
+    borderRadius: 12, // Aumentar o raio para um visual mais suave e moderno
   },
   shadows: [
     'none',
-    '0px 1px 3px rgba(0, 0, 0, 0.12), 0px 1px 2px rgba(0, 0, 0, 0.24)',
-    '0px 3px 6px rgba(0, 0, 0, 0.16), 0px 3px 6px rgba(0, 0, 0, 0.23)',
-    '0px 10px 20px rgba(0, 0, 0, 0.19), 0px 6px 6px rgba(0, 0, 0, 0.23)',
-    '0px 14px 28px rgba(0, 0, 0, 0.25), 0px 10px 10px rgba(0, 0, 0, 0.22)',
-    '0px 19px 38px rgba(0, 0, 0, 0.30), 0px 15px 12px rgba(0, 0, 0, 0.22)',
-    ...Array(19).fill('0px 19px 38px rgba(0, 0, 0, 0.30), 0px 15px 12px rgba(0, 0, 0, 0.22)')
+    '0px 2px 4px rgba(0, 0, 0, 0.05)', // Sombras mais sutis para um visual "limpo"
+    '0px 4px 8px rgba(0, 0, 0, 0.08)',
+    '0px 8px 16px rgba(0, 0, 0, 0.1)',
+    '0px 12px 24px rgba(0, 0, 0, 0.12)',
+    '0px 16px 32px rgba(0, 0, 0, 0.15)',
+    ...Array(19).fill('0px 16px 32px rgba(0, 0, 0, 0.15)')
   ],
   components: {
     MuiCssBaseline: {
       styleOverrides: {
         body: {
           background: mode === 'light' 
-            ? 'linear-gradient(135deg, #f5f5f5 0%, #e0e0e0 100%)'
-            : 'linear-gradient(135deg, #303030 0%, #212121 100%)',
+            ? '#fafafa' // Fundo sólido mais limpo
+            : '#121212', // Fundo sólido mais limpo
           minHeight: '100vh',
         },
       },
@@ -153,15 +153,15 @@ const getAppTheme = (mode) => createTheme({
     MuiButton: {
       styleOverrides: {
         root: {
-          borderRadius: 8,
+          borderRadius: 12,
           textTransform: 'none',
           fontWeight: 500,
           padding: '8px 20px',
-          boxShadow: 'none',
+          boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.05)', // Adicionar sombra sutil ao botão
           transition: 'all 0.2s ease-in-out',
           '&:hover': {
             transform: 'translateY(-1px)',
-            boxShadow: '0px 4px 10px rgba(0, 0, 0, 0.1)',
+            boxShadow: '0px 6px 12px rgba(0, 0, 0, 0.15)',
           },
           '&:active': {
             transform: 'translateY(0px)',
@@ -169,12 +169,12 @@ const getAppTheme = (mode) => createTheme({
         },
         contained: {
           background: mode === 'light' 
-            ? 'linear-gradient(135deg, #3f51b5 0%, #283593 100%)'
-            : 'linear-gradient(135deg, #7986cb 0%, #49599a 100%)',
+            ? 'linear-gradient(135deg, #1976d2 0%, #004ba0 100%)'
+            : 'linear-gradient(135deg, #90caf9 0%, #5a99d2 100%)',
           '&:hover': {
             background: mode === 'light' 
-              ? 'linear-gradient(135deg, #283593 0%, #1a237e 100%)'
-              : 'linear-gradient(135deg, #49599a 0%, #303f9f 100%)',
+              ? 'linear-gradient(135deg, #004ba0 0%, #003570 100%)'
+              : 'linear-gradient(135deg, #5a99d2 0%, #306090 100%)',
           },
         },
       },
@@ -184,16 +184,16 @@ const getAppTheme = (mode) => createTheme({
         root: {
           borderRadius: 12,
           background: mode === 'light' 
-            ? 'linear-gradient(135deg, #ffffff 0%, #f5f5f5 100%)'
-            : 'linear-gradient(135deg, #424242 0%, #303030 100%)',
+            ? '#ffffff' // Fundo sólido mais limpo
+            : '#1e1e1e', // Fundo sólido mais limpo
           backdropFilter: 'blur(10px)',
           border: mode === 'light' 
-            ? '1px solid rgba(0, 0, 0, 0.05)'
-            : '1px solid rgba(255, 255, 255, 0.05)',
+            ? '1px solid rgba(0, 0, 0, 0.08)'
+            : '1px solid rgba(255, 255, 255, 0.08)',
           transition: 'all 0.2s ease-in-out',
           '&:hover': {
             transform: 'translateY(-2px)',
-            boxShadow: '0px 8px 20px rgba(0, 0, 0, 0.08)',
+            boxShadow: '0px 10px 25px rgba(0, 0, 0, 0.1)',
           },
         },
       },
@@ -203,16 +203,16 @@ const getAppTheme = (mode) => createTheme({
         root: {
           borderRadius: 12,
           background: mode === 'light' 
-            ? 'linear-gradient(135deg, #ffffff 0%, #f5f5f5 100%)'
-            : 'linear-gradient(135deg, #424242 0%, #303030 100%)',
+            ? '#ffffff' // Fundo sólido mais limpo
+            : '#1e1e1e', // Fundo sólido mais limpo
           backdropFilter: 'blur(10px)',
           border: mode === 'light' 
-            ? '1px solid rgba(0, 0, 0, 0.05)'
-            : '1px solid rgba(255, 255, 255, 0.05)',
+            ? '1px solid rgba(0, 0, 0, 0.08)'
+            : '1px solid rgba(255, 255, 255, 0.08)',
           transition: 'all 0.2s ease-in-out',
           '&:hover': {
             transform: 'translateY(-4px)',
-            boxShadow: '0px 12px 25px rgba(0, 0, 0, 0.1)',
+            boxShadow: '0px 15px 30px rgba(0, 0, 0, 0.15)',
           },
         },
       },
@@ -221,11 +221,13 @@ const getAppTheme = (mode) => createTheme({
       styleOverrides: {
         root: {
           background: mode === 'light' 
-            ? 'linear-gradient(135deg, #3f51b5 0%, #283593 100%)'
-            : 'linear-gradient(135deg, #303f9f 0%, #1a237e 100%)',
+            ? '#ffffff' // Branco puro para contraste com o logo azul
+            : '#1e1e1e', // Cinza escuro para contraste no modo dark
           backdropFilter: 'blur(10px)',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-          boxShadow: '0px 2px 10px rgba(0, 0, 0, 0.05)',
+          borderBottom: mode === 'light' 
+            ? '1px solid rgba(0, 0, 0, 0.1)' // Borda sutil no modo light
+            : '1px solid rgba(255, 255, 255, 0.1)',
+          boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.05)', // Sombra mais suave
         },
       },
     },
@@ -243,13 +245,13 @@ const getAppTheme = (mode) => createTheme({
     MuiListItem: {
       styleOverrides: {
         root: {
-          borderRadius: 8,
+          borderRadius: 12,
           margin: '2px 0',
           transition: 'all 0.2s ease-in-out',
           '&:hover': {
             backgroundColor: mode === 'light' 
-              ? 'rgba(63, 81, 181, 0.05)'
-              : 'rgba(121, 134, 203, 0.05)',
+              ? 'rgba(25, 118, 210, 0.05)'
+              : 'rgba(144, 202, 249, 0.05)',
             transform: 'translateX(4px)',
           },
         },
@@ -259,14 +261,14 @@ const getAppTheme = (mode) => createTheme({
       styleOverrides: {
         root: {
           '& .MuiOutlinedInput-root': {
-            borderRadius: 8,
+            borderRadius: 12,
             transition: 'all 0.2s ease-in-out',
             '&:hover': {
               transform: 'translateY(-1px)',
             },
             '&.Mui-focused': {
               transform: 'translateY(-1px)',
-              boxShadow: '0px 4px 10px rgba(63, 81, 181, 0.1)',
+              boxShadow: '0px 6px 12px rgba(25, 118, 210, 0.2)',
             },
           },
         },
@@ -276,4 +278,3 @@ const getAppTheme = (mode) => createTheme({
 });
 
 export default getAppTheme;
-

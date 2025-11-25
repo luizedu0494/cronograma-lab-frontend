@@ -1,15 +1,15 @@
-# 🧪 Cronograma Lab: Sistema Inteligente de Gestão Acadêmica
+![Banner](./imgbanner.png)
 
 <p align="center">
-  <a href="#-sobre">Sobre</a> •
-  <a href="#-funcionalidades">Funcionalidades</a> •
-  <a href="#-roadmap-de-desenvolvimento">Roadmap</a> •
-  <a href="#-screenshots">Screenshots</a> •
-  <a href="#-tecnologias">Tecnologias</a> •
-  <a href="#-instalação">Instalação</a>
+  <a href="#sobre">Sobre</a> •
+  <a href="#screenshots">Screenshots</a> •
+  <a href="#funcionalidades-fase-1---implementada">Funcionalidades</a> •
+  <a href="#roadmap-de-desenvolvimento">Roadmap</a> •
+  <a href="#tecnologias">Tecnologias</a> •
+  <a href="#instalação">Instalação</a>
 </p>
 
-## 🎯 Sobre
+## Sobre
 
 O **Cronograma Lab** nasceu de uma necessidade real do dia a dia de trabalho no **CESMAC**, com o objetivo de otimizar a rotina dos técnicos de laboratório e demais colaboradores. A ideia surgiu ao observar a necessidade de uma ferramenta dedicada para agilizar o agendamento de laboratórios, substituindo processos manuais e propensos a erros por uma solução centralizada, inteligente e eficiente.
 
@@ -19,7 +19,7 @@ O desenvolvimento inicial foi pautado na utilização de **ferramentas totalment
 
 <br/>
 
-## 📸 Screenshots
+## Screenshots
 
 ### Dashboard Principal
 
@@ -187,7 +187,7 @@ O desenvolvimento inicial foi pautado na utilização de **ferramentas totalment
   </table>
 </div>
 
-## ✨ Funcionalidades (Fase 1 - Implementada)
+## Funcionalidades (Fase 1 - Implementada)
 
 Esta seção detalha as funcionalidades essenciais que já estão implementadas no sistema, representando a base de agendamento e gestão do Cronograma Lab.
 
@@ -201,7 +201,7 @@ Esta seção detalha as funcionalidades essenciais que já estão implementadas 
 | **Edição e Exclusão** | Opções para Coordenadores editarem ou excluírem aulas diretamente do calendário. | **Implementado** |
 | **Gestão de Dados** | Páginas de gestão para usuários, períodos, avisos e manutenção (GerenciarUsuarios.jsx, GerenciarPeriodos.jsx, etc.). | **Implementado** |
 
-## 🗺️ Roadmap de Desenvolvimento
+## Roadmap de Desenvolvimento
 
 O projeto está em constante evolução. As próximas fases de desenvolvimento focam em aprimorar a experiência do usuário e expandir as capacidades de análise e gestão.
 
@@ -243,7 +243,7 @@ Esta fase representa a fundação do sistema, com as funcionalidades detalhadas 
 | 📱 **Bot Telegram 2.0** | Notificações automáticas com links diretos para o calendário no momento da ação. | Comunicação instantânea com a coordenação. |
 | 🔮 **Predição de Ociosidade** | A IA identifica laboratórios subutilizados e sugere otimizações. | Melhor aproveitamento de recursos físicos. |
 
-## 🛠️ Tecnologias
+## Tecnologias
 
 O projeto foi construído utilizando as melhores práticas de desenvolvimento moderno:
 
@@ -272,7 +272,7 @@ cronograma-lab/
 └── ...
 ```
 
-## ⚙️ Instalação
+## Instalação
 
 Siga os passos abaixo para rodar o projeto localmente:
 

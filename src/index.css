@@ -8,12 +8,13 @@
 
 body {
   margin: 0;
+  /* A fonte agora é definida no theme.jsx, mas mantemos o fallback */
   font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
     "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background: linear-gradient(135deg, #f5f5f5 0%, #e0e0e0 100%); /* Fundo cinza claro */
+  /* O background é definido no MuiCssBaseline em theme.jsx */
   min-height: 100vh;
 }
 
@@ -60,44 +61,46 @@ code {
 }
 
 .shimmer-animation {
-  background: linear-gradient(90deg, #e0e0e0 25%, #d0d0d0 50%, #e0e0e0 75%);
+  /* Usar cores mais neutras para o shimmer */
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
   background-size: 200px 100%;
   animation: shimmer 1.2s infinite;
 }
 
-/* Scrollbar personalizada */
+/* Scrollbar personalizada - Ajustando as cores para o novo tema */
 ::-webkit-scrollbar {
   width: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #e0e0e0;
+  background: #f0f0f0; /* Cinza claro */
   border-radius: 10px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: linear-gradient(135deg, #3f51b5, #283593);
+  background: linear-gradient(135deg, #1976d2, #004ba0); /* Novo azul primário */
   border-radius: 10px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(135deg, #283593, #1a237e);
+  background: linear-gradient(135deg, #004ba0, #003570);
 }
 
-/* Efeitos de glassmorphism */
+/* Efeitos de glassmorphism - Ajustando para um visual mais sutil */
 .glass-effect {
-  background: rgba(255, 255, 255, 0.4);
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.6); /* Mais opaco */
+  backdrop-filter: blur(12px); /* Mais blur */
+  border: 1px solid rgba(255, 255, 255, 0.3); /* Borda mais visível */
+  border-radius: 12px; /* Consistente com o tema */
 }
 
-/* Transições suaves globais */
-* {
+/* Transições suaves globais - Removido, pois o MUI já lida com isso na maioria dos componentes */
+/* * {
   transition: all 0.2s ease-in-out;
-}
+} */
 
-/* Efeitos de hover para elementos interativos */
-.interactive-element {
+/* Efeitos de hover para elementos interativos - Removido, pois o MUI já lida com isso na maioria dos componentes */
+/* .interactive-element {
   cursor: pointer;
   transition: all 0.2s ease-in-out;
 }
@@ -105,15 +108,15 @@ code {
 .interactive-element:hover {
   transform: translateY(-1px);
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-}
+} */
 
-/* Gradientes personalizados */
+/* Gradientes personalizados - Atualizando as cores */
 .gradient-primary {
-  background: linear-gradient(135deg, #3f51b5 0%, #283593 100%);
+  background: linear-gradient(135deg, #1976d2 0%, #004ba0 100%);
 }
 
 .gradient-secondary {
-  background: linear-gradient(135deg, #4caf50 0%, #388e3c 100%);
+  background: linear-gradient(135deg, #009688 0%, #00675b 100%);
 }
 
 .gradient-success {
@@ -121,18 +124,18 @@ code {
 }
 
 .gradient-text {
-  background: linear-gradient(135deg, #3f51b5 0%, #283593 100%);
+  background: linear-gradient(135deg, #1976d2 0%, #004ba0 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
-/* Efeitos de loading */
+/* Efeitos de loading - Atualizando as cores */
 .loading-skeleton {
-  background: linear-gradient(90deg, #e0e0e0 25%, #d0d0d0 50%, #e0e0e0 75%);
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
   background-size: 200px 100%;
   animation: shimmer 1.2s infinite;
-  border-radius: 4px;
+  border-radius: 8px; /* Um pouco menor que o card */
 }
 
 /* Responsividade melhorada */
@@ -141,10 +144,11 @@ code {
     font-size: 14px;
   }
   
-  .interactive-element:hover {
+  /* Removido, pois o MUI já lida com isso na maioria dos componentes */
+  /* .interactive-element:hover {
     transform: none;
     box-shadow: none;
-  }
+  } */
 }
 
 /* Acessibilidade */
@@ -158,23 +162,22 @@ code {
   }
 }
 
-/* Focus states melhorados */
+/* Focus states melhorados - Atualizando a cor */
 button:focus,
 input:focus,
 textarea:focus,
 select:focus {
-  outline: 2px solid #3f51b5;
+  outline: 2px solid #1976d2;
   outline-offset: 2px;
 }
 
-/* Seleção de texto personalizada */
+/* Seleção de texto personalizada - Atualizando a cor */
 ::selection {
-  background: rgba(63, 81, 181, 0.3);
+  background: rgba(25, 118, 210, 0.3);
   color: #ffffff;
 }
 
 ::-moz-selection {
-  background: rgba(63, 81, 181, 0.3);
+  background: rgba(25, 118, 210, 0.3);
   color: #ffffff;
 }
-

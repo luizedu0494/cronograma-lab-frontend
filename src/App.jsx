@@ -9,7 +9,7 @@ import cesmacLogo from './assets/images/cesmac-logo.png';
 import {
     AppBar, Toolbar, Typography, Button, Container, Box,
     CircularProgress, Snackbar, Alert, IconButton, Menu, MenuItem, Badge,
-    ThemeProvider, CssBaseline, useMediaQuery, Avatar, Divider
+    ThemeProvider, CssBaseline, useMediaQuery, Avatar, Divider, Paper
 } from '@mui/material';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -110,6 +110,9 @@ function App() {
     const role = userProfileData?.role;
     const approvalPending = userProfileData?.approvalPending;
     const isCoordenadorOrTecnico = role === 'coordenador' || role === 'tecnico';
+
+    // Estilo unificado para ícones dos menus para garantir contraste
+    const menuIconStyle = { marginRight: 10, color: 'inherit' };
     
     if (loading) return <LoadingFallback />;
     
@@ -118,40 +121,40 @@ function App() {
 
     const CoordenadorGerenciarMenu = () => (
         <Menu anchorEl={coordenadorMenuAnchorEl} open={Boolean(coordenadorMenuAnchorEl)} onClose={handleMenuClose}>
-            <MenuItem component={Link} to="/gerenciar-aulas" onClick={handleMenuClose}><ListTodo size={18} style={{marginRight: 10}}/> Gerenciar Aulas</MenuItem>
-            <MenuItem component={Link} to="/gerenciar-aprovacoes" onClick={handleMenuClose}><Badge badgeContent={pendingProposalsCount} color="error" sx={{ mr: 1 }}><ThumbsUp size={18} style={{marginRight: 10}}/></Badge>Aprovações</MenuItem>
-            <MenuItem component={Link} to="/analise-aulas" onClick={handleMenuClose}><BarChart size={18} style={{marginRight: 10}}/> Análise de Aulas</MenuItem>
+            <MenuItem component={Link} to="/gerenciar-aulas" onClick={handleMenuClose}><ListTodo size={18} style={menuIconStyle}/> Gerenciar Aulas</MenuItem>
+            <MenuItem component={Link} to="/gerenciar-aprovacoes" onClick={handleMenuClose}><Badge badgeContent={pendingProposalsCount} color="error" sx={{ mr: 1 }}><ThumbsUp size={18} style={menuIconStyle}/></Badge>Aprovações</MenuItem>
+            <MenuItem component={Link} to="/analise-aulas" onClick={handleMenuClose}><BarChart size={18} style={menuIconStyle}/> Análise de Aulas</MenuItem>
             <Divider sx={{ my: 0.5 }} />
-            <MenuItem component={Link} to="/verificar-integridade" onClick={handleMenuClose}><Bug size={18} style={{marginRight: 10}}/> Integridade</MenuItem>
+            <MenuItem component={Link} to="/verificar-integridade" onClick={handleMenuClose}><Bug size={18} style={menuIconStyle}/> Integridade</MenuItem>
         </Menu>
     );
     
     const navMenuItems = [
-        <MenuItem key="painel" component={Link} to="/" onClick={handleMenuClose}><LayoutDashboard size={18} style={{marginRight: 10}}/> Painel</MenuItem>,
-        <MenuItem key="cal" component={Link} to="/calendario" onClick={handleMenuClose}><Calendar size={18} style={{marginRight: 10}}/> Calendário</MenuItem>,
-        !approvalPending ? <MenuItem key="list" component={Link} to="/listagem-mensal" onClick={handleMenuClose}><ListTodo size={18} style={{marginRight: 10}}/> Listagem Mensal</MenuItem> : null,
-        !approvalPending ? <MenuItem key="historico" component={Link} to="/historico-aulas" onClick={handleMenuClose}><History size={18} style={{marginRight: 10}}/> Histórico</MenuItem> : null,
-        !approvalPending ? <MenuItem key="avisos" component={Link} to="/avisos" onClick={handleMenuClose}><Bell size={18} style={{marginRight: 10}}/> Avisos</MenuItem> : null,
+        <MenuItem key="painel" component={Link} to="/" onClick={handleMenuClose}><LayoutDashboard size={18} style={menuIconStyle}/> Painel</MenuItem>,
+        <MenuItem key="cal" component={Link} to="/calendario" onClick={handleMenuClose}><Calendar size={18} style={menuIconStyle}/> Calendário</MenuItem>,
+        !approvalPending ? <MenuItem key="list" component={Link} to="/listagem-mensal" onClick={handleMenuClose}><ListTodo size={18} style={menuIconStyle}/> Listagem Mensal</MenuItem> : null,
+        !approvalPending ? <MenuItem key="historico" component={Link} to="/historico-aulas" onClick={handleMenuClose}><History size={18} style={menuIconStyle}/> Histórico</MenuItem> : null,
+        !approvalPending ? <MenuItem key="avisos" component={Link} to="/avisos" onClick={handleMenuClose}><Bell size={18} style={menuIconStyle}/> Avisos</MenuItem> : null,
         <Divider key="div1" sx={{ my: 0.5 }} />,
         ...(role === 'coordenador' && !approvalPending ? [
-            <MenuItem key="agend" component={Link} to="/propor-aula" onClick={handleMenuClose}><PlusCircle size={18} style={{marginRight: 10}}/> Agendar Aula</MenuItem>,
-            <MenuItem key="gerenciar-menu" onClick={handleCoordenadorMenuOpen}><ListTodo size={18} style={{marginRight: 10}}/> Gerenciar</MenuItem>,
-            <MenuItem key="users" component={Link} to="/gerenciar-usuarios" onClick={handleMenuClose}><Users size={18} style={{marginRight: 10}}/> Usuários</MenuItem>,
-            <MenuItem key="grupos" component={Link} to="/gerenciar-grupos" onClick={handleMenuClose}><Group size={18} style={{marginRight: 10}}/> Grupos</MenuItem>,
-            <MenuItem key="periodos" component={Link} to="/gerenciar-periodos" onClick={handleMenuClose}><CalendarOff size={18} style={{marginRight: 10}}/> Períodos</MenuItem>,
-            <MenuItem key="gerenciar-avisos" component={Link} to="/gerenciar-avisos" onClick={handleMenuClose}><Settings size={18} style={{marginRight: 10}}/> Gerenciar Avisos</MenuItem>,
+            <MenuItem key="agend" component={Link} to="/propor-aula" onClick={handleMenuClose}><PlusCircle size={18} style={menuIconStyle}/> Agendar Aula</MenuItem>,
+            <MenuItem key="gerenciar-menu" onClick={handleCoordenadorMenuOpen}><ListTodo size={18} style={menuIconStyle}/> Gerenciar</MenuItem>,
+            <MenuItem key="users" component={Link} to="/gerenciar-usuarios" onClick={handleMenuClose}><Users size={18} style={menuIconStyle}/> Usuários</MenuItem>,
+            <MenuItem key="grupos" component={Link} to="/gerenciar-grupos" onClick={handleMenuClose}><Group size={18} style={menuIconStyle}/> Grupos</MenuItem>,
+            <MenuItem key="periodos" component={Link} to="/gerenciar-periodos" onClick={handleMenuClose}><CalendarOff size={18} style={menuIconStyle}/> Períodos</MenuItem>,
+            <MenuItem key="gerenciar-avisos" component={Link} to="/gerenciar-avisos" onClick={handleMenuClose}><Settings size={18} style={menuIconStyle}/> Gerenciar Avisos</MenuItem>,
         ] : []),
         ...(role === 'tecnico' && !approvalPending ? [
-            <MenuItem key="aula" component={Link} to="/propor-aula" onClick={handleMenuClose}><PlusCircle size={18} style={{marginRight: 10}}/> Propor Aula</MenuItem>,
-            <MenuItem key="design" component={Link} to="/minhas-designacoes" onClick={handleMenuClose}><UserCheck size={18} style={{marginRight: 10}}/> Designações</MenuItem>,
-            <MenuItem key="prop" component={Link} to="/minhas-propostas" onClick={handleMenuClose}><ListTodo size={18} style={{marginRight: 10}}/> Minhas Propostas</MenuItem>,
+            <MenuItem key="aula" component={Link} to="/propor-aula" onClick={handleMenuClose}><PlusCircle size={18} style={menuIconStyle}/> Propor Aula</MenuItem>,
+            <MenuItem key="design" component={Link} to="/minhas-designacoes" onClick={handleMenuClose}><UserCheck size={18} style={menuIconStyle}/> Designações</MenuItem>,
+            <MenuItem key="prop" component={Link} to="/minhas-propostas" onClick={handleMenuClose}><ListTodo size={18} style={menuIconStyle}/> Minhas Propostas</MenuItem>,
         ] : []),
         <Divider key="div2" sx={{ my: 0.5 }} />,
-        isCoordenadorOrTecnico && !approvalPending ? (<MenuItem key="download-cronograma" component={Link} to="/download-cronograma" onClick={handleMenuClose}><Download size={18} style={{marginRight: 10}}/> Baixar Cronograma</MenuItem>) : null,
-        !approvalPending ? <MenuItem key="ajuda" component={Link} to="/ajuda" onClick={handleMenuClose}><HelpCircle size={18} style={{marginRight: 10}}/> Ajuda/FAQ</MenuItem> : null
+        isCoordenadorOrTecnico && !approvalPending ? (<MenuItem key="download-cronograma" component={Link} to="/download-cronograma" onClick={handleMenuClose}><Download size={18} style={menuIconStyle}/> Baixar Cronograma</MenuItem>) : null,
+        !approvalPending ? <MenuItem key="ajuda" component={Link} to="/ajuda" onClick={handleMenuClose}><HelpCircle size={18} style={menuIconStyle}/> Ajuda/FAQ</MenuItem> : null
     ].filter(Boolean);
 
-    const renderMobileMenu = (<Menu anchorEl={mobileMoreAnchorEl} open={Boolean(mobileMoreAnchorEl)} onClose={handleMenuClose}>{navMenuItems}<Divider /><MenuItem component={Link} to="/perfil" onClick={handleMenuClose}><User size={18} style={{marginRight: 10}}/> Perfil</MenuItem><MenuItem onClick={handleLogout}><LogOut size={18} style={{marginRight: 10}}/> Sair</MenuItem></Menu>);
+    const renderMobileMenu = (<Menu anchorEl={mobileMoreAnchorEl} open={Boolean(mobileMoreAnchorEl)} onClose={handleMenuClose}>{navMenuItems}<Divider /><MenuItem component={Link} to="/perfil" onClick={handleMenuClose}><User size={18} style={menuIconStyle}/> Perfil</MenuItem><MenuItem onClick={handleLogout}><LogOut size={18} style={menuIconStyle}/> Sair</MenuItem></Menu>);
     const renderProfileMenu = (<Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose}><MenuItem component={Link} to="/perfil" onClick={handleMenuClose}>Perfil</MenuItem><MenuItem onClick={handleLogout}>Sair</MenuItem></Menu>);
 
     return (
@@ -160,7 +163,14 @@ function App() {
             <Router>
                 <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="pt-br">
                     {user && !approvalPending && (
-                        <AppBar position="static">
+                        <AppBar 
+                            position="static"
+                            sx={{
+                                // Lógica para as cores do menu superior
+                                bgcolor: darkMode ? 'primary.main' : '#ffffff', // Fundo: Branco no Light, Primário/Padrão no Dark
+                                color: darkMode ? '#ffffff' : '#000000'         // Texto: Preto no Light, Branco no Dark
+                            }}
+                        >
                             <Toolbar>
                                 <Box component={Link} to="/" sx={{ display: 'flex', alignItems: 'center', textDecoration: 'none', color: 'inherit', flexGrow: 1 }}>
                                     <img src={cesmacLogo} alt="Logo CESMAC" style={{ height: '35px', marginRight: '8px' }} />
