@@ -15,7 +15,7 @@ import { useNavigate } from 'react-router-dom';
 import { CalendarCheck, Clock, FileText, Bell, UserCheck, CalendarOff } from 'lucide-react';
 
 // Imagens
-import calendarioAcademico from './assets/images/destaque-calendario.jpg';
+import calendarioAcademico from './assets/images/destaque-calendario.jpeg';
 
 // Componentes
 import UltimasAulasCard from './components/UltimasAulasCard';
