@@ -55,6 +55,20 @@ function ProporEventoForm({ userInfo, currentUser, initialDate, onSuccess, onCan
     const { eventoId: paramEventoId } = useParams();
     const eventoId = propEventoId || paramEventoId;
 
+    const notificarTelegramEvento = async (evento, tipoAcao) => {
+    if (!TELEGRAM_CHAT_ID) return;
+    const dadosNotificacao = {
+        titulo: evento.titulo,
+        tipoEvento: evento.tipo,
+        laboratorio: evento.laboratorio,
+        dataInicio: dayjs(evento.dataInicio.toDate()).format('DD/MM/YYYY HH:mm'),
+        dataFim: dayjs(evento.dataFim.toDate()).format('DD/MM/YYYY HH:mm'),
+        descricao: evento.descricao
+    };
+    await notificadorTelegram.enviarNotificacao(TELEGRAM_CHAT_ID, dadosNotificacao, `evento_${tipoAcao}`);
+};
+
+
     useEffect(() => {
         if (eventoId) {
             setSecao1Completa(true);

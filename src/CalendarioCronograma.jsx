@@ -219,7 +219,8 @@ function CalendarioCronograma({ userInfo }) {
                                     )}
                                 </Box>
                                 <Divider sx={{ mb: 1 }} />
-                                {eventosFiltrados.filter(e => dayjs(e.start).isSame(day, 'day')).map(evento => <EventoCard key={evento.id} evento={evento} isCoordenador={userInfo?.role === 'coordenador'} />)}
+                                {eventosFiltrados.filter(e => dayjs(e.start).isSame(day, 'day')).map(evento => <EventoCard key={evento.id} evento={evento} isCoordenador={userInfo?.role === 'coordenador'} onEdit={() => { setEventoParaAcao(evento); setIsEventModalOpen(true); }} onDelete={async () => { if (window.confirm("Deseja excluir este evento?")) { await deleteDoc(doc(db, 'eventosManutencao', evento.id)); fetchDados(); } }} />)}
+
                                 {aulasFiltradas.filter(a => dayjs(a.start).isSame(day, 'day')).map(aula => <AulaCard key={aula.id} aula={aula} isCoordenador={userInfo?.role === 'coordenador'} onEdit={() => { setAulaParaAcao(aula); setIsEditModalOpen(true); }} onDelete={() => { setAulaParaAcao(aula); setIsDeleteModalOpen(true); }} />)}
                             </Paper>
                         </Grid>
