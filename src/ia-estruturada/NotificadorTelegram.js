@@ -28,6 +28,11 @@ class NotificadorTelegram {
   }
 
   gerarMensagemTexto(dados, tipo) {
+    // Se for um evento de manutenção/feriado
+    if (tipo.startsWith('evento_')) {
+      return this.gerarMensagemEvento(dados, tipo);
+    }
+
     const dataFormatada = dados.data || 'Data n/a';
     const horario = Array.isArray(dados.horario) ? dados.horario.join(', ') : (dados.horario || 'Horário n/a');
     const laboratorio = dados.laboratorio || 'Lab n/a';
@@ -62,6 +67,41 @@ ${emoji} ${titulo}
 👥 Cursos: ${cursos}
 
 ${dados.observacoes ? `📝 Obs: ${dados.observacoes}\n` : ''}
+${textoLink}
+    `.trim();
+  }
+
+  gerarMensagemEvento(dados, tipo) {
+    const tituloEvento = dados.titulo || 'Sem título';
+    const tipoEvento = dados.tipoEvento || 'Evento';
+    const laboratorio = dados.laboratorio === 'Todos' ? 'Todos os Laboratórios' : (dados.laboratorio || 'N/A');
+    const dataInicio = dados.dataInicio || 'N/A';
+    const dataFim = dados.dataFim || 'N/A';
+    
+    let acao = '';
+    let emoji = '📅';
+
+    if (tipo === 'evento_adicionar') { acao = 'NOVO EVENTO CADASTRADO'; emoji = '🆕'; }
+    else if (tipo === 'evento_editar') { acao = 'EVENTO ATUALIZADO'; emoji = '🔄'; }
+    else if (tipo === 'evento_excluir') { acao = 'EVENTO REMOVIDO'; emoji = '❌'; }
+
+    let textoLink = '';
+    if (tipo !== 'evento_excluir') {
+        const baseUrl = import.meta.env.VITE_SITE_URL || window.location.origin;
+        const linkFinal = `${baseUrl}/calendario`;
+        textoLink = `\n🔗 Ver no Cronograma:\n${linkFinal}`;
+    }
+
+    return `
+${emoji} ${acao}
+
+📌 Título: ${tituloEvento}
+🏷️ Tipo: ${tipoEvento}
+🏢 Local: ${laboratorio}
+📅 Início: ${dataInicio}
+📅 Fim: ${dataFim}
+
+${dados.descricao ? `📝 Descrição: ${dados.descricao}\n` : ''}
 ${textoLink}
     `.trim();
   }

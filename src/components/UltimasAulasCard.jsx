@@ -130,10 +130,12 @@ const UltimasAulasCard = () => {
                                         />
                                     </Box>
                                     
-                                    <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
-                                        {aula.curso || 'Curso não especificado'} - {aula.ano || 'Ano não especificado'}
+                             <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+                                        {Array.isArray(aula.cursos) ? aula.cursos.join(', ') : (aula.curso || 'Curso não especificado')}
                                     </Typography>
-                                    
+                                    <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+                                        Lab: {aula.laboratorioSelecionado || aula.laboratorio || 'N/A'}
+                                    </Typography>                                    
                                     <Box display="flex" alignItems="center" gap={0.5}>
                                         <Clock size={14} style={{ color: theme.palette.text.secondary }} />
                                         <Typography variant="caption" color="text.secondary">
@@ -146,7 +148,7 @@ const UltimasAulasCard = () => {
                                     
                                     {aula.propostoPor && (
                                         <Typography variant="caption" color="text.secondary">
-                                            Por: {aula.propostoPor}
+                                            Por: {aula.propostoPorNome || aula.propostoPor || 'Desconhecido'}
                                         </Typography>
                                     )}
                                 </ListItem>

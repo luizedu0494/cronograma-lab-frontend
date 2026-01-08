@@ -143,7 +143,7 @@ function AulaCard({ aula, onOpenMenu, onSave, isCoordenador }) {
                 secondary={
                     <>
                         <Typography variant="body2" color="text.secondary">{aula.start?.format('HH:mm')} - {aula.end?.format('HH:mm')}</Typography>
-                        <Typography variant="body2" color="text.secondary">Lab: {aula.laboratorio}</Typography>
+                        <Typography variant="body2" color="text.secondary">Lab: {aula.laboratorioSelecionado || aula.laboratorio}</Typography>
                         {aula.cursos?.length > 0 && (
                             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 1 }}>
                                 {aula.cursos.map((curso) => (

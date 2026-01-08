@@ -12,7 +12,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import { useNavigate } from 'react-router-dom';
 
 // Ícones
-import { CalendarCheck, Clock, FileText, Bell, UserCheck } from 'lucide-react';
+import { CalendarCheck, Clock, FileText, Bell, UserCheck, CalendarOff } from 'lucide-react';
 
 // Imagens
 import calendarioAcademico from './assets/images/destaque-calendario.jpg';
@@ -37,6 +37,7 @@ const PaginaInicial = ({ userInfo }) => {
     const [aulasHoje, setAulasHoje] = useState(0);
     const [propostasPendentes, setPropostasPendentes] = useState(0);
     const [totalAulasNoCronograma, setTotalAulasNoCronograma] = useState(0);
+    const [totalEventosNoCronograma, setTotalEventosNoCronograma] = useState(0);
     const [minhasPropostasCount, setMinhasPropostasCount] = useState(0);
     const [avisosNaoLidos, setAvisosNaoLidos] = useState(0);
 
@@ -81,6 +82,7 @@ const PaginaInicial = ({ userInfo }) => {
             const today = dayjs().startOf('day');
             const tomorrow = dayjs().add(1, 'day').startOf('day');
             const aulasRef = collection(db, 'aulas');
+            const eventosRef = collection(db, 'eventosManutencao');
             const configDocRef = doc(db, 'config', 'geral');
 
             // Query: Aulas de hoje aprovadas
@@ -98,6 +100,7 @@ const PaginaInicial = ({ userInfo }) => {
             if (userInfo?.role === 'coordenador') {
                 promises.push(getDocs(aulasRef)); // Total geral
                 promises.push(getDocs(query(aulasRef, where('status', '==', 'pendente')))); // Pendentes
+                promises.push(getDocs(eventosRef)); // Total eventos
             }
 
             // Se for Técnico, busca as propostas dele
@@ -119,7 +122,8 @@ const PaginaInicial = ({ userInfo }) => {
             if (userInfo?.role === 'coordenador') {
                 setTotalAulasNoCronograma(results[promiseIndex].size);
                 setPropostasPendentes(results[promiseIndex + 1].size);
-                promiseIndex += 2;
+                setTotalEventosNoCronograma(results[promiseIndex + 2].size);
+                promiseIndex += 3;
             }
             if (userInfo?.role === 'tecnico') {
                 setMinhasPropostasCount(results[promiseIndex].size);
@@ -231,6 +235,14 @@ const PaginaInicial = ({ userInfo }) => {
                                 <Typography variant="h4" component="p" sx={{ fontWeight: 'bold' }}>{totalAulasNoCronograma}</Typography>
                                 <Typography color="text.secondary">Total de Aulas</Typography>
                                 <Button size="small" variant="text" sx={{ mt: 1 }} onClick={() => navigate('/analise-aulas')}>Ver Análise</Button>
+                            </Card>
+                        </Grid>
+                        <Grid item xs={12} sm={6} md={4}>
+                            <Card elevation={3} sx={{ p: 3, display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+                                <Box sx={{ color: theme.palette.secondary.main, mb: 1 }}><CalendarOff size={48} /></Box>
+                                <Typography variant="h4" component="p" sx={{ fontWeight: 'bold' }}>{totalEventosNoCronograma}</Typography>
+                                <Typography color="text.secondary">Total de Eventos</Typography>
+                                <Button size="small" variant="text" sx={{ mt: 1 }} onClick={() => navigate('/analise-eventos')}>Ver Análise</Button>
                             </Card>
                         </Grid>
                     </>

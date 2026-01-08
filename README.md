@@ -27,12 +27,12 @@ O desenvolvimento inicial foi pautado na utilização de **ferramentas totalment
   <table>
     <tr>
       <td align="center" width="50%">
-        <img src="./src/assets/images/image.png" alt="Dashboard Desktop" width="100%"/>
+        <img src="./src/assets/images/image1.png" alt="Dashboard Desktop" width="100%"/>
         <br>
         <em><strong>Versão Desktop:</strong> Painel Principal com Gráficos e Assistente de IA</em>
       </td>
       <td align="center" width="50%">
-        <img src="./src/assets/images/imagecel.png" alt="Dashboard Mobile" width="100%"/>
+        <img src="./src/assets/images/image1cel.png" alt="Dashboard Mobile" width="100%"/>
         <br>
         <em><strong>Versão Mobile:</strong> Painel Principal Responsivo</em>
       </td>
@@ -78,18 +78,37 @@ O desenvolvimento inicial foi pautado na utilização de **ferramentas totalment
   </table>
 </div>
 
+### Proposta de Evento
+
+<div align="center">
+  <table>
+    <tr>
+      <td align="center" width="50%">
+        <img src="./src/assets/images/image4.png" alt="Formulário Desktop" width="100%"/>
+        <br>
+        <em><strong>Versão Desktop:</strong> Formulário Detalhado de Proposta de Evento</em>
+      </td>
+      <td align="center" width="50%">
+        <img src="./src/assets/images/image4cel.png" alt="Formulário Mobile" width="100%"/>
+        <br>
+        <em><strong>Versão Mobile:</strong> Formulário Responsivo</em>
+      </td>
+    </tr>
+  </table>
+</div>
+
 ### Gestão de Propostas
 
 <div align="center">
   <table>
     <tr>
       <td align="center" width="50%">
-        <img src="./src/assets/images/image4.png" alt="Gestão Desktop" width="100%"/>
+        <img src="./src/assets/images/image5.png" alt="Gestão Desktop" width="100%"/>
         <br>
         <em><strong>Versão Desktop:</strong> Painel de Gestão de Propostas Pendentes</em>
       </td>
       <td align="center" width="50%">
-        <img src="./src/assets/images/image4cel.png" alt="Gestão Mobile" width="100%"/>
+        <img src="./src/assets/images/image5cel.png" alt="Gestão Mobile" width="100%"/>
         <br>
         <em><strong>Versão Mobile:</strong> Painel de Propostas Adaptado</em>
       </td>
@@ -97,18 +116,18 @@ O desenvolvimento inicial foi pautado na utilização de **ferramentas totalment
   </table>
 </div>
 
-### Análise de Dados
+### Análise de Dados (Aulas)
 
 <div align="center">
   <table>
     <tr>
       <td align="center" width="50%">
-        <img src="./src/assets/images/image5.png" alt="Análise Desktop" width="100%"/>
+        <img src="./src/assets/images/image6.png" alt="Análise Desktop" width="100%"/>
         <br>
         <em><strong>Versão Desktop:</strong> Gráficos e Métricas de Ocupação</em>
       </td>
       <td align="center" width="50%">
-        <img src="./src/assets/images/image5cel.png" alt="Análise Mobile" width="100%"/>
+        <img src="./src/assets/images/image6cel.png" alt="Análise Mobile" width="100%"/>
         <br>
         <em><strong>Versão Mobile:</strong> Visualização de Métricas Responsiva</em>
       </td>
@@ -116,20 +135,20 @@ O desenvolvimento inicial foi pautado na utilização de **ferramentas totalment
   </table>
 </div>
 
-### Assistente de IA
+### Análise de Dados (Eventos)
 
 <div align="center">
   <table>
     <tr>
       <td align="center" width="50%">
-        <img src="./src/assets/images/image6.png" alt="IA Desktop" width="100%"/>
+        <img src="./src/assets/images/image7.png" alt="Análise Desktop" width="100%"/>
         <br>
-        <em><strong>Versão Desktop:</strong> Assistente IA com Análise Inteligente</em>
+        <em><strong>Versão Desktop:</strong> Gráficos e Métricas de Ocupação</em>
       </td>
       <td align="center" width="50%">
-        <img src="./src/assets/images/image6cel.png" alt="IA Mobile" width="100%"/>
+        <img src="./src/assets/images/image7cel.png" alt="Análise Mobile" width="100%"/>
         <br>
-        <em><strong>Versão Mobile:</strong> Assistente IA Otimizado</em>
+        <em><strong>Versão Mobile:</strong> Visualização de Métricas Responsiva</em>
       </td>
     </tr>
   </table>
@@ -141,12 +160,12 @@ O desenvolvimento inicial foi pautado na utilização de **ferramentas totalment
   <table>
     <tr>
       <td align="center" width="50%">
-        <img src="./src/assets/images/image7.png" alt="Usuários Desktop" width="100%"/>
+        <img src="./src/assets/images/image8.png" alt="Usuários Desktop" width="100%"/>
         <br>
         <em><strong>Versão Desktop:</strong> Painel de Gestão de Usuários</em>
       </td>
       <td align="center" width="50%">
-        <img src="./src/assets/images/image7cel.png" alt="Usuários Mobile" width="100%"/>
+        <img src="./src/assets/images/image8cel.png" alt="Usuários Mobile" width="100%"/>
         <br>
         <em><strong>Versão Mobile:</strong> Gestão de Usuários Responsiva</em>
       </td>
@@ -160,7 +179,7 @@ O desenvolvimento inicial foi pautado na utilização de **ferramentas totalment
   <table>
     <tr>
       <td align="center" width="50%">
-        <img src="./src/assets/images/image8.png" alt="Configurações Desktop" width="100%"/>
+        <img src="./src/assets/images/image9.png" alt="Configurações Desktop" width="100%"/>
         <br>
         <em><strong>Versão Desktop:</strong> Painel de Configurações e Manutenção</em>
       </td>
@@ -174,12 +193,12 @@ O desenvolvimento inicial foi pautado na utilização de **ferramentas totalment
   <table>
     <tr>
       <td align="center" width="50%">
-        <img src="./src/assets/images/image9.png" alt="Relatórios Desktop" width="100%"/>
+        <img src="./src/assets/images/image10.png" alt="Relatórios Desktop" width="100%"/>
         <br>
         <em><strong>Versão Desktop:</strong> Geração de Relatórios e Exportação</em>
       </td>
       <td align="center" width="50%">
-        <img src="./src/assets/images/image9cel.png" alt="Relatórios Mobile" width="100%"/>
+        <img src="./src/assets/images/image10cel.png" alt="Relatórios Mobile" width="100%"/>
         <br>
         <em><strong>Versão Mobile:</strong> Relatórios Adaptados para Mobile</em>
       </td>

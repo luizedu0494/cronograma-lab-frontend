@@ -54,7 +54,7 @@ const HistoricoAulas = () => {
                     type: 'adicionada',
                     aula: data,
                     timestamp: data.createdAt ? data.createdAt.toDate() : new Date(), // Usar createdAt
-                    user: { nome: data.propostoPor || 'Desconhecido' } // Assumindo que propostoPor é o usuário
+                    user: { nome: data.propostoPorNome || data.propostoPor || 'Desconhecido' }
                 };
             });
 
@@ -87,8 +87,13 @@ const HistoricoAulas = () => {
             setLogsFiltered(todosLogs);
             
             // Extrair cursos e anos únicos para os filtros
-            const todosCursos = todosLogs.map(log => log.aula?.curso).filter(Boolean);
-            const todosAnos = todosLogs.map(log => log.aula?.ano).filter(Boolean);
+            const todosCursos = todosLogs.flatMap(log => log.aula?.cursos || []).filter(Boolean);
+            const todosAnos = todosLogs.map(log => {
+                const data = log.aula?.dataInicio;
+                if (!data) return null;
+                const dateObj = data.toDate ? data.toDate() : new Date(data);
+                return dayjs(dateObj).year().toString();
+            }).filter(Boolean);
 
             setCursos([...new Set(todosCursos)].sort());
             setAnos([...new Set(todosAnos)].sort());
@@ -111,16 +116,21 @@ const HistoricoAulas = () => {
 
         if (filtroNome) {
             resultado = resultado.filter(log =>
-                log.aula?.disciplina?.toLowerCase().includes(filtroNome.toLowerCase())
+                log.aula?.assunto?.toLowerCase().includes(filtroNome.toLowerCase())
             );
         }
 
         if (filtroCurso) {
-            resultado = resultado.filter(log => log.aula?.curso === filtroCurso);
+            resultado = resultado.filter(log => log.aula?.cursos?.includes(filtroCurso));
         }
 
         if (filtroAno) {
-            resultado = resultado.filter(log => log.aula?.ano === filtroAno);
+            resultado = resultado.filter(log => {
+                const data = log.aula?.dataInicio;
+                if (!data) return false;
+                const dateObj = data.toDate ? data.toDate() : new Date(data);
+                return dayjs(dateObj).year().toString() === filtroAno;
+            });
         }
 
         if (filtroStatus) {
@@ -379,6 +389,7 @@ const HistoricoAulas = () => {
                                 <TableCell>Disciplina</TableCell>
                                 <TableCell>Curso</TableCell>
                                 <TableCell>Ano</TableCell>
+                                <TableCell>Laboratório</TableCell>
                                 <TableCell>Status</TableCell>
                                 <TableCell>Data/Hora</TableCell>
                                 <TableCell>Usuário</TableCell>
@@ -395,9 +406,14 @@ const HistoricoAulas = () => {
                                                 size="small"
                                             />
                                         </TableCell>
-                                        <TableCell component="th" scope="row">{log.aula?.disciplina || 'Sem Nome'}</TableCell>
-                                        <TableCell>{log.aula?.curso || 'Não Especificado'}</TableCell>
-                                        <TableCell>{log.aula?.ano || 'Não Especificado'}</TableCell>
+                                        <TableCell component="th" scope="row">{log.aula?.assunto || 'Sem Nome'}</TableCell>
+                                        <TableCell>{Array.isArray(log.aula?.cursos) ? log.aula.cursos.join(', ') : (log.aula?.curso || 'Não Especificado')}</TableCell>
+                                        <TableCell>
+                                            {log.aula?.dataInicio 
+                                                ? dayjs(log.aula.dataInicio.toDate ? log.aula.dataInicio.toDate() : log.aula.dataInicio).year() 
+                                                : 'N/A'}
+                                        </TableCell>
+                                        <TableCell>{log.aula?.laboratorioSelecionado || log.aula?.laboratorio || 'N/A'}</TableCell>
                                         <TableCell>
                                             <Chip
                                                 label={getStatusLabel(log.aula?.status)}
