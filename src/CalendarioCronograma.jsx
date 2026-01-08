@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { db } from './firebaseConfig';
-import { collection, query, where, getDocs, Timestamp, orderBy, doc, updateDoc, deleteDoc, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, where, getDocs, Timestamp, orderBy, doc, deleteDoc } from 'firebase/firestore';
 import {
     Container, Typography, Box, CircularProgress, Alert, Paper, Grid,
     Button, IconButton, Tooltip, Collapse, FormControl, InputLabel,
@@ -25,6 +25,7 @@ import { LISTA_CURSOS } from './constants/cursos';
 import { getHolidays } from './utils/holiday-api';
 import EventoCard from './components/EventoCard';
 import { useSearchParams } from 'react-router-dom';
+import { notificadorTelegram } from './ia-estruturada/NotificadorTelegram';
 
 dayjs.locale('pt-br');
 
@@ -90,10 +91,13 @@ function CalendarioCronograma({ userInfo }) {
     const [filtrosVisiveis, setFiltrosVisiveis] = useState(false);
     const [filtros, setFiltros] = useState({ laboratorio: [], cursos: [], assunto: '', turno: [], status: ['aprovada'] });
     
+    // Modais
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [isEventModalOpen, setIsEventModalOpen] = useState(false);
+    
+    // Estados de Seleção
     const [aulaParaAcao, setAulaParaAcao] = useState(null);
     const [eventoParaAcao, setEventoParaAcao] = useState(null);
     const [actionLoading, setActionLoading] = useState(false);
@@ -140,61 +144,26 @@ function CalendarioCronograma({ userInfo }) {
     return (
         <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="pt-br">
             <Container maxWidth="xl">
+                {/* --- TOPO E FILTROS --- */}
                 <Paper elevation={3} sx={{ p: { xs: 2, sm: 3 }, mb: 4, mt: 2 }}>
-                    <Box sx={{ 
-                        display: 'flex', 
-                        justifyContent: 'space-between', 
-                        alignItems: 'center', 
-                        mb: 2, 
-                        flexWrap: 'wrap', 
-                        gap: 2 
-                    }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 2 }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'nowrap' }}>
                             <IconButton onClick={() => setCurrentDate(d => d.subtract(1, 'week'))}><ChevronLeft /></IconButton>
-                            
-                            {/* AJUSTE PARA NÃO CORTAR TEXTO E REMOVER LINHA BRANCA */}
                             <DatePicker
                                 value={currentDate}
                                 onChange={(val) => val && setCurrentDate(dayjs(val))}
                                 enableAccessibleFieldDOMStructure={false}
                                 slots={{ textField: (p) => (
-                                    <TextField 
-                                        {...p} 
-                                        variant="standard" 
-                                        InputProps={{ 
-                                            ...p.InputProps, 
-                                            disableUnderline: true, 
-                                            readOnly: true,
-                                            endAdornment: (
-                                                <InputAdornment position="end">
-                                                    <CalendarIcon sx={{ fontSize: '1.1rem', color: 'primary.main', mr: 1 }} />
-                                                </InputAdornment>
-                                            )
-                                        }} 
-                                        value={getIntervaloTexto(currentDate)} 
-                                        sx={{ 
-                                            width: { xs: '180px', sm: '230px' }, // Largura aumentada para não cortar
-                                            '& .MuiInputBase-input': { 
-                                                textAlign: 'center', 
-                                                fontWeight: 'bold', 
-                                                color: 'primary.main', 
-                                                cursor: 'pointer',
-                                                fontSize: { xs: '0.8rem', sm: '1rem' } 
-                                            } 
-                                        }} 
-                                    />
+                                    <TextField {...p} variant="standard" InputProps={{ ...p.InputProps, disableUnderline: true, readOnly: true, endAdornment: (<InputAdornment position="end"><CalendarIcon sx={{ fontSize: '1.1rem', color: 'primary.main', mr: 1 }} /></InputAdornment>) }} value={getIntervaloTexto(currentDate)} sx={{ width: { xs: '180px', sm: '230px' }, '& .MuiInputBase-input': { textAlign: 'center', fontWeight: 'bold', color: 'primary.main', cursor: 'pointer', fontSize: { xs: '0.8rem', sm: '1rem' } } }} />
                                 )}}
                             />
-                            
                             <IconButton onClick={() => setCurrentDate(d => d.add(1, 'week'))}><ChevronRight /></IconButton>
                         </Box>
-                        
                         <Box sx={{ display: 'flex', gap: 1 }}>
                             <Button onClick={() => setCurrentDate(dayjs())} variant="outlined" size="small">Hoje</Button>
                             <Button onClick={() => setFiltrosVisiveis(!filtrosVisiveis)} startIcon={<FilterListIcon />} variant={filtrosVisiveis ? "contained" : "outlined"} size="small">Filtros</Button>
                         </Box>
                     </Box>
-
                     <Collapse in={filtrosVisiveis}>
                         <Grid container spacing={2} sx={{ pt: 2 }}>
                             <Grid item xs={12} sm={6} md={3}><FormControl fullWidth size="small"><InputLabel>Laboratórios</InputLabel><Select multiple value={filtros.laboratorio} onChange={(e) => setFiltros({...filtros, laboratorio: e.target.value})} input={<OutlinedInput label="Laboratórios" />} renderValue={(s) => <Chip label={`${s.length} sel.`} size="small" />}>{LISTA_LABORATORIOS.map(l => <MenuItem key={l.id} value={l.name}>{l.name}</MenuItem>)}</Select></FormControl></Grid>
@@ -205,6 +174,7 @@ function CalendarioCronograma({ userInfo }) {
                     </Collapse>
                 </Paper>
 
+                {/* --- CALENDÁRIO GRID --- */}
                 <Grid container spacing={2}>
                     {weekDays.map(day => (
                         <Grid item xs={12} sm={6} md={4} lg={1.7} key={day.toString()}>
@@ -219,25 +189,128 @@ function CalendarioCronograma({ userInfo }) {
                                     )}
                                 </Box>
                                 <Divider sx={{ mb: 1 }} />
-                                {eventosFiltrados.filter(e => dayjs(e.start).isSame(day, 'day')).map(evento => <EventoCard key={evento.id} evento={evento} isCoordenador={userInfo?.role === 'coordenador'} onEdit={() => { setEventoParaAcao(evento); setIsEventModalOpen(true); }} onDelete={async () => { if (window.confirm("Deseja excluir este evento?")) { await deleteDoc(doc(db, 'eventosManutencao', evento.id)); fetchDados(); } }} />)}
+                                
+                                {/* --- EVENTOS --- */}
+                                {eventosFiltrados.filter(e => dayjs(e.start).isSame(day, 'day')).map(evento => (
+                                    <EventoCard 
+                                        key={evento.id} 
+                                        evento={evento} 
+                                        isCoordenador={userInfo?.role === 'coordenador'} 
+                                        onEdit={() => { 
+                                            setEventoParaAcao(evento); // Passa o objeto completo COM ID
+                                            setIsEventModalOpen(true); 
+                                        }} 
+                                        onDelete={async () => { 
+                                            if (window.confirm("Deseja excluir este evento?")) { 
+                                                await notificadorTelegram.enviarNotificacao(import.meta.env.VITE_TELEGRAM_CHAT_ID, { 
+                                                    titulo: evento.titulo, 
+                                                    tipoEvento: evento.tipo, 
+                                                    laboratorio: evento.laboratorio, 
+                                                    dataInicio: dayjs(evento.start).format('DD/MM/YYYY HH:mm'), 
+                                                    dataFim: dayjs(evento.end).format('DD/MM/YYYY HH:mm'),
+                                                    dataISO: dayjs(evento.start).format('YYYY-MM-DD')
+                                                }, 'evento_excluir'); 
+                                                await deleteDoc(doc(db, 'eventosManutencao', evento.id)); 
+                                                fetchDados(); 
+                                            } 
+                                        }} 
+                                    />
+                                ))}
 
-                                {aulasFiltradas.filter(a => dayjs(a.start).isSame(day, 'day')).map(aula => <AulaCard key={aula.id} aula={aula} isCoordenador={userInfo?.role === 'coordenador'} onEdit={() => { setAulaParaAcao(aula); setIsEditModalOpen(true); }} onDelete={() => { setAulaParaAcao(aula); setIsDeleteModalOpen(true); }} />)}
+                                {/* --- AULAS --- */}
+                                {aulasFiltradas.filter(a => dayjs(a.start).isSame(day, 'day')).map(aula => (
+                                    <AulaCard 
+                                        key={aula.id} 
+                                        aula={aula} 
+                                        isCoordenador={userInfo?.role === 'coordenador'} 
+                                        onEdit={() => { 
+                                            setAulaParaAcao(aula); // Passa o objeto completo COM ID
+                                            setIsEditModalOpen(true); 
+                                        }} 
+                                        onDelete={() => { 
+                                            setAulaParaAcao(aula); 
+                                            setIsDeleteModalOpen(true); 
+                                        }} 
+                                    />
+                                ))}
                             </Paper>
                         </Grid>
                     ))}
                 </Grid>
 
+                {/* --- MODAL DE NOVA AULA --- */}
                 <Dialog open={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} fullWidth maxWidth="md">
                     <DialogTitle>Nova Aula</DialogTitle>
-                    <DialogContent><ProporAulaForm userInfo={userInfo} currentUser={userInfo} initialDate={aulaParaAcao?.dataInicio} onSuccess={() => { setIsAddModalOpen(false); fetchDados(); }} onCancel={() => setIsAddModalOpen(false)} isModal /></DialogContent>
+                    <DialogContent>
+                        <ProporAulaForm 
+                            userInfo={userInfo} 
+                            currentUser={userInfo} 
+                            initialDate={aulaParaAcao?.dataInicio} 
+                            onSuccess={() => { setIsAddModalOpen(false); fetchDados(); }} 
+                            onCancel={() => setIsAddModalOpen(false)} 
+                            isModal 
+                        />
+                    </DialogContent>
                 </Dialog>
 
+                {/* --- MODAL DE EVENTO (Novo e Editar) --- */}
                 <Dialog open={isEventModalOpen} onClose={() => setIsEventModalOpen(false)} fullWidth maxWidth="md">
-                    <DialogTitle>Novo Evento</DialogTitle>
-                    <DialogContent><ProporEventoForm userInfo={userInfo} currentUser={userInfo} initialDate={eventoParaAcao?.dataInicio} onSuccess={() => { setIsEventModalOpen(false); fetchDados(); }} onCancel={() => setIsEventModalOpen(false)} isModal /></DialogContent>
+                    <DialogTitle>{eventoParaAcao?.id ? "Editar Evento" : "Novo Evento"}</DialogTitle>
+                    <DialogContent>
+                        <ProporEventoForm 
+                            userInfo={userInfo} 
+                            currentUser={userInfo} 
+                            eventoId={eventoParaAcao?.id} // CRUCIAL: Passa o ID para ativar o modo de edição
+                            initialDate={eventoParaAcao?.start ? dayjs(eventoParaAcao.start) : eventoParaAcao?.dataInicio} 
+                            formTitle={eventoParaAcao?.id ? "Editar Evento" : "Novo Evento"}
+                            onSuccess={() => { setIsEventModalOpen(false); fetchDados(); }} 
+                            onCancel={() => setIsEventModalOpen(false)} 
+                            isModal 
+                        />
+                    </DialogContent>
                 </Dialog>
 
-                <DialogConfirmacao open={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} onConfirm={async () => { setActionLoading(true); await deleteDoc(doc(db, 'aulas', aulaParaAcao.id)); setIsDeleteModalOpen(false); fetchDados(); setActionLoading(false); }} title="Excluir Aula" loading={actionLoading} />
+                {/* --- MODAL DE EDIÇÃO DE AULA --- */}
+                <Dialog open={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} fullWidth maxWidth="md">
+                    <DialogTitle>Editar Aula</DialogTitle>
+                    <DialogContent>
+                        <ProporAulaForm 
+                            userInfo={userInfo} 
+                            currentUser={userInfo} 
+                            aulaId={aulaParaAcao?.id} // CRUCIAL: Passa o ID para ativar o modo de edição
+                            initialDate={aulaParaAcao?.start ? dayjs(aulaParaAcao.start) : null}
+                            formTitle="Editar Aula"
+                            onSuccess={() => { setIsEditModalOpen(false); fetchDados(); }} 
+                            onCancel={() => setIsEditModalOpen(false)} 
+                            isModal 
+                        />
+                    </DialogContent>
+                </Dialog>
+
+                {/* --- MODAL DE EXCLUSÃO DE AULA --- */}
+                <DialogConfirmacao 
+                    open={isDeleteModalOpen} 
+                    onClose={() => setIsDeleteModalOpen(false)} 
+                    title="Excluir Aula" 
+                    loading={actionLoading} 
+                    onConfirm={async () => { 
+                        setActionLoading(true); 
+                        try {
+                            await notificadorTelegram.enviarNotificacao(import.meta.env.VITE_TELEGRAM_CHAT_ID, { 
+                                assunto: aulaParaAcao.title, 
+                                laboratorio: aulaParaAcao.laboratorio, 
+                                cursos: aulaParaAcao.cursos, 
+                                data: dayjs(aulaParaAcao.start).format('DD/MM/YYYY'), 
+                                horario: `${dayjs(aulaParaAcao.start).format('HH:mm')} - ${dayjs(aulaParaAcao.end).format('HH:mm')}` 
+                            }, 'excluir'); 
+                            await deleteDoc(doc(db, 'aulas', aulaParaAcao.id)); 
+                            setIsDeleteModalOpen(false); 
+                            fetchDados(); 
+                        } catch(e) { console.error(e); } 
+                        finally { setActionLoading(false); } 
+                    }} 
+                />
+                
                 <Snackbar open={feedback.open} autoHideDuration={4000} onClose={() => setFeedback({...feedback, open: false})}><Alert severity={feedback.severity}>{feedback.message}</Alert></Snackbar>
             </Container>
         </LocalizationProvider>

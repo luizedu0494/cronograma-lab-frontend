@@ -2,12 +2,12 @@ import React, { useState, useEffect } from 'react';
 import {
     Container, Typography, TextField, Button, Grid, MenuItem, FormControl, InputLabel,
     Select, Box, Paper, Snackbar, Alert, CircularProgress, OutlinedInput, Chip, IconButton, Tooltip,
-    List, ListItem, ListItemText, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, FormHelperText, Badge, Autocomplete, Dialog, DialogTitle, DialogContent, DialogActions
+    List, ListItem, ListItemText, FormHelperText, Autocomplete, Dialog, DialogTitle, DialogContent, DialogActions
 } from '@mui/material';
 import { ArrowBack, Delete as DeleteIcon, Add as AddIcon, Lock as LockIcon } from '@mui/icons-material';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider } from '@mui/x-date-pickers';
-import { DatePicker, PickersDay } from '@mui/x-date-pickers';
+import { DatePicker } from '@mui/x-date-pickers';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { db } from './firebaseConfig';
 import {
@@ -203,7 +203,6 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
                     .map(doc => doc.data())
                     .filter(e => {
                         const end = e.dataFim instanceof Timestamp ? e.dataFim.toDate() : new Date(e.dataFim);
-                        const start = e.dataInicio instanceof Timestamp ? e.dataInicio.toDate() : new Date(e.dataInicio);
                         const isNoDia = dayjs(end).isAfter(diaSelecionado) || dayjs(end).isSame(diaSelecionado);
                         const isLabRelacionado = e.laboratorio === 'Todos' || laboratoriosParaVerificar.includes(e.laboratorio);
                         return isNoDia && isLabRelacionado;
@@ -419,28 +418,54 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
         setLoadingSubmit(true);
         setOpenConfirmModal(false);
         try {
-            if (isEditMode && aulaId) {
-                const docRef = doc(db, "aulas", aulaId);
-                const aulaAtualizada = { ...aulasParaConfirmar[0], updatedAt: serverTimestamp() };
-                await updateDoc(docRef, aulaAtualizada);
-                await notificarTelegramBatch([aulaAtualizada], 'editar');
-                setSnackbarMessage("Aula atualizada com sucesso!");
-            } else {
-                const batch = writeBatch(db);
-                const aulasCollection = collection(db, "aulas");
-                aulasParaConfirmar.forEach(aula => {
+            const batch = writeBatch(db);
+            const aulasCollection = collection(db, "aulas");
+            
+            // Controle para saber se já atualizamos o original
+            let originalAtualizado = false;
+            const aulasNotificar = [];
+
+            // Se estamos editando (tem aulaId), precisamos tratar o primeiro item da lista como atualização
+            // e os demais (se o usuário selecionou mais horários) como novos.
+            
+            aulasParaConfirmar.forEach((aula) => {
+                if (isEditMode && aulaId && !originalAtualizado) {
+                    // ATUALIZA A AULA EXISTENTE
+                    const docRef = doc(db, "aulas", aulaId);
+                    batch.update(docRef, { ...aula, updatedAt: serverTimestamp() });
+                    originalAtualizado = true;
+                    aulasNotificar.push({ ...aula, acao: 'editar' });
+                } else {
+                    // CRIA NOVAS AULAS (Horários extras adicionados na edição ou criação normal)
                     const newDocRef = doc(aulasCollection);
                     batch.set(newDocRef, { ...aula, createdAt: serverTimestamp() });
-                });
-                await batch.commit();
-                await notificarTelegramBatch(aulasParaConfirmar, 'adicionar');
-                setSnackbarMessage(`${aulasParaConfirmar.length} aula(s) ${isCoordenador ? 'agendada(s)!' : 'proposta(s)!'}`);
-            }
+                    aulasNotificar.push({ ...aula, acao: 'adicionar' });
+                }
+            });
+
+            await batch.commit();
+
+            // Notifica Telegram separado
+            const editadas = aulasNotificar.filter(a => a.acao === 'editar');
+            const adicionadas = aulasNotificar.filter(a => a.acao === 'adicionar');
+
+            if (editadas.length > 0) await notificarTelegramBatch(editadas, 'editar');
+            if (adicionadas.length > 0) await notificarTelegramBatch(adicionadas, 'adicionar');
+
+            setSnackbarMessage(
+                isEditMode 
+                ? (adicionadas.length > 0 ? "Aula atualizada e novos horários adicionados!" : "Aula atualizada com sucesso!") 
+                : `${aulasParaConfirmar.length} aula(s) ${isCoordenador ? 'agendada(s)!' : 'proposta(s)!'}`
+            );
+            
             setSnackbarSeverity('success');
             setOpenSnackbar(true);
+            
             if (isModal) onSuccess();
             else setOpenKeepDataDialog(true);
+
         } catch (error) {
+            console.error(error);
             setSnackbarMessage(`Erro ao salvar: ${error.message}`);
             setSnackbarSeverity('error');
             setOpenSnackbar(true);

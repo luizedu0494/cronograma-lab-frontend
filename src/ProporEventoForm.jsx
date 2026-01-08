@@ -4,7 +4,6 @@ import {
     Select, Box, Paper, Snackbar, Alert, CircularProgress, Chip, IconButton, Tooltip,
     FormHelperText
 } from '@mui/material';
-// CORREÇÃO: Ícones importados do pacote correto
 import { 
     Lock as LockIcon, 
     Add as AddIcon, 
@@ -15,7 +14,7 @@ import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
 import { useNavigate, useParams } from 'react-router-dom';
 import { db } from './firebaseConfig';
 import {
-    collection, addDoc, serverTimestamp, doc, getDoc, updateDoc, Timestamp, query, where, getDocs
+    collection, addDoc, serverTimestamp, doc, getDoc, updateDoc, Timestamp
 } from 'firebase/firestore';
 import dayjs from 'dayjs';
 import 'dayjs/locale/pt-br';
@@ -36,10 +35,19 @@ const BLOCOS_HORARIO = [
 
 const TELEGRAM_CHAT_ID = import.meta.env.VITE_TELEGRAM_CHAT_ID;
 
+// Função auxiliar para evitar erros de data inválida
+const safeDayjs = (val) => {
+    if (!val) return null;
+    if (dayjs.isDayjs(val)) return val;
+    if (val.toDate && typeof val.toDate === 'function') return dayjs(val.toDate());
+    const parsed = dayjs(val);
+    return parsed.isValid() ? parsed : null;
+};
+
 function ProporEventoForm({ userInfo, currentUser, initialDate, onSuccess, onCancel, isModal, formTitle, eventoId: propEventoId }) {
     const [formData, setFormData] = useState({
         titulo: '', descricao: '', tipo: EVENT_TYPES[0],
-        dataInicio: initialDate || null, horarioSlotString: [], dynamicLabs: [{ tipo: '', laboratorios: [] }],
+        dataInicio: safeDayjs(initialDate) || null, horarioSlotString: [], dynamicLabs: [{ tipo: '', laboratorios: [] }],
     });
     const [errors, setErrors] = useState({});
     const [loadingSubmit, setLoadingSubmit] = useState(false);
@@ -54,20 +62,6 @@ function ProporEventoForm({ userInfo, currentUser, initialDate, onSuccess, onCan
     const navigate = useNavigate();
     const { eventoId: paramEventoId } = useParams();
     const eventoId = propEventoId || paramEventoId;
-
-    const notificarTelegramEvento = async (evento, tipoAcao) => {
-    if (!TELEGRAM_CHAT_ID) return;
-    const dadosNotificacao = {
-        titulo: evento.titulo,
-        tipoEvento: evento.tipo,
-        laboratorio: evento.laboratorio,
-        dataInicio: dayjs(evento.dataInicio.toDate()).format('DD/MM/YYYY HH:mm'),
-        dataFim: dayjs(evento.dataFim.toDate()).format('DD/MM/YYYY HH:mm'),
-        descricao: evento.descricao
-    };
-    await notificadorTelegram.enviarNotificacao(TELEGRAM_CHAT_ID, dadosNotificacao, `evento_${tipoAcao}`);
-};
-
 
     useEffect(() => {
         if (eventoId) {
@@ -109,7 +103,7 @@ function ProporEventoForm({ userInfo, currentUser, initialDate, onSuccess, onCan
                             titulo: data.titulo || '', 
                             descricao: data.descricao || '', 
                             tipo: data.tipo || EVENT_TYPES[0],
-                            dataInicio: dayjs(data.dataInicio.toDate()), 
+                            dataInicio: safeDayjs(data.dataInicio), 
                             horarioSlotString: Array.isArray(data.horarioSlotString) ? data.horarioSlotString : [data.horarioSlotString],
                             dynamicLabs: [{ 
                                 tipo: tipoLab, 
@@ -117,7 +111,10 @@ function ProporEventoForm({ userInfo, currentUser, initialDate, onSuccess, onCan
                             }]
                         });
                     } else if (!isModal) { navigate('/calendario'); }
-                } catch (error) { if (!isModal) navigate('/calendario'); }
+                } catch (error) { 
+                    console.error("Erro ao carregar:", error);
+                    if (!isModal) navigate('/calendario'); 
+                }
             }
         };
         if (currentUser) { loadInitialData(); }
@@ -153,26 +150,31 @@ function ProporEventoForm({ userInfo, currentUser, initialDate, onSuccess, onCan
     const validate = () => {
         const newErrors = {};
         if (!formData.titulo.trim()) newErrors.titulo = 'Obrigatório';
-        if (!formData.dataInicio) newErrors.dataInicio = 'Selecione uma data';
+        if (!formData.dataInicio || !formData.dataInicio.isValid()) newErrors.dataInicio = 'Selecione uma data válida';
         if (formData.horarioSlotString.length === 0) newErrors.horarioSlotString = 'Selecione pelo menos um horário';
-        
         const labsValidos = formData.dynamicLabs.filter(lab => lab.tipo && lab.laboratorios.length > 0);
         if (labsValidos.length === 0) newErrors.dynamicLabs = 'Selecione pelo menos um laboratório';
-        
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
 
     const handleSubmit = async () => {
-        if (!validate()) {
-            setSnackbarMessage('Por favor, corrija os erros no formulário.');
-            setSnackbarSeverity('warning');
-            setOpenSnackbar(true);
-            return;
-        }
+        if (!validate()) return;
         setLoadingSubmit(true);
         
         try {
+            let jaAtualizouOriginal = false;
+            let dadosParaNotificacao = null;
+
+            // Cálculos para a notificação correta (Fim e Link)
+            let menorHora = "23:59";
+            let maiorHora = "00:00";
+            formData.horarioSlotString.forEach(slot => {
+                const [inicio, fim] = slot.split('-');
+                if (inicio < menorHora) menorHora = inicio;
+                if (fim > maiorHora) maiorHora = fim;
+            });
+
             for (const slot of formData.horarioSlotString) {
                 const [inicioStr, fimStr] = slot.split('-');
                 const dataHoraInicio = formData.dataInicio.hour(parseInt(inicioStr.split(':')[0])).minute(parseInt(inicioStr.split(':')[1])).second(0).millisecond(0);
@@ -193,13 +195,39 @@ function ProporEventoForm({ userInfo, currentUser, initialDate, onSuccess, onCan
                             createdAt: serverTimestamp()
                         };
 
-                        if (eventoId && formData.horarioSlotString.length === 1 && labGroup.laboratorios.length === 1) {
+                        if (eventoId && !jaAtualizouOriginal) {
                             await updateDoc(doc(db, "eventosManutencao", eventoId), eventoData);
+                            jaAtualizouOriginal = true;
+                            dadosParaNotificacao = { ...eventoData, acao: 'editar' };
                         } else {
                             await addDoc(collection(db, "eventosManutencao"), eventoData);
+                            if (!dadosParaNotificacao) dadosParaNotificacao = { ...eventoData, acao: 'adicionar' };
                         }
                     }
                 }
+            }
+
+            // Notificação com dados corrigidos (Link e Horários)
+            if (TELEGRAM_CHAT_ID && dadosParaNotificacao) {
+                const labsFormatados = formData.dynamicLabs.flatMap(l => l.laboratorios).join(', ');
+                
+                const payloadTelegram = {
+                    titulo: formData.titulo,
+                    tipoEvento: formData.tipo,
+                    laboratorio: labsFormatados || 'Vários',
+                    // Formata a data para leitura humana
+                    dataInicio: `${formData.dataInicio.format('DD/MM/YYYY')} às ${menorHora}`,
+                    // Formata a data fim corretamente (sem N/A)
+                    dataFim: `${formData.dataInicio.format('DD/MM/YYYY')} às ${maiorHora}`, 
+                    // IMPORTANTE: dataISO permite que o link abra na semana certa
+                    dataISO: formData.dataInicio.format('YYYY-MM-DD'),
+                    descricao: formData.descricao
+                };
+
+                const tipoAcao = dadosParaNotificacao.acao === 'editar' ? 'evento_editar' : 'evento_adicionar';
+                
+                notificadorTelegram.enviarNotificacao(TELEGRAM_CHAT_ID, payloadTelegram, tipoAcao)
+                    .catch(err => console.error("Erro telegram:", err));
             }
 
             setSnackbarMessage(eventoId ? 'Evento atualizado!' : 'Evento(s) criado(s) com sucesso!');
@@ -208,7 +236,7 @@ function ProporEventoForm({ userInfo, currentUser, initialDate, onSuccess, onCan
             if (onSuccess) onSuccess();
             if (!isModal) setTimeout(() => navigate('/calendario'), 1500);
         } catch (error) {
-            console.error("Erro ao salvar evento:", error);
+            console.error("Erro ao salvar:", error);
             setSnackbarMessage('Erro ao salvar evento.');
             setSnackbarSeverity('error');
             setOpenSnackbar(true);
