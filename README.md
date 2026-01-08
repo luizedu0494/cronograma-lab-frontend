@@ -214,10 +214,11 @@ Esta seção detalha as funcionalidades essenciais que já estão implementadas 
 | :--- | :--- | :--- |
 | **Controle de Acesso** | Autenticação de usuários (Coordenadores, Professores) via Firebase Auth e perfis de acesso. | **Implementado** |
 | **Proposta de Aula** | Formulário detalhado para propor aulas, com seleção de laboratório, curso e horário. | **Implementado** |
+| **Proposta de Evento** | Formulário detalhado para propor eventos, com seleção de laboratório e horário. | **Implementado** |
 | **Verificação de Conflito** | Sistema que verifica automaticamente conflitos de horário e laboratório antes de finalizar o agendamento. | **Implementado** |
 | **Visualização de Calendário** | Exibição do cronograma em formato de calendário semanal com navegação. | **Implementado** |
 | **Notificação Telegram** | Envio de notificações automáticas via Telegram para ações de agendamento, edição e exclusão. | **Implementado** |
-| **Edição e Exclusão** | Opções para Coordenadores editarem ou excluírem aulas diretamente do calendário. | **Implementado** |
+| **Edição e Exclusão** | Opções para Coordenadores editarem ou excluírem aulas e eventos diretamente do calendário. | **Implementado** |
 | **Gestão de Dados** | Páginas de gestão para usuários, períodos, avisos e manutenção (GerenciarUsuarios.jsx, GerenciarPeriodos.jsx, etc.). | **Implementado** |
 
 ## Roadmap de Desenvolvimento
