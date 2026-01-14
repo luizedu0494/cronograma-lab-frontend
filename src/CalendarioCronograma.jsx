@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { db } from './firebaseConfig';
-import { collection, query, where, getDocs, Timestamp, orderBy, doc, deleteDoc } from 'firebase/firestore';
+// ADICIONEI addDoc e serverTimestamp AQUI NOS IMPORTS
+import { collection, query, where, getDocs, Timestamp, orderBy, doc, deleteDoc, addDoc, serverTimestamp } from 'firebase/firestore';
 import {
     Container, Typography, Box, CircularProgress, Alert, Paper, Grid,
     Button, IconButton, Tooltip, Collapse, FormControl, InputLabel,
@@ -82,6 +83,8 @@ function CalendarioCronograma({ userInfo }) {
         return dateParam ? dayjs(dateParam) : dayjs();
     });
 
+    const [isPickerOpen, setIsPickerOpen] = useState(false);
+
     const [aulas, setAulas] = useState([]);
     const [eventos, setEventos] = useState([]);
     const [aulasFiltradas, setAulasFiltradas] = useState([]);
@@ -151,10 +154,34 @@ function CalendarioCronograma({ userInfo }) {
                             <IconButton onClick={() => setCurrentDate(d => d.subtract(1, 'week'))}><ChevronLeft /></IconButton>
                             <DatePicker
                                 value={currentDate}
-                                onChange={(val) => val && setCurrentDate(dayjs(val))}
+                                onChange={(val) => {
+                                    if (val) {
+                                        setCurrentDate(dayjs(val));
+                                        setIsPickerOpen(false);
+                                    }
+                                }}
+                                open={isPickerOpen}
+                                onClose={() => setIsPickerOpen(false)}
+                                onOpen={() => setIsPickerOpen(true)}
                                 enableAccessibleFieldDOMStructure={false}
                                 slots={{ textField: (p) => (
-                                    <TextField {...p} variant="standard" InputProps={{ ...p.InputProps, disableUnderline: true, readOnly: true, endAdornment: (<InputAdornment position="end"><CalendarIcon sx={{ fontSize: '1.1rem', color: 'primary.main', mr: 1 }} /></InputAdornment>) }} value={getIntervaloTexto(currentDate)} sx={{ width: { xs: '180px', sm: '230px' }, '& .MuiInputBase-input': { textAlign: 'center', fontWeight: 'bold', color: 'primary.main', cursor: 'pointer', fontSize: { xs: '0.8rem', sm: '1rem' } } }} />
+                                    <TextField 
+                                        {...p} 
+                                        onClick={() => setIsPickerOpen(true)}
+                                        variant="standard" 
+                                        InputProps={{ 
+                                            ...p.InputProps, 
+                                            disableUnderline: true, 
+                                            readOnly: true, 
+                                            endAdornment: (
+                                                <InputAdornment position="end" sx={{ cursor: 'pointer' }}>
+                                                    <CalendarIcon onClick={(e) => { e.stopPropagation(); setIsPickerOpen(true); }} sx={{ fontSize: '1.1rem', color: 'primary.main', mr: 1 }} />
+                                                </InputAdornment>
+                                            ) 
+                                        }} 
+                                        value={getIntervaloTexto(currentDate)} 
+                                        sx={{ width: { xs: '180px', sm: '230px' }, '& .MuiInputBase-input': { textAlign: 'center', fontWeight: 'bold', color: 'primary.main', cursor: 'pointer', fontSize: { xs: '0.8rem', sm: '1rem' } } }} 
+                                    />
                                 )}}
                             />
                             <IconButton onClick={() => setCurrentDate(d => d.add(1, 'week'))}><ChevronRight /></IconButton>
@@ -190,18 +217,18 @@ function CalendarioCronograma({ userInfo }) {
                                 </Box>
                                 <Divider sx={{ mb: 1 }} />
                                 
-                                {/* --- EVENTOS --- */}
                                 {eventosFiltrados.filter(e => dayjs(e.start).isSame(day, 'day')).map(evento => (
                                     <EventoCard 
                                         key={evento.id} 
                                         evento={evento} 
                                         isCoordenador={userInfo?.role === 'coordenador'} 
                                         onEdit={() => { 
-                                            setEventoParaAcao(evento); // Passa o objeto completo COM ID
+                                            setEventoParaAcao(evento);
                                             setIsEventModalOpen(true); 
                                         }} 
                                         onDelete={async () => { 
                                             if (window.confirm("Deseja excluir este evento?")) { 
+                                                // 1. Notifica Telegram
                                                 await notificadorTelegram.enviarNotificacao(import.meta.env.VITE_TELEGRAM_CHAT_ID, { 
                                                     titulo: evento.titulo, 
                                                     tipoEvento: evento.tipo, 
@@ -209,7 +236,23 @@ function CalendarioCronograma({ userInfo }) {
                                                     dataInicio: dayjs(evento.start).format('DD/MM/YYYY HH:mm'), 
                                                     dataFim: dayjs(evento.end).format('DD/MM/YYYY HH:mm'),
                                                     dataISO: dayjs(evento.start).format('YYYY-MM-DD')
-                                                }, 'evento_excluir'); 
+                                                }, 'evento_excluir');
+                                                
+                                                // 2. Salva no LOG (Isso faz aparecer no histórico e dashboard)
+                                                await addDoc(collection(db, 'logs'), {
+                                                    type: 'exclusao',
+                                                    collection: 'eventos',
+                                                    aula: { // Estrutura compatível com HistoricoAulas
+                                                        assunto: evento.titulo,
+                                                        laboratorio: evento.laboratorio,
+                                                        status: 'evento',
+                                                        dataInicio: evento.start instanceof Date ? Timestamp.fromDate(evento.start) : evento.start
+                                                    },
+                                                    timestamp: serverTimestamp(),
+                                                    user: { nome: userInfo?.name || 'Coordenador' }
+                                                });
+
+                                                // 3. Deleta o doc
                                                 await deleteDoc(doc(db, 'eventosManutencao', evento.id)); 
                                                 fetchDados(); 
                                             } 
@@ -217,14 +260,13 @@ function CalendarioCronograma({ userInfo }) {
                                     />
                                 ))}
 
-                                {/* --- AULAS --- */}
                                 {aulasFiltradas.filter(a => dayjs(a.start).isSame(day, 'day')).map(aula => (
                                     <AulaCard 
                                         key={aula.id} 
                                         aula={aula} 
                                         isCoordenador={userInfo?.role === 'coordenador'} 
                                         onEdit={() => { 
-                                            setAulaParaAcao(aula); // Passa o objeto completo COM ID
+                                            setAulaParaAcao(aula);
                                             setIsEditModalOpen(true); 
                                         }} 
                                         onDelete={() => { 
@@ -238,7 +280,6 @@ function CalendarioCronograma({ userInfo }) {
                     ))}
                 </Grid>
 
-                {/* --- MODAL DE NOVA AULA --- */}
                 <Dialog open={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} fullWidth maxWidth="md">
                     <DialogTitle>Nova Aula</DialogTitle>
                     <DialogContent>
@@ -253,14 +294,13 @@ function CalendarioCronograma({ userInfo }) {
                     </DialogContent>
                 </Dialog>
 
-                {/* --- MODAL DE EVENTO (Novo e Editar) --- */}
                 <Dialog open={isEventModalOpen} onClose={() => setIsEventModalOpen(false)} fullWidth maxWidth="md">
                     <DialogTitle>{eventoParaAcao?.id ? "Editar Evento" : "Novo Evento"}</DialogTitle>
                     <DialogContent>
                         <ProporEventoForm 
                             userInfo={userInfo} 
                             currentUser={userInfo} 
-                            eventoId={eventoParaAcao?.id} // CRUCIAL: Passa o ID para ativar o modo de edição
+                            eventoId={eventoParaAcao?.id}
                             initialDate={eventoParaAcao?.start ? dayjs(eventoParaAcao.start) : eventoParaAcao?.dataInicio} 
                             formTitle={eventoParaAcao?.id ? "Editar Evento" : "Novo Evento"}
                             onSuccess={() => { setIsEventModalOpen(false); fetchDados(); }} 
@@ -270,14 +310,13 @@ function CalendarioCronograma({ userInfo }) {
                     </DialogContent>
                 </Dialog>
 
-                {/* --- MODAL DE EDIÇÃO DE AULA --- */}
                 <Dialog open={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} fullWidth maxWidth="md">
                     <DialogTitle>Editar Aula</DialogTitle>
                     <DialogContent>
                         <ProporAulaForm 
                             userInfo={userInfo} 
                             currentUser={userInfo} 
-                            aulaId={aulaParaAcao?.id} // CRUCIAL: Passa o ID para ativar o modo de edição
+                            aulaId={aulaParaAcao?.id}
                             initialDate={aulaParaAcao?.start ? dayjs(aulaParaAcao.start) : null}
                             formTitle="Editar Aula"
                             onSuccess={() => { setIsEditModalOpen(false); fetchDados(); }} 
@@ -287,7 +326,6 @@ function CalendarioCronograma({ userInfo }) {
                     </DialogContent>
                 </Dialog>
 
-                {/* --- MODAL DE EXCLUSÃO DE AULA --- */}
                 <DialogConfirmacao 
                     open={isDeleteModalOpen} 
                     onClose={() => setIsDeleteModalOpen(false)} 
@@ -302,7 +340,23 @@ function CalendarioCronograma({ userInfo }) {
                                 cursos: aulaParaAcao.cursos, 
                                 data: dayjs(aulaParaAcao.start).format('DD/MM/YYYY'), 
                                 horario: `${dayjs(aulaParaAcao.start).format('HH:mm')} - ${dayjs(aulaParaAcao.end).format('HH:mm')}` 
-                            }, 'excluir'); 
+                            }, 'excluir');
+                            
+                            // LOG PARA AULA EXCLUÍDA
+                            await addDoc(collection(db, 'logs'), {
+                                type: 'exclusao',
+                                collection: 'aulas',
+                                aula: { // Salva snapshot dos dados
+                                    assunto: aulaParaAcao.title,
+                                    laboratorio: aulaParaAcao.laboratorio,
+                                    cursos: aulaParaAcao.cursos,
+                                    status: 'rejeitada', // Marca como removida
+                                    dataInicio: aulaParaAcao.start instanceof Date ? Timestamp.fromDate(aulaParaAcao.start) : aulaParaAcao.start
+                                },
+                                timestamp: serverTimestamp(),
+                                user: { nome: userInfo?.name || 'Coordenador' }
+                            });
+
                             await deleteDoc(doc(db, 'aulas', aulaParaAcao.id)); 
                             setIsDeleteModalOpen(false); 
                             fetchDados(); 

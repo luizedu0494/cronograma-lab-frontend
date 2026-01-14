@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { db } from './firebaseConfig';
 import { collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
@@ -53,12 +52,36 @@ const HistoricoAulas = () => {
                     id: doc.id,
                     type: 'adicionada',
                     aula: data,
-                    timestamp: data.createdAt ? data.createdAt.toDate() : new Date(), // Usar createdAt
+                    timestamp: data.createdAt ? data.createdAt.toDate() : new Date(),
                     user: { nome: data.propostoPorNome || data.propostoPor || 'Desconhecido' }
                 };
             });
 
-            // 2. Buscar Logs de Exclusão (Coleção 'logs')
+            // 2. Buscar Eventos Adicionados (Coleção 'eventosManutencao')
+            const eventosRef = collection(db, 'eventosManutencao');
+            const qEventos = query(eventosRef, orderBy('createdAt', 'desc'), limit(MAX_RESULTS));
+            const eventosSnapshot = await getDocs(qEventos);
+
+            const eventosAdicionados = eventosSnapshot.docs.map(doc => {
+                const data = doc.data();
+                return {
+                    id: doc.id,
+                    type: 'evento', // Tipo específico para eventos
+                    aula: {
+                        // Mapeia campos do evento para parecerem com aula na tabela
+                        assunto: data.titulo + (data.descricao ? ` - ${data.descricao}` : ''),
+                        curso: data.tipo, // Usa o campo curso para mostrar o Tipo do Evento
+                        cursos: [data.tipo], // Para filtro funcionar
+                        laboratorio: data.laboratorio || data.laboratorioSelecionado || 'Todos',
+                        status: 'evento', // Status visual
+                        dataInicio: data.dataInicio
+                    },
+                    timestamp: data.createdAt ? data.createdAt.toDate() : new Date(),
+                    user: { nome: data.criadoPorNome || 'Sistema' }
+                };
+            });
+
+            // 3. Buscar Logs de Exclusão (Coleção 'logs')
             const logsRef = collection(db, 'logs');
             const qLogs = query(logsRef, orderBy('timestamp', 'desc'), limit(MAX_RESULTS * 2)); 
             const logsSnapshot = await getDocs(qLogs);
@@ -71,13 +94,13 @@ const HistoricoAulas = () => {
                         id: doc.id,
                         type: 'exclusao',
                         aula: data.aula,
-                        timestamp: data.timestamp ? data.timestamp.toDate() : new Date(), // Usar timestamp
+                        timestamp: data.timestamp ? data.timestamp.toDate() : new Date(),
                         user: data.user || { nome: 'Desconhecido' }
                     };
                 });
 
-            // 3. Unificar e Ordenar
-            let todosLogs = [...aulasAdicionadas, ...aulasExcluidas];
+            // 4. Unificar e Ordenar
+            let todosLogs = [...aulasAdicionadas, ...eventosAdicionados, ...aulasExcluidas];
             
             todosLogs.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
             
@@ -100,8 +123,8 @@ const HistoricoAulas = () => {
 
             setError(null);
         } catch (err) {
-            console.error("Erro ao buscar histórico de aulas:", err);
-            setError("Erro ao carregar o histórico de aulas. Verifique a conexão com o Firestore.");
+            console.error("Erro ao buscar histórico:", err);
+            setError("Erro ao carregar o histórico. Verifique a conexão com o Firestore.");
         } finally {
             setLoading(false);
         }
@@ -183,51 +206,41 @@ const HistoricoAulas = () => {
 
     const getStatusColor = (status) => {
         switch (status) {
-            case 'aprovada':
-                return 'success';
-            case 'pendente':
-            case 'proposta':
-                return 'warning';
-            case 'rejeitada':
-                return 'error';
-            default:
-                return 'default';
+            case 'aprovada': return 'success';
+            case 'pendente': 
+            case 'proposta': return 'warning';
+            case 'rejeitada': return 'error';
+            case 'evento': return 'info'; // Cor para Eventos
+            default: return 'default';
         }
     };
 
     const getStatusLabel = (status) => {
         switch (status) {
-            case 'aprovada':
-                return 'Aprovada';
-            case 'pendente':
-            case 'proposta':
-                return 'Pendente';
-            case 'rejeitada':
-                return 'Rejeitada';
-            default:
-                return status;
+            case 'aprovada': return 'Aprovada';
+            case 'pendente': 
+            case 'proposta': return 'Pendente';
+            case 'rejeitada': return 'Rejeitada';
+            case 'evento': return 'Evento';
+            default: return status;
         }
     };
 
     const getTipoColor = (type) => {
         switch (type) {
-            case 'adicionada':
-                return 'primary';
-            case 'exclusao':
-                return 'error';
-            default:
-                return 'default';
+            case 'adicionada': return 'primary';
+            case 'evento': return 'secondary'; // Cor roxa para eventos
+            case 'exclusao': return 'error';
+            default: return 'default';
         }
     };
 
     const getTipoLabel = (type) => {
         switch (type) {
-            case 'adicionada':
-                return 'Adicionada';
-            case 'exclusao':
-                return 'Excluída';
-            default:
-                return type;
+            case 'adicionada': return 'Aula';
+            case 'evento': return 'Evento';
+            case 'exclusao': return 'Excluído';
+            default: return type;
         }
     };
 
@@ -254,12 +267,12 @@ const HistoricoAulas = () => {
             <Box display="flex" alignItems="center" mb={3}>
                 <History size={32} style={{ marginRight: 12, color: theme.palette.primary.main }} />
                 <Typography variant="h4" component="h1">
-                    Histórico de Aulas
+                    Histórico Geral
                 </Typography>
             </Box>
 
             <Typography variant="subtitle1" color="text.secondary" gutterBottom>
-                Visualize as últimas aulas adicionadas e excluídas do sistema.
+                Visualize as últimas aulas e eventos adicionados ou excluídos.
             </Typography>
 
             {/* Filtros */}
@@ -273,7 +286,7 @@ const HistoricoAulas = () => {
                     <Grid item xs={12} sm={6} md={3}>
                         <TextField
                             fullWidth
-                            label="Nome da Disciplina"
+                            label="Nome/Assunto"
                             variant="outlined"
                             value={filtroNome}
                             onChange={(e) => setFiltroNome(e.target.value)}
@@ -285,11 +298,11 @@ const HistoricoAulas = () => {
 
                     <Grid item xs={12} sm={6} md={2}>
                         <FormControl fullWidth variant="outlined">
-                            <InputLabel>Curso</InputLabel>
+                            <InputLabel>Curso/Tipo</InputLabel>
                             <Select
                                 value={filtroCurso}
                                 onChange={(e) => setFiltroCurso(e.target.value)}
-                                label="Curso"
+                                label="Curso/Tipo"
                             >
                                 <MenuItem value="">Todos</MenuItem>
                                 {cursos.map(curso => (
@@ -326,6 +339,7 @@ const HistoricoAulas = () => {
                                 <MenuItem value="">Todos</MenuItem>
                                 <MenuItem value="aprovada">Aprovada</MenuItem>
                                 <MenuItem value="pendente">Pendente</MenuItem>
+                                <MenuItem value="evento">Evento</MenuItem>
                                 <MenuItem value="rejeitada">Rejeitada</MenuItem>
                             </Select>
                         </FormControl>
@@ -364,7 +378,7 @@ const HistoricoAulas = () => {
                                 startIcon={<X size={20} />}
                                 color="secondary"
                             >
-                                Limpar Filtros
+                                Limpar
                             </Button>
                             <Button
                                 variant="contained"
@@ -386,12 +400,12 @@ const HistoricoAulas = () => {
                         <TableHead>
                             <TableRow>
                                 <TableCell>Tipo</TableCell>
-                                <TableCell>Disciplina</TableCell>
-                                <TableCell>Curso</TableCell>
+                                <TableCell>Assunto/Disciplina</TableCell>
+                                <TableCell>Curso/Tipo</TableCell>
                                 <TableCell>Ano</TableCell>
                                 <TableCell>Laboratório</TableCell>
                                 <TableCell>Status</TableCell>
-                                <TableCell>Data/Hora</TableCell>
+                                <TableCell>Data do Registro</TableCell>
                                 <TableCell>Usuário</TableCell>
                             </TableRow>
                         </TableHead>
@@ -407,13 +421,13 @@ const HistoricoAulas = () => {
                                             />
                                         </TableCell>
                                         <TableCell component="th" scope="row">{log.aula?.assunto || 'Sem Nome'}</TableCell>
-                                        <TableCell>{Array.isArray(log.aula?.cursos) ? log.aula.cursos.join(', ') : (log.aula?.curso || 'Não Especificado')}</TableCell>
+                                        <TableCell>{Array.isArray(log.aula?.cursos) ? log.aula.cursos.join(', ') : (log.aula?.curso || 'N/A')}</TableCell>
                                         <TableCell>
                                             {log.aula?.dataInicio 
                                                 ? dayjs(log.aula.dataInicio.toDate ? log.aula.dataInicio.toDate() : log.aula.dataInicio).year() 
                                                 : 'N/A'}
                                         </TableCell>
-                                        <TableCell>{log.aula?.laboratorioSelecionado || log.aula?.laboratorio || 'N/A'}</TableCell>
+                                        <TableCell>{log.aula?.laboratorio || log.aula?.laboratorioSelecionado || 'N/A'}</TableCell>
                                         <TableCell>
                                             <Chip
                                                 label={getStatusLabel(log.aula?.status)}
@@ -423,8 +437,8 @@ const HistoricoAulas = () => {
                                         </TableCell>
                                         <TableCell>
                                             {log.timestamp
-                                                ? dayjs(log.timestamp).format('DD/MM/YYYY [às] HH:mm')
-                                                : 'Data não disponível'
+                                                ? dayjs(log.timestamp).format('DD/MM/YYYY HH:mm')
+                                                : 'N/A'
                                             }
                                         </TableCell>
                                         <TableCell>{log.user?.nome || 'Desconhecido'}</TableCell>
@@ -432,7 +446,7 @@ const HistoricoAulas = () => {
                                 ))
                             ) : (
                                 <TableRow>
-                                    <TableCell colSpan={7} align="center">
+                                    <TableCell colSpan={8} align="center">
                                         <Typography variant="body2" sx={{ p: 3 }}>
                                             Nenhuma atividade encontrada.
                                         </Typography>
@@ -458,4 +472,3 @@ const HistoricoAulas = () => {
 };
 
 export default HistoricoAulas;
-

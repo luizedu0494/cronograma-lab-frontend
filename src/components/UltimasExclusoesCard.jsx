@@ -4,7 +4,7 @@ import { collection, query, where, orderBy, limit, getDocs } from 'firebase/fire
 import {
     Card, CardContent, Typography, Box, CircularProgress, Alert, Button, Divider, Chip
 } from '@mui/material';
-import { Trash2, Clock, BookOpen, Users, Calendar } from 'lucide-react';
+import { Trash2, Clock, BookOpen, Users } from 'lucide-react';
 import dayjs from 'dayjs';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '@mui/material/styles';
@@ -20,9 +20,12 @@ const UltimasExclusoesCard = () => {
         try {
             setLoading(true);
             const logsRef = collection(db, 'logs');
+            
+            // CORREÇÃO: Adicionado filtro para trazer APENAS exclusões de 'aulas'
             const q = query(
                 logsRef,
                 where('type', '==', 'exclusao'),
+                where('collection', '==', 'aulas'), // <--- FILTRA APENAS AULAS
                 orderBy('timestamp', 'desc'),
                 limit(5)
             );
@@ -31,7 +34,7 @@ const UltimasExclusoesCard = () => {
             const logsData = querySnapshot.docs.map(doc => ({
                 id: doc.id,
                 ...doc.data(),
-                timestamp: doc.data().timestamp.toDate() // Converte Timestamp para Date
+                timestamp: doc.data().timestamp ? doc.data().timestamp.toDate() : new Date()
             }));
             setLogs(logsData);
         } catch (err) {
@@ -55,14 +58,26 @@ const UltimasExclusoesCard = () => {
             case 'rejeitada': color = 'error'; label = 'Rejeitada'; break;
             default: break;
         }
-        return <Chip label={label} color={color} size="small" sx={{ ml: 1 }} />;
+        return <Chip label={label} color={color} size="small" sx={{ ml: 1, height: 20, fontSize: '0.7rem' }} />;
+    };
+
+    const formatarCursos = (cursos) => {
+        if (Array.isArray(cursos) && cursos.length > 0) return cursos.join(', ');
+        if (typeof cursos === 'string' && cursos.trim() !== '') return cursos;
+        return 'Curso não especificado';
+    };
+
+    const formatarAno = (dataInicio) => {
+        if (!dataInicio) return '';
+        const dateObj = dataInicio.toDate ? dataInicio.toDate() : new Date(dataInicio);
+        return dayjs(dateObj).isValid() ? ` - ${dayjs(dateObj).year()}` : '';
     };
 
     return (
         <Card elevation={3} sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-            <CardContent sx={{ flexGrow: 1 }}>
+            <CardContent sx={{ flexGrow: 1, p: 2 }}>
                 <Box display="flex" alignItems="center" mb={2}>
-                    <Trash2 color={theme.palette.error.main} style={{ marginRight: theme.spacing(1) }} />
+                    <Trash2 color={theme.palette.error.main} style={{ marginRight: 8 }} size={24} />
                     <Typography variant="h6" component="div" fontWeight="bold">
                         Últimas Aulas Excluídas
                     </Typography>
@@ -74,24 +89,26 @@ const UltimasExclusoesCard = () => {
                     <Alert severity="error">{error}</Alert>
                 ) : logs.length === 0 ? (
                     <Typography variant="body2" color="text.secondary" textAlign="center" py={4}>
-                        Nenhuma exclusão registrada recentemente.
+                        Nenhuma aula excluída recentemente.
                     </Typography>
                 ) : (
                     <Box>
                         {logs.map((log, index) => (
                             <React.Fragment key={log.id}>
-                                <Box sx={{ py: 1 }}>
-                                    <Box display="flex" justifyContent="space-between" alignItems="center">
-                                        <Typography variant="subtitle2" fontWeight="bold" sx={{ color: theme.palette.error.main }}>
-                                            {log.aula.disciplina || 'Sem nome'}
+                                <Box sx={{ py: 1.5 }}>
+                                    <Box display="flex" justifyContent="space-between" alignItems="flex-start">
+                                        <Typography variant="subtitle2" fontWeight="bold" sx={{ color: theme.palette.error.main, lineHeight: 1.2 }}>
+                                            {log.aula?.assunto || 'Sem nome'}
                                         </Typography>
-                                        {getStatusChip(log.aula.status)}
+                                        {getStatusChip(log.aula?.status)}
                                     </Box>
                                     
-                                    <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
-                                        <Users size={14} style={{ marginRight: 4, verticalAlign: 'middle' }} />
-                                        {log.aula.curso || 'Curso não especificado'} - {log.aula.ano || 'Ano não especificado'}
-                                    </Typography>
+                                    <Box display="flex" alignItems="center" mt={0.5} mb={0.5}>
+                                        <Users size={14} style={{ marginRight: 4, color: theme.palette.text.secondary }} />
+                                        <Typography variant="caption" color="text.primary">
+                                            {formatarCursos(log.aula?.cursos || log.aula?.curso)}{formatarAno(log.aula?.dataInicio)}
+                                        </Typography>
+                                    </Box>
                                     
                                     <Box display="flex" alignItems="center" gap={0.5}>
                                         <Clock size={14} style={{ color: theme.palette.text.secondary }} />
@@ -101,7 +118,7 @@ const UltimasExclusoesCard = () => {
                                     </Box>
                                     
                                     {log.user?.nome && (
-                                        <Typography variant="caption" color="text.secondary">
+                                        <Typography variant="caption" display="block" sx={{ mt: 0.5, fontStyle: 'italic', color: theme.palette.text.secondary }}>
                                             Por: {log.user.nome}
                                         </Typography>
                                     )}
@@ -118,6 +135,7 @@ const UltimasExclusoesCard = () => {
                     variant="outlined" 
                     onClick={() => navigate('/historico-aulas')}
                     startIcon={<BookOpen size={18} />}
+                    size="small"
                 >
                     Ver Histórico Completo
                 </Button>
