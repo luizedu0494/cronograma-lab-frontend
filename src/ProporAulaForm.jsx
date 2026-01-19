@@ -37,7 +37,7 @@ const TELEGRAM_CHAT_ID = import.meta.env.VITE_TELEGRAM_CHAT_ID;
 function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCancel, isModal, formTitle, aulaId: propAulaId }) {
     const [formData, setFormData] = useState({
         assunto: '', observacoes: '', tipoAtividade: '', cursos: [], liga: '',
-        dataInicio: initialDate || null, horarioSlotString: [], dynamicLabs: [{ tipo: '', laboratorios: [] }],
+        dataInicio: initialDate ? dayjs(initialDate) : null, horarioSlotString: [], dynamicLabs: [{ tipo: '', laboratorios: [] }],
     });
     const [errors, setErrors] = useState({});
     const [loadingSubmit, setLoadingSubmit] = useState(false);
@@ -192,7 +192,7 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
             }
             setVerificandoDisp(true);
             try {
-                const diaSelecionado = formData.dataInicio.startOf('day');
+                const diaSelecionado = dayjs(formData.dataInicio).startOf('day');
                 const q = query(collection(db, "aulas"), where("laboratorioSelecionado", "in", laboratoriosParaVerificar), where("dataInicio", ">=", Timestamp.fromDate(diaSelecionado.toDate())), where("dataInicio", "<", Timestamp.fromDate(diaSelecionado.add(1, 'day').toDate())));
                 const querySnapshot = await getDocs(q);
                 const slotsOcupados = querySnapshot.docs.filter(doc => doc.id !== aulaId).map(doc => doc.data().horarioSlotString);
@@ -202,27 +202,12 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
                 const eventosDoDia = querySnapshotEventos.docs
                     .map(doc => doc.data())
                     .filter(e => {
-                        const end = e.dataFim instanceof Timestamp ? e.dataFim.toDate() : new Date(e.dataFim);
-                        const isNoDia = dayjs(end).isAfter(diaSelecionado) || dayjs(end).isSame(diaSelecionado);
-                        const isLabRelacionado = e.laboratorio === 'Todos' || laboratoriosParaVerificar.includes(e.laboratorio);
-                        return isNoDia && isLabRelacionado;
+                        if (e.laboratorio === 'Todos') return true;
+                        return laboratoriosParaVerificar.includes(e.laboratorio);
                     });
-
-                const slotsBloqueadosPorEvento = [];
-                eventosDoDia.forEach(evento => {
-                    BLOCOS_HORARIO.forEach(bloco => {
-                        const [inicioStr, fimStr] = bloco.value.split('-');
-                        const blocoInicio = diaSelecionado.hour(parseInt(inicioStr.split(':')[0])).minute(parseInt(inicioStr.split(':')[1]));
-                        const blocoFim = diaSelecionado.hour(parseInt(fimStr.split(':')[0])).minute(parseInt(fimStr.split(':')[1]));
-                        const eventoInicio = dayjs(evento.dataInicio instanceof Timestamp ? evento.dataInicio.toDate() : new Date(evento.dataInicio));
-                        const eventoFim = dayjs(evento.dataFim instanceof Timestamp ? evento.dataFim.toDate() : new Date(evento.dataFim));
-                        if (blocoInicio.isBefore(eventoFim) && blocoFim.isAfter(eventoInicio)) {
-                            slotsBloqueadosPorEvento.push(bloco.value);
-                        }
-                    });
-                });
-
-                setHorariosOcupados([...new Set([...slotsOcupados, ...slotsBloqueadosPorEvento])]);
+                
+                const slotsEventos = eventosDoDia.map(e => e.horarioSlotString);
+                setHorariosOcupados([...new Set([...slotsOcupados, ...slotsEventos])]);
             } catch (error) {
                 console.error("Erro ao verificar disponibilidade:", error);
             } finally {
@@ -233,48 +218,33 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
     }, [formData.dataInicio, formData.dynamicLabs, secao2Completa, aulaId]);
 
     useEffect(() => {
-        const loadInitialData = async () => {
+        const loadAula = async () => {
             if (aulaId) {
                 setIsEditMode(true);
-                setSecao1Completa(true);
-                setSecao2Completa(true);
                 try {
                     const docRef = doc(db, "aulas", aulaId);
                     const docSnap = await getDoc(docRef);
                     if (docSnap.exists()) {
                         const data = docSnap.data();
+                        const labObj = LISTA_LABORATORIOS.find(l => l.name === data.laboratorioSelecionado);
                         setFormData({
-                            assunto: data.assunto || '', 
-                            observacoes: data.observacoes || '', 
-                            tipoAtividade: data.tipoAtividade || '',
-                            cursos: data.cursos || [], 
+                            assunto: data.assunto || '',
+                            observacoes: data.observacoes || '',
+                            tipoAtividade: data.tipoAtividade || 'aula',
+                            cursos: data.cursos || [],
                             liga: data.liga || '',
-                            dataInicio: dayjs(data.dataInicio.toDate()), 
-                            horarioSlotString: Array.isArray(data.horarioSlotString) ? data.horarioSlotString : [data.horarioSlotString],
-                            dynamicLabs: [{ 
-                                tipo: data.tipoLaboratorio, 
-                                laboratorios: Array.isArray(data.laboratorioSelecionado) ? data.laboratorioSelecionado : [data.laboratorioSelecionado] 
-                            }]
+                            dataInicio: data.dataInicio ? dayjs(data.dataInicio.toDate()) : null,
+                            horarioSlotString: [data.horarioSlotString],
+                            dynamicLabs: [{ tipo: labObj?.tipo || '', laboratorios: [data.laboratorioSelecionado] }]
                         });
-                        if (data.tecnicos && data.tecnicosInfo) setCopiedTecnicos({ tecnicos: data.tecnicos, tecnicosInfo: data.tecnicosInfo });
-                    } else { navigate('/calendario'); }
-                } catch (error) { navigate('/calendario'); }
-            } else if (location.state?.aulaParaCopiar) {
-                const { aulaParaCopiar } = location.state;
-                setFormData(prev => ({
-                    ...prev, assunto: aulaParaCopiar.assunto || '', observacoes: aulaParaCopiar.observacoes || '', tipoAtividade: aulaParaCopiar.tipoAtividade || '',
-                    cursos: aulaParaCopiar.cursos || [], liga: aulaParaCopiar.liga || '',
-                    dynamicLabs: [{ tipo: aulaParaCopiar.tipoLaboratorio, laboratorios: Array.isArray(aulaParaCopiar.laboratorioSelecionado) ? aulaParaCopiar.laboratorioSelecionado : [aulaParaCopiar.laboratorioSelecionado] }]
-                }));
-                if (aulaParaCopiar.tecnicos && aulaParaCopiar.tecnicosInfo) setCopiedTecnicos({ tecnicos: aulaParaCopiar.tecnicos, tecnicosInfo: aulaParaCopiar.tecnicosInfo });
-                navigate('.', { replace: true, state: {} });
-                setSnackbarMessage("Dados carregados. Defina a nova data e horário.");
-                setSnackbarSeverity("info");
-                setOpenSnackbar(true);
+                    }
+                } catch (error) {
+                    console.error("Erro ao carregar aula:", error);
+                }
             }
         };
-        if (currentUser) { loadInitialData(); }
-    }, [aulaId, navigate, currentUser, location.state]);
+        loadAula();
+    }, [aulaId]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -308,165 +278,69 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
         if (!formData.tipoAtividade) newErrors.tipoAtividade = 'Obrigatório';
         if (!formData.assunto.trim()) newErrors.assunto = 'Obrigatório';
         if (formData.cursos.length === 0) newErrors.cursos = 'Selecione pelo menos um curso';
-        if (!formData.dataInicio) newErrors.dataInicio = 'Selecione uma data';
-        if (formData.horarioSlotString.length === 0) newErrors.horarioSlotString = 'Selecione pelo menos um horário';
+        if (!formData.dataInicio) newErrors.dataInicio = 'Selecione a data';
+        if (formData.horarioSlotString.length === 0) newErrors.horarioSlotString = 'Selecione o horário';
         
-        const labsValidos = formData.dynamicLabs.filter(lab => lab.tipo && lab.laboratorios.length > 0);
-        if (labsValidos.length === 0) newErrors.dynamicLabs = 'Selecione pelo menos um laboratório';
-        
+        const labsValidos = formData.dynamicLabs.every(lab => lab.tipo && lab.laboratorios.length > 0);
+        if (!labsValidos) newErrors.dynamicLabs = 'Preencha todos os campos de laboratório';
+
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
 
     const prepareAndConfirm = async () => {
-        if (!validate()) {
-            setSnackbarMessage('Por favor, corrija os erros no formulário.');
-            setSnackbarSeverity('warning');
-            setOpenSnackbar(true);
-            return;
-        }
+        if (!validate()) return;
         setLoadingSubmit(true);
-        const aulasSemConflito = [];
-        const conflitosDetectados = [];
-        
-        const qEventos = query(collection(db, "eventosManutencao"), where("dataInicio", "<=", Timestamp.fromDate(formData.dataInicio.endOf('day').toDate())));
-        const querySnapshotEventos = await getDocs(qEventos);
-        const eventosDoDia = querySnapshotEventos.docs
-            .map(doc => doc.data())
-            .filter(e => {
-                const end = e.dataFim instanceof Timestamp ? e.dataFim.toDate() : new Date(e.dataFim);
-                return dayjs(end).isAfter(formData.dataInicio.startOf('day')) || dayjs(end).isSame(formData.dataInicio.startOf('day'));
-            });
-
-        const verificacoes = [];
-        formData.horarioSlotString.forEach(slot => {
-            const [inicioStr, fimStr] = slot.split('-');
-            const dataHoraInicio = formData.dataInicio.hour(parseInt(inicioStr.split(':')[0])).minute(parseInt(inicioStr.split(':')[1])).second(0).millisecond(0);
-            const dataHoraFim = formData.dataInicio.hour(parseInt(fimStr.split(':')[0])).minute(parseInt(fimStr.split(':')[1])).second(0).millisecond(0);
-            
-            formData.dynamicLabs.forEach(lab => {
-                lab.laboratorios.forEach(labName => {
-                    const checkPromise = (async () => {
-                        const eventoBloqueante = eventosDoDia.find(evento => {
-                            if (evento.laboratorio === 'Todos' || evento.laboratorio === labName) {
-                                const eventoInicio = dayjs(evento.dataInicio.toDate());
-                                const eventoFim = dayjs(evento.dataFim.toDate());
-                                return dataHoraInicio.isBefore(eventoFim) && dataHoraFim.isAfter(eventoInicio);
-                            }
-                            return false;
-                        });
-
-                        if (eventoBloqueante) {
-                            return { status: 'bloqueado', mensagem: `O laboratório ${labName} está bloqueado por um evento: ${eventoBloqueante.titulo}` };
-                        }
-
-                        const novaAula = {
-                            tipoAtividade: formData.tipoAtividade, assunto: formData.assunto, observacoes: formData.observacoes, tipoLaboratorio: lab.tipo, laboratorioSelecionado: labName, cursos: formData.cursos, liga: formData.liga,
-                            dataInicio: Timestamp.fromDate(dataHoraInicio.toDate()), dataFim: Timestamp.fromDate(dataHoraFim.toDate()), horarioSlotString: slot,
-                            status: isCoordenador ? 'aprovada' : 'pendente', propostoPorUid: currentUser.uid, propostoPorNome: userInfo?.name || currentUser.displayName || currentUser.email,
-                            tecnicos: copiedTecnicos ? copiedTecnicos.tecnicos : [], tecnicosInfo: copiedTecnicos ? copiedTecnicos.tecnicosInfo : []
-                        };
-                        
-                        const q = query(
-                            collection(db, "aulas"), 
-                            where("laboratorioSelecionado", "==", labName), 
-                            where("dataInicio", "==", novaAula.dataInicio)
-                        );
-                        const querySnapshot = await getDocs(q);
-                        const conflictDoc = querySnapshot.docs.find(doc => doc.id !== aulaId);
-                        
-                        if (!conflictDoc) return { status: 'sem-conflito', aula: novaAula };
-                        else return { status: 'conflito', dados: { novaAula, conflito: { id: conflictDoc.id, ...conflictDoc.data() } } };
-                    })();
-                    verificacoes.push(checkPromise);
-                });
-            });
-        });
-
-        const resultados = await Promise.all(verificacoes);
-        
-        const bloqueios = resultados.filter(res => res.status === 'bloqueado');
-        if (bloqueios.length > 0) {
-            setSnackbarMessage(bloqueios[0].mensagem);
-            setSnackbarSeverity('error');
-            setOpenSnackbar(true);
-            setLoadingSubmit(false);
-            return;
-        }
-
-        resultados.forEach(res => {
-            if (res.status === 'sem-conflito') aulasSemConflito.push(res.aula);
-            else if (res.status === 'conflito') conflitosDetectados.push(res.dados);
-        });
-        
-        setAulasParaConfirmar(aulasSemConflito);
-        setConflitos(conflitosDetectados);
-        
-        if (conflitosDetectados.length > 0) {
-            setOpenDuplicateDialog(true);
-        } else if (aulasSemConflito.length > 0) {
-            setOpenConfirmModal(true);
-        } else {
-            setSnackbarMessage('Nenhuma aula para agendar.');
-            setSnackbarSeverity('info');
-            setOpenSnackbar(true);
-        }
-        setLoadingSubmit(false);
-    };
-
-    const handleConfirmSave = async () => {
-        setLoadingSubmit(true);
-        setOpenConfirmModal(false);
         try {
-            const batch = writeBatch(db);
-            const aulasCollection = collection(db, "aulas");
-            
-            // Controle para saber se já atualizamos o original
-            let originalAtualizado = false;
-            const aulasNotificar = [];
+            const aulasParaAgendar = [];
+            const dataBase = dayjs(formData.dataInicio);
 
-            // Se estamos editando (tem aulaId), precisamos tratar o primeiro item da lista como atualização
-            // e os demais (se o usuário selecionou mais horários) como novos.
-            
-            aulasParaConfirmar.forEach((aula) => {
-                if (isEditMode && aulaId && !originalAtualizado) {
-                    // ATUALIZA A AULA EXISTENTE
-                    const docRef = doc(db, "aulas", aulaId);
-                    batch.update(docRef, { ...aula, updatedAt: serverTimestamp() });
-                    originalAtualizado = true;
-                    aulasNotificar.push({ ...aula, acao: 'editar' });
-                } else {
-                    // CRIA NOVAS AULAS (Horários extras adicionados na edição ou criação normal)
-                    const newDocRef = doc(aulasCollection);
-                    batch.set(newDocRef, { ...aula, createdAt: serverTimestamp() });
-                    aulasNotificar.push({ ...aula, acao: 'adicionar' });
+            for (const slot of formData.horarioSlotString) {
+                const [inicioStr, fimStr] = slot.split('-');
+                const dataHoraInicio = dataBase.hour(parseInt(inicioStr.split(':')[0])).minute(parseInt(inicioStr.split(':')[1])).second(0).millisecond(0);
+                const dataHoraFim = dataBase.hour(parseInt(fimStr.split(':')[0])).minute(parseInt(fimStr.split(':')[1])).second(0).millisecond(0);
+
+                for (const labGroup of formData.dynamicLabs) {
+                    for (const labName of labGroup.laboratorios) {
+                        aulasParaAgendar.push({
+                            ...formData,
+                            laboratorioSelecionado: labName,
+                            dataInicio: dataHoraInicio,
+                            dataFim: dataHoraFim,
+                            horarioSlotString: slot,
+                            status: isCoordenador ? 'aprovada' : 'pendente',
+                            professorUid: currentUser.uid,
+                            professorNome: userInfo?.name || currentUser.displayName || currentUser.email,
+                            createdAt: serverTimestamp()
+                        });
+                    }
                 }
-            });
+            }
 
-            await batch.commit();
+            const conflitosEncontrados = [];
+            for (const novaAula of aulasParaAgendar) {
+                const q = query(collection(db, "aulas"), 
+                    where("laboratorioSelecionado", "==", novaAula.laboratorioSelecionado),
+                    where("dataInicio", "==", Timestamp.fromDate(novaAula.dataInicio.toDate())),
+                    where("horarioSlotString", "==", novaAula.horarioSlotString)
+                );
+                const snap = await getDocs(q);
+                snap.docs.forEach(doc => {
+                    if (doc.id !== aulaId) conflitosEncontrados.push({ novaAula, conflito: { id: doc.id, ...doc.data() } });
+                });
+            }
 
-            // Notifica Telegram separado
-            const editadas = aulasNotificar.filter(a => a.acao === 'editar');
-            const adicionadas = aulasNotificar.filter(a => a.acao === 'adicionar');
-
-            if (editadas.length > 0) await notificarTelegramBatch(editadas, 'editar');
-            if (adicionadas.length > 0) await notificarTelegramBatch(adicionadas, 'adicionar');
-
-            setSnackbarMessage(
-                isEditMode 
-                ? (adicionadas.length > 0 ? "Aula atualizada e novos horários adicionados!" : "Aula atualizada com sucesso!") 
-                : `${aulasParaConfirmar.length} aula(s) ${isCoordenador ? 'agendada(s)!' : 'proposta(s)!'}`
-            );
-            
-            setSnackbarSeverity('success');
-            setOpenSnackbar(true);
-            
-            if (isModal) onSuccess();
-            else setOpenKeepDataDialog(true);
-
+            if (conflitosEncontrados.length > 0) {
+                setConflitos(conflitosEncontrados);
+                setAulasParaConfirmar(aulasParaAgendar);
+                setOpenDuplicateDialog(true);
+            } else {
+                setAulasParaConfirmar(aulasParaAgendar);
+                setOpenConfirmModal(true);
+            }
         } catch (error) {
-            console.error(error);
-            setSnackbarMessage(`Erro ao salvar: ${error.message}`);
+            console.error("Erro ao preparar agendamento:", error);
+            setSnackbarMessage("Erro ao processar dados.");
             setSnackbarSeverity('error');
             setOpenSnackbar(true);
         } finally {
@@ -474,32 +348,56 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
         }
     };
 
-    const handleAulasComConflito = async (shouldReplace) => {
-        setLoadingSubmit(true);
+    const handleAulasComConflito = async (substituir) => {
         setOpenDuplicateDialog(false);
-        const aulasParaAdicionar = [...aulasParaConfirmar];
-        let mensagemSucesso = aulasParaConfirmar.length > 0 ? `${aulasParaConfirmar.length} aula(s) disponível(is) foi(ram) agendada(s). ` : "";
-        if (shouldReplace) {
-            const novas = conflitos.map(c => c.novaAula);
-            aulasParaAdicionar.push(...novas);
-            mensagemSucesso += `${conflitos.length} aula(s) com conflito foram substituídas.`;
-        } else if (conflitos.length > 0) {
-            mensagemSucesso += `${conflitos.length} agendamento(s) com conflito foram ignorados.`;
+        if (substituir) {
+            setLoadingSubmit(true);
+            try {
+                const batch = writeBatch(db);
+                conflitos.forEach(c => batch.delete(doc(db, "aulas", c.conflito.id)));
+                await batch.commit();
+                setOpenConfirmModal(true);
+            } catch (error) {
+                console.error("Erro ao remover conflitos:", error);
+            } finally {
+                setLoadingSubmit(false);
+            }
+        } else {
+            setOpenConfirmModal(true);
         }
-        if (aulasParaAdicionar.length === 0) {
-            setSnackbarMessage("Nenhuma ação foi realizada.");
-            setSnackbarSeverity("info");
-            setOpenSnackbar(true);
-            setLoadingSubmit(false);
-            return;
-        }
+    };
+
+    const handleConfirmSave = async () => {
+        setOpenConfirmModal(false);
+        setLoadingSubmit(true);
         try {
-            const batch = writeBatch(db);
-            const aulasCollection = collection(db, "aulas");
-            if (shouldReplace) conflitos.forEach(c => batch.delete(doc(db, 'aulas', c.conflito.id)));
-            aulasParaAdicionar.forEach(aula => batch.set(doc(aulasCollection), { ...aula, createdAt: serverTimestamp() }));
-            await batch.commit();
-            await notificarTelegramBatch(aulasParaAdicionar, 'adicionar');
+            const aulasParaAdicionar = [];
+            if (isEditMode && aulaId) {
+                const aula = aulasParaConfirmar[0];
+                const { dynamicLabs, ...dadosSalvar } = aula;
+                const finalData = {
+                    ...dadosSalvar,
+                    dataInicio: Timestamp.fromDate(aula.dataInicio.toDate()),
+                    dataFim: Timestamp.fromDate(aula.dataFim.toDate()),
+                    updatedAt: serverTimestamp()
+                };
+                await updateDoc(doc(db, "aulas", aulaId), finalData);
+                aulasParaAdicionar.push(aula);
+            } else {
+                for (const aula of aulasParaConfirmar) {
+                    const { dynamicLabs, ...dadosSalvar } = aula;
+                    const finalData = {
+                        ...dadosSalvar,
+                        dataInicio: Timestamp.fromDate(aula.dataInicio.toDate()),
+                        dataFim: Timestamp.fromDate(aula.dataFim.toDate())
+                    };
+                    const docRef = await addDoc(collection(db, "aulas"), finalData);
+                    aulasParaAdicionar.push({ id: docRef.id, ...aula });
+                }
+            }
+
+            const mensagemSucesso = isEditMode ? "Aula atualizada com sucesso!" : `${aulasParaConfirmar.length} aula(s) agendada(s) com sucesso!`;
+            await notificarTelegramBatch(aulasParaAdicionar, isEditMode ? 'editar' : 'adicionar');
             setSnackbarMessage(mensagemSucesso);
             setSnackbarSeverity('success');
             setOpenSnackbar(true);
@@ -669,7 +567,11 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
                                                 textField: { fullWidth: true, error: !!errors.dataInicio, helperText: errors.dataInicio },
                                                 day: {
                                                     sx: (day) => {
-                                                        const dateStr = day.format('YYYY-MM-DD');
+                                                        // CORREÇÃO: Garante que 'day' seja convertido para Dayjs antes do .format()
+                                                        const dateObj = dayjs(day);
+                                                        if (!dateObj.isValid()) return {};
+                                                        
+                                                        const dateStr = dateObj.format('YYYY-MM-DD');
                                                         if (diasTotalmenteOcupados.includes(dateStr)) return { backgroundColor: 'rgba(244, 67, 54, 0.2)', borderRadius: '50%' };
                                                         if (diasParcialmenteOcupados.includes(dateStr)) return { border: '1px solid #1976d2', borderRadius: '50%' };
                                                         return {};

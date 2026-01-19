@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { db } from './firebaseConfig';
-// ADICIONEI addDoc e serverTimestamp AQUI NOS IMPORTS
 import { collection, query, where, getDocs, Timestamp, orderBy, doc, deleteDoc, addDoc, serverTimestamp } from 'firebase/firestore';
 import {
     Container, Typography, Box, CircularProgress, Alert, Paper, Grid,
@@ -122,7 +121,7 @@ function CalendarioCronograma({ userInfo }) {
             setEventos(eventosSnap.docs.map(doc => ({ id: doc.id, ...doc.data(), start: doc.data().dataInicio.toDate(), end: doc.data().dataFim.toDate() })));
             setHolidays(await getHolidays(currentDate.year(), 'AL', 'Maceió'));
         } catch (err) { console.error(err); } finally { setLoading(false); }
-    }, [week]);
+    }, [week, currentDate]);
 
     useEffect(() => { fetchDados(); }, [fetchDados]);
 
@@ -156,6 +155,7 @@ function CalendarioCronograma({ userInfo }) {
                                 value={currentDate}
                                 onChange={(val) => {
                                     if (val) {
+                                        // CORREÇÃO: Garante conversão para Dayjs
                                         setCurrentDate(dayjs(val));
                                         setIsPickerOpen(false);
                                     }
@@ -192,7 +192,7 @@ function CalendarioCronograma({ userInfo }) {
                         </Box>
                     </Box>
                     <Collapse in={filtrosVisiveis}>
-                        <Grid container spacing={2} sx={{ pt: 2 }}>
+                        <Grid container spacing={2} sx={{ mb: 1 }}>
                             <Grid item xs={12} sm={6} md={3}><FormControl fullWidth size="small"><InputLabel>Laboratórios</InputLabel><Select multiple value={filtros.laboratorio} onChange={(e) => setFiltros({...filtros, laboratorio: e.target.value})} input={<OutlinedInput label="Laboratórios" />} renderValue={(s) => <Chip label={`${s.length} sel.`} size="small" />}>{LISTA_LABORATORIOS.map(l => <MenuItem key={l.id} value={l.name}>{l.name}</MenuItem>)}</Select></FormControl></Grid>
                             <Grid item xs={12} sm={6} md={3}><FormControl fullWidth size="small"><InputLabel>Cursos</InputLabel><Select multiple value={filtros.cursos} onChange={(e) => setFiltros({...filtros, cursos: e.target.value})} input={<OutlinedInput label="Cursos" />} renderValue={(s) => <Chip label={`${s.length} sel.`} size="small" />}>{LISTA_CURSOS.map(c => <MenuItem key={c.value} value={c.value}>{c.label}</MenuItem>)}</Select></FormControl></Grid>
                             <Grid item xs={12} sm={6} md={2}><FormControl fullWidth size="small"><InputLabel>Turnos</InputLabel><Select multiple value={filtros.turno} onChange={(e) => setFiltros({...filtros, turno: e.target.value})} input={<OutlinedInput label="Turnos" />} renderValue={(s) => <Chip label={`${s.length} sel.`} size="small" />}>{TURNOS.map(t => <MenuItem key={t} value={t}>{t}</MenuItem>)}</Select></FormControl></Grid>
@@ -228,7 +228,6 @@ function CalendarioCronograma({ userInfo }) {
                                         }} 
                                         onDelete={async () => { 
                                             if (window.confirm("Deseja excluir este evento?")) { 
-                                                // 1. Notifica Telegram
                                                 await notificadorTelegram.enviarNotificacao(import.meta.env.VITE_TELEGRAM_CHAT_ID, { 
                                                     titulo: evento.titulo, 
                                                     tipoEvento: evento.tipo, 
@@ -238,11 +237,10 @@ function CalendarioCronograma({ userInfo }) {
                                                     dataISO: dayjs(evento.start).format('YYYY-MM-DD')
                                                 }, 'evento_excluir');
                                                 
-                                                // 2. Salva no LOG (Isso faz aparecer no histórico e dashboard)
                                                 await addDoc(collection(db, 'logs'), {
                                                     type: 'exclusao',
                                                     collection: 'eventos',
-                                                    aula: { // Estrutura compatível com HistoricoAulas
+                                                    aula: {
                                                         assunto: evento.titulo,
                                                         laboratorio: evento.laboratorio,
                                                         status: 'evento',
@@ -252,7 +250,6 @@ function CalendarioCronograma({ userInfo }) {
                                                     user: { nome: userInfo?.name || 'Coordenador' }
                                                 });
 
-                                                // 3. Deleta o doc
                                                 await deleteDoc(doc(db, 'eventosManutencao', evento.id)); 
                                                 fetchDados(); 
                                             } 
@@ -342,15 +339,14 @@ function CalendarioCronograma({ userInfo }) {
                                 horario: `${dayjs(aulaParaAcao.start).format('HH:mm')} - ${dayjs(aulaParaAcao.end).format('HH:mm')}` 
                             }, 'excluir');
                             
-                            // LOG PARA AULA EXCLUÍDA
                             await addDoc(collection(db, 'logs'), {
                                 type: 'exclusao',
                                 collection: 'aulas',
-                                aula: { // Salva snapshot dos dados
+                                aula: {
                                     assunto: aulaParaAcao.title,
                                     laboratorio: aulaParaAcao.laboratorio,
                                     cursos: aulaParaAcao.cursos,
-                                    status: 'rejeitada', // Marca como removida
+                                    status: 'rejeitada',
                                     dataInicio: aulaParaAcao.start instanceof Date ? Timestamp.fromDate(aulaParaAcao.start) : aulaParaAcao.start
                                 },
                                 timestamp: serverTimestamp(),
