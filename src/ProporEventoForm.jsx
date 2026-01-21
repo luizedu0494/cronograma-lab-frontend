@@ -15,12 +15,16 @@ import {
 } from 'firebase/firestore';
 import dayjs from 'dayjs';
 import 'dayjs/locale/pt-br';
+// IMPORTANTE: Plugin para verificar intervalos
+import isBetween from 'dayjs/plugin/isBetween';
+
 import { LISTA_LABORATORIOS, TIPOS_LABORATORIO } from './constants/laboratorios';
 import PropTypes from 'prop-types';
 import DialogConfirmacao from './components/DialogConfirmacao';
 import { notificadorTelegram } from './ia-estruturada/NotificadorTelegram';
 
 dayjs.locale('pt-br');
+dayjs.extend(isBetween);
 
 const EVENT_TYPES = ['Manutenção', 'Feriado', 'Evento', 'Giro', 'Outro'];
 const BLOCOS_HORARIO = [
@@ -34,7 +38,6 @@ const BLOCOS_HORARIO = [
 
 const TELEGRAM_CHAT_ID = import.meta.env.VITE_TELEGRAM_CHAT_ID;
 
-// Função auxiliar para evitar erros de data inválida
 const safeDayjs = (val) => {
     if (!val) return null;
     if (dayjs.isDayjs(val)) return val;
@@ -61,8 +64,12 @@ function ProporEventoForm({ userInfo, currentUser, initialDate, onSuccess, onCan
     const [eventosParaConfirmar, setEventosParaConfirmar] = useState([]);
     const [horariosOcupados, setHorariosOcupados] = useState([]);
     const [verificandoDisp, setVerificandoDisp] = useState(false);
+    
+    // Estados visuais do calendário
     const [diasTotalmenteOcupados, setDiasTotalmenteOcupados] = useState([]);
     const [diasParcialmenteOcupados, setDiasParcialmenteOcupados] = useState([]);
+    const [periodosBloqueados, setPeriodosBloqueados] = useState([]); // Feriados/Recessos
+
     const [mesVisivel, setMesVisivel] = useState(dayjs());
     const [loadingCalendario, setLoadingCalendario] = useState(false);
 
@@ -73,7 +80,6 @@ function ProporEventoForm({ userInfo, currentUser, initialDate, onSuccess, onCan
     const { eventoId: paramEventoId } = useParams();
     const eventoId = propEventoId || paramEventoId;
 
-    // Efeito para Seção 1
     useEffect(() => {
         if (eventoId) {
             setSecao1Completa(true);
@@ -83,7 +89,6 @@ function ProporEventoForm({ userInfo, currentUser, initialDate, onSuccess, onCan
         setSecao1Completa(completa);
     }, [formData.titulo, formData.tipo, eventoId]);
 
-    // Efeito para Seção 2
     useEffect(() => {
         if (eventoId) {
             setSecao2Completa(true);
@@ -93,7 +98,7 @@ function ProporEventoForm({ userInfo, currentUser, initialDate, onSuccess, onCan
         setSecao2Completa(labsCompletos && secao1Completa);
     }, [formData.dynamicLabs, secao1Completa, eventoId]);
 
-    // Busca ocupação do mês para o DatePicker
+    // Busca ocupação E BLOQUEIOS do mês
     useEffect(() => {
         const fetchOcupacaoDoMes = async () => {
             setLoadingCalendario(true);
@@ -108,8 +113,19 @@ function ProporEventoForm({ userInfo, currentUser, initialDate, onSuccess, onCan
                 const querySnapshotEventos = await getDocs(qEventos);
                 const eventosDoMes = querySnapshotEventos.docs.map(doc => doc.data());
 
+                // --- BUSCA PERIODOS BLOQUEADOS (NOVO) ---
+                const qPeriodos = query(collection(db, "periodosSemAtividade"), where("dataFim", ">=", Timestamp.fromDate(inicioDoMes)));
+                const snapPeriodos = await getDocs(qPeriodos);
+                const periodosList = snapPeriodos.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data(),
+                    start: dayjs(doc.data().dataInicio.toDate()),
+                    end: dayjs(doc.data().dataFim.toDate())
+                }));
+                setPeriodosBloqueados(periodosList);
+
+                // Processa bolinhas de ocupação
                 const ocupacaoPorDia = {};
-                
                 aulasDoMes.forEach(aula => {
                     const dia = dayjs(aula.dataInicio.toDate()).format('YYYY-MM-DD');
                     if (!ocupacaoPorDia[dia]) ocupacaoPorDia[dia] = new Set();
@@ -148,7 +164,6 @@ function ProporEventoForm({ userInfo, currentUser, initialDate, onSuccess, onCan
         fetchOcupacaoDoMes();
     }, [mesVisivel]);
 
-    // Verifica disponibilidade de horários para o dia selecionado
     useEffect(() => {
         const verificarDisponibilidade = async () => {
             if (!secao2Completa && !eventoId) {
@@ -163,21 +178,11 @@ function ProporEventoForm({ userInfo, currentUser, initialDate, onSuccess, onCan
             setVerificandoDisp(true);
             try {
                 const diaSelecionado = dayjs(formData.dataInicio).startOf('day');
-                
-                // Busca Aulas
-                const qAulas = query(collection(db, "aulas"), 
-                    where("laboratorioSelecionado", "in", laboratoriosParaVerificar), 
-                    where("dataInicio", ">=", Timestamp.fromDate(diaSelecionado.toDate())), 
-                    where("dataInicio", "<", Timestamp.fromDate(diaSelecionado.add(1, 'day').toDate()))
-                );
+                const qAulas = query(collection(db, "aulas"), where("laboratorioSelecionado", "in", laboratoriosParaVerificar), where("dataInicio", ">=", Timestamp.fromDate(diaSelecionado.toDate())), where("dataInicio", "<", Timestamp.fromDate(diaSelecionado.add(1, 'day').toDate())));
                 const snapAulas = await getDocs(qAulas);
                 const slotsAulas = snapAulas.docs.map(doc => doc.data().horarioSlotString);
 
-                // Busca Eventos
-                const qEventos = query(collection(db, "eventosManutencao"), 
-                    where("dataInicio", ">=", Timestamp.fromDate(diaSelecionado.toDate())), 
-                    where("dataInicio", "<", Timestamp.fromDate(diaSelecionado.add(1, 'day').toDate()))
-                );
+                const qEventos = query(collection(db, "eventosManutencao"), where("dataInicio", ">=", Timestamp.fromDate(diaSelecionado.toDate())), where("dataInicio", "<", Timestamp.fromDate(diaSelecionado.add(1, 'day').toDate())));
                 const snapEventos = await getDocs(qEventos);
                 const slotsEventos = snapEventos.docs
                     .filter(doc => doc.id !== eventoId)
@@ -195,7 +200,11 @@ function ProporEventoForm({ userInfo, currentUser, initialDate, onSuccess, onCan
         verificarDisponibilidade();
     }, [formData.dataInicio, formData.dynamicLabs, secao2Completa, eventoId]);
 
-    // Carrega dados iniciais se for edição
+    // Função auxiliar para bloquear o dia
+    const isDayBlocked = (day) => {
+        return periodosBloqueados.some(p => day.isBetween(p.start, p.end, 'day', '[]'));
+    };
+
     useEffect(() => {
         const loadInitialData = async () => {
             if (eventoId) {
@@ -212,14 +221,11 @@ function ProporEventoForm({ userInfo, currentUser, initialDate, onSuccess, onCan
                         }
                         setFormData({
                             titulo: data.titulo || '', 
-                            descricao: data.descricao || '', 
+                            descricao: data.descricao || '',
                             tipo: data.tipo || EVENT_TYPES[0],
                             dataInicio: safeDayjs(data.dataInicio), 
                             horarioSlotString: Array.isArray(data.horarioSlotString) ? data.horarioSlotString : [data.horarioSlotString],
-                            dynamicLabs: [{ 
-                                tipo: tipoLab, 
-                                laboratorios: data.laboratorio === 'Todos' ? [] : [data.laboratorio] 
-                            }]
+                            dynamicLabs: [{ tipo: tipoLab, laboratorios: data.laboratorio === 'Todos' ? [] : [data.laboratorio] }]
                         });
                     }
                 } catch (error) { console.error("Erro ao carregar:", error); }
@@ -296,24 +302,13 @@ function ProporEventoForm({ userInfo, currentUser, initialDate, onSuccess, onCan
                 }
             }
 
-            // Verifica conflitos com Aulas ou outros Eventos
             const conflitosEncontrados = [];
             for (const novo of eventosParaAgendar) {
-                // Conflito com Aulas
-                const qA = query(collection(db, "aulas"), 
-                    where("laboratorioSelecionado", "==", novo.laboratorio),
-                    where("dataInicio", "==", Timestamp.fromDate(novo.dataInicio.toDate())),
-                    where("horarioSlotString", "==", novo.horarioSlotString)
-                );
+                const qA = query(collection(db, "aulas"), where("laboratorioSelecionado", "==", novo.laboratorio), where("dataInicio", "==", Timestamp.fromDate(novo.dataInicio.toDate())), where("horarioSlotString", "==", novo.horarioSlotString));
                 const snapA = await getDocs(qA);
                 snapA.docs.forEach(doc => conflitosEncontrados.push({ novo, conflito: { id: doc.id, ...doc.data(), tipoConflito: 'Aula' } }));
 
-                // Conflito com Eventos
-                const qE = query(collection(db, "eventosManutencao"), 
-                    where("laboratorio", "==", novo.laboratorio),
-                    where("dataInicio", "==", Timestamp.fromDate(novo.dataInicio.toDate())),
-                    where("horarioSlotString", "==", novo.horarioSlotString)
-                );
+                const qE = query(collection(db, "eventosManutencao"), where("laboratorio", "==", novo.laboratorio), where("dataInicio", "==", Timestamp.fromDate(novo.dataInicio.toDate())), where("horarioSlotString", "==", novo.horarioSlotString));
                 const snapE = await getDocs(qE);
                 snapE.docs.forEach(doc => {
                     if (doc.id !== eventoId) conflitosEncontrados.push({ novo, conflito: { id: doc.id, ...doc.data(), tipoConflito: 'Evento' } });
@@ -328,11 +323,8 @@ function ProporEventoForm({ userInfo, currentUser, initialDate, onSuccess, onCan
                 setEventosParaConfirmar(eventosParaAgendar);
                 setOpenConfirmModal(true);
             }
-        } catch (error) {
-            console.error("Erro ao preparar:", error);
-        } finally {
-            setLoadingSubmit(false);
-        }
+        } catch (error) { console.error(error); }
+        finally { setLoadingSubmit(false); }
     };
 
     const handleConflitos = async (substituir) => {
@@ -358,7 +350,7 @@ function ProporEventoForm({ userInfo, currentUser, initialDate, onSuccess, onCan
         setOpenConfirmModal(false);
         setLoadingSubmit(true);
         try {
-            const finalizados = [];
+            const finalizadas = [];
             if (isEditMode && eventoId) {
                 const ev = eventosParaConfirmar[0];
                 const finalData = {
@@ -368,7 +360,7 @@ function ProporEventoForm({ userInfo, currentUser, initialDate, onSuccess, onCan
                     updatedAt: serverTimestamp()
                 };
                 await updateDoc(doc(db, "eventosManutencao", eventoId), finalData);
-                finalizados.push(ev);
+                finalizadas.push(ev);
             } else {
                 for (const ev of eventosParaConfirmar) {
                     const finalData = {
@@ -377,20 +369,22 @@ function ProporEventoForm({ userInfo, currentUser, initialDate, onSuccess, onCan
                         dataFim: Timestamp.fromDate(ev.dataFim.toDate())
                     };
                     await addDoc(collection(db, "eventosManutencao"), finalData);
-                    finalizados.push(ev);
+                    finalizadas.push(ev);
                 }
             }
 
-            // Notificação Telegram
             if (TELEGRAM_CHAT_ID) {
-                for (const ev of finalizados) {
+                for (const ev of finalizadas) {
+                    const dInicio = dayjs(ev.dataInicio.toDate ? ev.dataInicio.toDate() : ev.dataInicio);
+                    const dFim = dayjs(ev.dataFim.toDate ? ev.dataFim.toDate() : ev.dataFim);
+
                     const payload = {
                         titulo: ev.titulo,
                         tipoEvento: ev.tipo,
-                        laboratorio: ev.laboratorio,
-                        dataInicio: ev.dataInicio.format('DD/MM/YYYY HH:mm'),
-                        dataFim: ev.dataFim.format('DD/MM/YYYY HH:mm'),
-                        dataISO: ev.dataInicio.format('YYYY-MM-DD'),
+                        laboratorio: ev.laboratorio, 
+                        dataInicio: dInicio.format('DD/MM/YYYY HH:mm'),
+                        dataFim: dFim.format('DD/MM/YYYY HH:mm'),
+                        dataISO: dInicio.format('YYYY-MM-DD'),
                         descricao: ev.descricao
                     };
                     await notificadorTelegram.enviarNotificacao(TELEGRAM_CHAT_ID, payload, isEditMode ? 'evento_editar' : 'evento_adicionar');
@@ -445,49 +439,36 @@ function ProporEventoForm({ userInfo, currentUser, initialDate, onSuccess, onCan
                                     </Tooltip>
                                 </Box>
                                 {!secao1Completa && !isEditMode && (
-                                    <Alert severity="warning" sx={{ mt: 1, mb: 2 }}>Complete a Seção 1 para desbloquear.</Alert>
+                                    <Alert severity="warning" sx={{ mb: 2, mt: 1 }}>
+                                        <strong>Seção bloqueada!</strong> Complete a Seção 1 para desbloquear.
+                                    </Alert>
                                 )}
-                                {errors.dynamicLabs && <Alert severity="error" sx={{ mb: 1, fontSize: '0.8rem' }}>{errors.dynamicLabs}</Alert>}
-                                {formData.dynamicLabs.map((labSelection, index) => (
-                                    <Grid container spacing={1} key={index} sx={{ mt: index > 0 ? 1 : 0, alignItems: 'center' }}>
-                                        <Grid item xs={5}>
-                                            <FormControl fullWidth size="small" disabled={!secao1Completa && !isEditMode}>
-                                                <InputLabel>Tipo *</InputLabel>
-                                                <Select value={labSelection.tipo || ''} onChange={(e) => handleLabTipoChange(index, e.target.value)}>
-                                                    {TIPOS_LABORATORIO.map(t => (
-                                                        <MenuItem key={t.id} value={t.id}>{t.name}</MenuItem>
-                                                    ))}
-                                                </Select>
-                                            </FormControl>
+                                {formData.dynamicLabs.map((labSelection, index) => {
+                                    if (!labSelection) return null;
+                                    return (
+                                        <Grid container spacing={1} key={index} sx={{ mt: index > 0 ? 1 : 0, alignItems: 'center' }}>
+                                            <Grid item xs={5}>
+                                                <FormControl fullWidth size="small" disabled={!secao1Completa && !isEditMode}>
+                                                    <InputLabel>Tipo *</InputLabel>
+                                                    <Select value={labSelection.tipo || ''} onChange={(e) => handleLabTipoChange(index, e.target.value)}>
+                                                        {TIPOS_LABORATORIO.map(t => <MenuItem key={t.id} value={t.id}>{t.name}</MenuItem>)}
+                                                    </Select>
+                                                </FormControl>
+                                            </Grid>
+                                            <Grid item xs={6}>
+                                                <FormControl fullWidth size="small" disabled={!labSelection.tipo || (!secao1Completa && !isEditMode)}>
+                                                    <InputLabel>Lab(s) *</InputLabel>
+                                                    <Select multiple value={labSelection.laboratorios || []} onChange={(e) => handleLabSelectionChange(index, e.target.value)} renderValue={(selected) => <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>{selected.map((value) => <Chip key={value} label={value} size="small" />)}</Box>}>
+                                                        {LISTA_LABORATORIOS.filter(l => l.tipo === labSelection.tipo).map(l => <MenuItem key={l.id} value={l.name}>{l.name}</MenuItem>)}
+                                                    </Select>
+                                                </FormControl>
+                                            </Grid>
+                                            <Grid item xs={1}>
+                                                <IconButton size="small" onClick={() => handleRemoveLabField(index)} disabled={formData.dynamicLabs.length === 1 || (!secao1Completa && !isEditMode)}><DeleteIcon fontSize="small" /></IconButton>
+                                            </Grid>
                                         </Grid>
-                                        <Grid item xs={6}>
-                                            <FormControl fullWidth size="small" disabled={!labSelection.tipo || (!secao1Completa && !isEditMode)}>
-                                                <InputLabel>Lab(s) *</InputLabel>
-                                                <Select
-                                                    multiple
-                                                    value={labSelection.laboratorios || []}
-                                                    onChange={(e) => handleLabSelectionChange(index, e.target.value)}
-                                                    renderValue={(selected) => (
-                                                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                                                            {selected.map((value) => (
-                                                                <Chip key={value} label={value} size="small" />
-                                                            ))}
-                                                        </Box>
-                                                    )}
-                                                >
-                                                    {LISTA_LABORATORIOS.filter(l => l.tipo === labSelection.tipo).map(l => (
-                                                        <MenuItem key={l.id} value={l.name}>{l.name}</MenuItem>
-                                                    ))}
-                                                </Select>
-                                            </FormControl>
-                                        </Grid>
-                                        <Grid item xs={1}>
-                                            <IconButton size="small" onClick={() => handleRemoveLabField(index)} disabled={formData.dynamicLabs.length === 1 || (!secao1Completa && !isEditMode)}>
-                                                <DeleteIcon fontSize="small" />
-                                            </IconButton>
-                                        </Grid>
-                                    </Grid>
-                                ))}
+                                    );
+                                })}
                             </Paper>
                         </Grid>
                         <Grid item xs={12}>
@@ -496,21 +477,34 @@ function ProporEventoForm({ userInfo, currentUser, initialDate, onSuccess, onCan
                                     <Typography variant="h6" gutterBottom sx={{ mb: 0 }}>3. Data e Horário</Typography>
                                     {!secao2Completa && !isEditMode && <LockIcon color="warning" />}
                                 </Box>
+                                {!secao2Completa && !isEditMode && (
+                                    <Alert severity="warning" sx={{ mb: 2 }}>
+                                        <strong>Seção bloqueada!</strong> Complete a Seção 2 para desbloquear.
+                                    </Alert>
+                                )}
                                 <Grid container spacing={2}>
                                     <Grid item xs={12} md={6}>
+                                        {/* --- DATEPICKER COM BLOQUEIO DE FERIADOS --- */}
                                         <DatePicker
                                             label="Data do Evento *"
                                             value={formData.dataInicio}
-                                            onChange={(newValue) => setFormData(prev => ({ ...prev, dataInicio: newValue }))}
+                                            onChange={(newValue) => {
+                                                setFormData(prev => ({ ...prev, dataInicio: newValue }));
+                                                if (errors.dataInicio) setErrors(prev => ({ ...prev, dataInicio: null }));
+                                            }}
                                             disabled={!secao2Completa && !isEditMode}
-                                            onMonthChange={(newMonth) => setMesVisivel(newMonth)}
-                                            loading={loadingCalendario}
+                                            // BLOQUEIA CLIQUE SE FERIADO
+                                            shouldDisableDate={isDayBlocked}
                                             slotProps={{
                                                 textField: { fullWidth: true, error: !!errors.dataInicio, helperText: errors.dataInicio },
                                                 day: {
                                                     sx: (day) => {
                                                         const dateObj = dayjs(day);
                                                         if (!dateObj.isValid()) return {};
+                                                        
+                                                        // PINTA FERIADO DE CINZA/VERMELHO
+                                                        if (isDayBlocked(dateObj)) return { backgroundColor: 'rgba(0, 0, 0, 0.1)', color: '#999', pointerEvents: 'none', borderRadius: '50%' };
+
                                                         const dateStr = dateObj.format('YYYY-MM-DD');
                                                         if (diasTotalmenteOcupados.includes(dateStr)) return { backgroundColor: 'rgba(244, 67, 54, 0.2)', borderRadius: '50%' };
                                                         if (diasParcialmenteOcupados.includes(dateStr)) return { border: '1px solid #1976d2', borderRadius: '50%' };
@@ -518,29 +512,15 @@ function ProporEventoForm({ userInfo, currentUser, initialDate, onSuccess, onCan
                                                     }
                                                 }
                                             }}
+                                            onMonthChange={(newMonth) => setMesVisivel(newMonth)}
+                                            loading={loadingCalendario}
                                         />
                                     </Grid>
                                     <Grid item xs={12} md={6}>
                                         <FormControl fullWidth error={!!errors.horarioSlotString} disabled={!formData.dataInicio || (!secao2Completa && !isEditMode)}>
                                             <InputLabel>Horário(s) *</InputLabel>
-                                            <Select
-                                                multiple
-                                                name="horarioSlotString"
-                                                value={formData.horarioSlotString}
-                                                onChange={handleChange}
-                                                renderValue={(selected) => (
-                                                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                                                        {selected.map((value) => (
-                                                            <Chip key={value} label={BLOCOS_HORARIO.find(b => b.value === value)?.label || value} size="small" />
-                                                        ))}
-                                                    </Box>
-                                                )}
-                                            >
-                                                {BLOCOS_HORARIO.map((bloco) => (
-                                                    <MenuItem key={bloco.value} value={bloco.value} disabled={horariosOcupados.includes(bloco.value)}>
-                                                        {bloco.label} {horariosOcupados.includes(bloco.value) ? '(Ocupado)' : ''}
-                                                    </MenuItem>
-                                                ))}
+                                            <Select multiple name="horarioSlotString" value={formData.horarioSlotString} onChange={handleChange} input={<OutlinedInput label="Horário(s) *" />} renderValue={(selected) => <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>{selected.map((value) => <Chip key={value} label={BLOCOS_HORARIO.find(b => b.value === value)?.label || value} size="small" />)}</Box>}>
+                                                {BLOCOS_HORARIO.map((bloco) => <MenuItem key={bloco.value} value={bloco.value} disabled={horariosOcupados.includes(bloco.value)}>{bloco.label} {horariosOcupados.includes(bloco.value) ? '(Ocupado)' : ''}</MenuItem>)}
                                             </Select>
                                             {errors.horarioSlotString && <FormHelperText>{errors.horarioSlotString}</FormHelperText>}
                                             {verificandoDisp && <CircularProgress size={20} sx={{ mt: 1 }} />}
@@ -551,54 +531,28 @@ function ProporEventoForm({ userInfo, currentUser, initialDate, onSuccess, onCan
                         </Grid>
                         <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'center', gap: 2, mt: 2, mb: 4 }}>
                             <Button variant="outlined" startIcon={<ArrowBack />} onClick={onCancel || (() => navigate('/calendario'))}>Voltar</Button>
-                            <Button type="submit" variant="contained" color="primary" size="large" disabled={loadingSubmit || (!secao2Completa && !isEditMode)}>
-                                {loadingSubmit ? <CircularProgress size={24} /> : (isEditMode ? "Salvar Alterações" : "Criar Evento")}
-                            </Button>
+                            <Button type="submit" variant="contained" color="primary" size="large" disabled={loadingSubmit}>{loadingSubmit ? <CircularProgress size={24} /> : (isEditMode ? "Salvar Alterações" : "Agendar Evento")}</Button>
                         </Grid>
                     </Grid>
                 </form>
-
-                <DialogConfirmacao open={openConfirmModal} onClose={() => setOpenConfirmModal(false)} onConfirm={handleConfirmSave} title="Confirmar Evento" message={`Deseja confirmar a criação de ${eventosParaConfirmar.length} evento(s)?`} loading={loadingSubmit} />
-                
+                <DialogConfirmacao open={openConfirmModal} onClose={() => setOpenConfirmModal(false)} onConfirm={handleConfirmSave} title="Confirmar Agendamento" message={`Deseja confirmar o agendamento de ${eventosParaConfirmar.length} evento(s)?`} loading={loadingSubmit} />
                 <Dialog open={openDuplicateDialog} onClose={() => setOpenDuplicateDialog(false)}>
-                    <DialogTitle>Conflito Detectado</DialogTitle>
+                    <DialogTitle>Conflito de Horário</DialogTitle>
                     <DialogContent>
-                        <Typography>Alguns horários já possuem agendamentos (Aulas ou Eventos). O que deseja fazer?</Typography>
-                        <List>
-                            {conflitos.map((c, i) => (
-                                <ListItem key={i} divider>
-                                    <ListItemText 
-                                        primary={`Conflito em ${c.novo.laboratorio} às ${c.novo.horarioSlotString}`} 
-                                        secondary={`${c.conflito.tipoConflito}: ${c.conflito.assunto || c.conflito.titulo}`} 
-                                    />
-                                </ListItem>
-                            ))}
-                        </List>
+                        <Typography>Alguns horários selecionados já possuem agendamentos. O que deseja fazer?</Typography>
+                        <List>{conflitos.map((c, i) => <ListItem key={i} divider><ListItemText primary={`Conflito em ${c.novo.laboratorio} às ${c.novo.horarioSlotString}`} secondary={`Existente: ${c.conflito.assunto || c.conflito.titulo}`} /></ListItem>)}</List>
                     </DialogContent>
                     <DialogActions>
                         <Button onClick={() => setOpenDuplicateDialog(false)}>Cancelar</Button>
-                        <Button onClick={() => handleConflitos(false)} color="primary">Ignorar e Manter Ambos</Button>
+                        <Button onClick={() => handleConflitos(false)} color="primary">Ignorar Conflitos</Button>
                         <Button onClick={() => handleConflitos(true)} color="error" variant="contained">Substituir Existentes</Button>
                     </DialogActions>
                 </Dialog>
-
-                <Snackbar open={openSnackbar} autoHideDuration={6000} onClose={() => setOpenSnackbar(false)}>
-                    <Alert severity={snackbarSeverity} onClose={() => setOpenSnackbar(false)}>{snackbarMessage}</Alert>
-                </Snackbar>
+                <Snackbar open={openSnackbar} autoHideDuration={6000} onClose={() => setOpenSnackbar(false)}><Alert onClose={() => setOpenSnackbar(false)} severity={snackbarSeverity} sx={{ width: '100%' }}>{snackbarMessage}</Alert></Snackbar>
             </Container>
         </LocalizationProvider>
     );
 }
 
-ProporEventoForm.propTypes = {
-    userInfo: PropTypes.object,
-    currentUser: PropTypes.object,
-    initialDate: PropTypes.object,
-    onSuccess: PropTypes.func,
-    onCancel: PropTypes.func,
-    isModal: PropTypes.bool,
-    formTitle: PropTypes.string,
-    eventoId: PropTypes.string
-};
-
+ProporEventoForm.propTypes = { userInfo: PropTypes.object, currentUser: PropTypes.object, initialDate: PropTypes.object, onSuccess: PropTypes.func, onCancel: PropTypes.func, isModal: PropTypes.bool, formTitle: PropTypes.string, eventoId: PropTypes.string };
 export default ProporEventoForm;

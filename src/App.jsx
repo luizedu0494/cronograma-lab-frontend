@@ -36,7 +36,6 @@ const ListagemMensalAulas = lazy(() => import('./ListagemMensalAulas'));
 const GerenciarGrupos = lazy(() => import('./GerenciarGrupos'));
 const GerenciarPeriodos = lazy(() => import('./GerenciarPeriodos'));
 const DownloadCronograma = lazy(() => import('./DownloadCronograma'));
-const GerenciarAulasAvancado = lazy(() => import('./GerenciarAulasAvancado'));
 const AnaliseAulas = lazy(() => import('./AnaliseAulas'));
 const AnaliseEventos = lazy(() => import('./AnaliseEventos'));
 const VerificarIntegridadeDados = lazy(() => import('./VerificarIntegridadeDados'));
@@ -123,7 +122,7 @@ function App() {
 
     const CoordenadorGerenciarMenu = () => (
         <Menu anchorEl={coordenadorMenuAnchorEl} open={Boolean(coordenadorMenuAnchorEl)} onClose={handleMenuClose}>
-            <MenuItem component={Link} to="/gerenciar-aulas" onClick={handleMenuClose}><ListTodo size={18} style={menuIconStyle}/> Gerenciar Aulas</MenuItem>
+        
             <MenuItem component={Link} to="/gerenciar-aprovacoes" onClick={handleMenuClose}><Badge badgeContent={pendingProposalsCount} color="error" sx={{ mr: 1 }}><ThumbsUp size={18} style={menuIconStyle}/></Badge>Aprovações</MenuItem>
             <MenuItem component={Link} to="/analise-aulas" onClick={handleMenuClose}><BarChart size={18} style={menuIconStyle}/> Análise de Aulas</MenuItem>
 <MenuItem component={Link} to="/analise-eventos" onClick={handleMenuClose}><BarChart size={18} style={menuIconStyle}/> Análise de Eventos</MenuItem>
@@ -198,7 +197,7 @@ function App() {
                                     <Route path="/listagem-mensal" element={<ListagemMensalAulas userInfo={userProfileData} />} />
                                     <Route path="/historico-aulas" element={<HistoricoAulas />} />
                                     <Route path="/propor-aula" element={<ProporAulaForm userInfo={userProfileData} currentUser={user} />} />
-<Route path="/propor-evento" element={<ProporEventoForm userInfo={userProfileData} currentUser={user} />} />
+                                    <Route path="/propor-evento" element={<ProporEventoForm userInfo={userProfileData} currentUser={user} />} />
                                     <Route path="/propor-aula/:aulaId" element={<ProporAulaForm userInfo={userProfileData} currentUser={user} />} />
                                     <Route path="/avisos" element={<PainelAvisos />} />
                                     <Route path="/ajuda" element={<AjudaFAQ />} />
@@ -210,9 +209,9 @@ function App() {
                                         <Route path="/gerenciar-avisos" element={<GerenciarAvisos />} />
                                         <Route path="/gerenciar-grupos" element={<GerenciarGrupos />} />
                                         <Route path="/gerenciar-periodos" element={<GerenciarPeriodos />} />
-                                        <Route path="/gerenciar-aulas" element={<GerenciarAulasAvancado />} />
+                                    
                                         <Route path="/analise-aulas" element={<AnaliseAulas />} />
-<Route path="/analise-eventos" element={<AnaliseEventos />} />
+                                        <Route path="/analise-eventos" element={<AnaliseEventos />} />
                                         <Route path="/verificar-integridade" element={<VerificarIntegridadeDados />} />
                                     </>)}
                                     {/* Rota aberta para ambos */}

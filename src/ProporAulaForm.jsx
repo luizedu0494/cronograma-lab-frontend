@@ -15,6 +15,9 @@ import {
 } from 'firebase/firestore';
 import dayjs from 'dayjs';
 import 'dayjs/locale/pt-br';
+// Plugin necessário para verificar intervalos de datas (feriados longos)
+import isBetween from 'dayjs/plugin/isBetween';
+
 import { LISTA_LABORATORIOS, TIPOS_LABORATORIO } from './constants/laboratorios';
 import { LISTA_CURSOS as LISTA_CURSOS_CONSTANTS } from './constants/cursos';
 import PropTypes from 'prop-types';
@@ -22,6 +25,7 @@ import DialogConfirmacao from './components/DialogConfirmacao';
 import { notificadorTelegram } from './ia-estruturada/NotificadorTelegram';
 
 dayjs.locale('pt-br');
+dayjs.extend(isBetween);
 
 const BLOCOS_HORARIO = [
     { "value": "07:00-09:10", "label": "07:00 - 09:10", "turno": "Matutino" },
@@ -52,10 +56,14 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
     const [openConfirmModal, setOpenConfirmModal] = useState(false);
     const [aulasParaConfirmar, setAulasParaConfirmar] = useState([]);
     const [openKeepDataDialog, setOpenKeepDataDialog] = useState(false);
+    
+    // Estados de Disponibilidade
     const [horariosOcupados, setHorariosOcupados] = useState([]);
     const [verificandoDisp, setVerificandoDisp] = useState(false);
     const [diasTotalmenteOcupados, setDiasTotalmenteOcupados] = useState([]);
     const [diasParcialmenteOcupados, setDiasParcialmenteOcupados] = useState([]);
+    const [periodosBloqueados, setPeriodosBloqueados] = useState([]); // Feriados/Recessos
+
     const [mesVisivel, setMesVisivel] = useState(dayjs());
     const [loadingCalendario, setLoadingCalendario] = useState(false);
 
@@ -72,20 +80,13 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
         for (const aula of aulas) {
             let dataFormatada = 'N/A';
             let dataISO = null;
-            if (dayjs.isDayjs(aula.dataInicio)) {
-                dataFormatada = aula.dataInicio.format('DD/MM/YYYY');
-                dataISO = aula.dataInicio.format('YYYY-MM-DD');
-            } else if (aula.dataInicio && typeof aula.dataInicio.toDate === 'function') {
-                const dateObj = dayjs(aula.dataInicio.toDate());
+            
+            const dateObj = dayjs(aula.dataInicio.toDate ? aula.dataInicio.toDate() : aula.dataInicio);
+            if (dateObj.isValid()) {
                 dataFormatada = dateObj.format('DD/MM/YYYY');
                 dataISO = dateObj.format('YYYY-MM-DD');
-            } else if (aula.dataInicio) {
-                const dateObj = dayjs(aula.dataInicio);
-                if (dateObj.isValid()) {
-                    dataFormatada = dateObj.format('DD/MM/YYYY');
-                    dataISO = dateObj.format('YYYY-MM-DD');
-                }
             }
+
             const dadosNotificacao = {
                 assunto: aula.assunto,
                 data: dataFormatada,
@@ -104,11 +105,9 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
             setSecao1Completa(true);
             return;
         }
-        const completa = formData.tipoAtividade !== '' && 
-                         formData.assunto.trim() !== '' && 
-                         formData.cursos.length > 0;
+        const completa = formData.assunto.trim() !== '' && formData.cursos.length > 0;
         setSecao1Completa(completa);
-    }, [formData.tipoAtividade, formData.assunto, formData.cursos, aulaId]);
+    }, [formData.assunto, formData.cursos, aulaId]);
 
     useEffect(() => {
         if (aulaId) {
@@ -119,16 +118,19 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
         setSecao2Completa(labsCompletos && secao1Completa);
     }, [formData.dynamicLabs, secao1Completa, aulaId]);
 
+    // Busca dados para pintar o calendário (Aulas, Eventos Manuais e Feriados)
     useEffect(() => {
         const fetchOcupacaoDoMes = async () => {
             setLoadingCalendario(true);
             const inicioDoMes = mesVisivel.startOf('month').toDate();
             const fimDoMes = mesVisivel.endOf('month').toDate();
             try {
+                // 1. Busca Aulas
                 const q = query(collection(db, "aulas"), where("dataInicio", ">=", Timestamp.fromDate(inicioDoMes)), where("dataInicio", "<=", Timestamp.fromDate(fimDoMes)));
                 const querySnapshot = await getDocs(q);
                 const aulasDoMes = querySnapshot.docs.map(doc => doc.data());
                 
+                // 2. Busca Eventos Manuais (Manutenção, etc)
                 const qEventos = query(collection(db, "eventosManutencao"), where("dataInicio", ">=", Timestamp.fromDate(inicioDoMes)), where("dataInicio", "<=", Timestamp.fromDate(fimDoMes)));
                 const querySnapshotEventos = await getDocs(qEventos);
                 const eventosDoMes = querySnapshotEventos.docs
@@ -138,6 +140,19 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
                         return dayjs(start).isAfter(dayjs(inicioDoMes)) || dayjs(start).isSame(dayjs(inicioDoMes));
                     });
 
+                // 3. Busca Feriados/Recessos (PeriodosSemAtividade)
+                // Busca qualquer periodo que termine depois do inicio do mes (pode ter começado antes)
+                const qPeriodos = query(collection(db, "periodosSemAtividade"), where("dataFim", ">=", Timestamp.fromDate(inicioDoMes)));
+                const snapPeriodos = await getDocs(qPeriodos);
+                const periodosList = snapPeriodos.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data(),
+                    start: dayjs(doc.data().dataInicio.toDate()),
+                    end: dayjs(doc.data().dataFim.toDate())
+                }));
+                setPeriodosBloqueados(periodosList);
+
+                // Processa ocupação visual (bolinhas) para Aulas e Eventos de Manutenção
                 const ocupacaoPorDia = {};
                 aulasDoMes.forEach(aula => {
                     const dia = dayjs(aula.dataInicio.toDate()).format('YYYY-MM-DD');
@@ -171,7 +186,7 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
                 setDiasTotalmenteOcupados(diasTotalmenteLotados);
                 setDiasParcialmenteOcupados(diasComAlgumaAula);
             } catch (error) {
-                console.error("Erro ao buscar ocupação do mês:", error);
+                console.error("Erro ao buscar ocupação do mes:", error);
             } finally {
                 setLoadingCalendario(false);
             }
@@ -201,13 +216,10 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
                 const querySnapshotEventos = await getDocs(qEventos);
                 const eventosDoDia = querySnapshotEventos.docs
                     .map(doc => doc.data())
-                    .filter(e => {
-                        if (e.laboratorio === 'Todos') return true;
-                        return laboratoriosParaVerificar.includes(e.laboratorio);
-                    });
+                    .filter(e => e.laboratorio === 'Todos' || laboratoriosParaVerificar.includes(e.laboratorio))
+                    .map(e => e.horarioSlotString);
                 
-                const slotsEventos = eventosDoDia.map(e => e.horarioSlotString);
-                setHorariosOcupados([...new Set([...slotsOcupados, ...slotsEventos])]);
+                setHorariosOcupados([...new Set([...slotsOcupados, ...eventosDoDia])]);
             } catch (error) {
                 console.error("Erro ao verificar disponibilidade:", error);
             } finally {
@@ -217,8 +229,13 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
         verificarDisponibilidadeHorarios();
     }, [formData.dataInicio, formData.dynamicLabs, secao2Completa, aulaId]);
 
+    // Função para verificar se o dia está bloqueado por feriado
+    const isDayBlocked = (day) => {
+        return periodosBloqueados.some(p => day.isBetween(p.start, p.end, 'day', '[]'));
+    };
+
     useEffect(() => {
-        const loadAula = async () => {
+        const loadAulaData = async () => {
             if (aulaId) {
                 setIsEditMode(true);
                 try {
@@ -230,12 +247,12 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
                         setFormData({
                             assunto: data.assunto || '',
                             observacoes: data.observacoes || '',
-                            tipoAtividade: data.tipoAtividade || 'aula',
+                            tipoAtividade: data.tipoAtividade || '',
                             cursos: data.cursos || [],
                             liga: data.liga || '',
-                            dataInicio: data.dataInicio ? dayjs(data.dataInicio.toDate()) : null,
-                            horarioSlotString: [data.horarioSlotString],
-                            dynamicLabs: [{ tipo: labObj?.tipo || '', laboratorios: [data.laboratorioSelecionado] }]
+                            dataInicio: dayjs(data.dataInicio.toDate()),
+                            horarioSlotString: Array.isArray(data.horarioSlotString) ? data.horarioSlotString : [data.horarioSlotString],
+                            dynamicLabs: [{ tipo: labObj ? labObj.tipo : '', laboratorios: [data.laboratorioSelecionado] }]
                         });
                     }
                 } catch (error) {
@@ -243,7 +260,7 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
                 }
             }
         };
-        loadAula();
+        loadAulaData();
     }, [aulaId]);
 
     const handleChange = (e) => {
@@ -275,15 +292,12 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
 
     const validate = () => {
         const newErrors = {};
-        if (!formData.tipoAtividade) newErrors.tipoAtividade = 'Obrigatório';
         if (!formData.assunto.trim()) newErrors.assunto = 'Obrigatório';
         if (formData.cursos.length === 0) newErrors.cursos = 'Selecione pelo menos um curso';
         if (!formData.dataInicio) newErrors.dataInicio = 'Selecione a data';
         if (formData.horarioSlotString.length === 0) newErrors.horarioSlotString = 'Selecione o horário';
-        
         const labsValidos = formData.dynamicLabs.every(lab => lab.tipo && lab.laboratorios.length > 0);
         if (!labsValidos) newErrors.dynamicLabs = 'Preencha todos os campos de laboratório';
-
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
@@ -303,14 +317,18 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
                 for (const labGroup of formData.dynamicLabs) {
                     for (const labName of labGroup.laboratorios) {
                         aulasParaAgendar.push({
-                            ...formData,
+                            assunto: formData.assunto,
+                            observacoes: formData.observacoes,
+                            tipoAtividade: formData.tipoAtividade,
+                            cursos: formData.cursos,
+                            liga: formData.liga,
                             laboratorioSelecionado: labName,
                             dataInicio: dataHoraInicio,
                             dataFim: dataHoraFim,
                             horarioSlotString: slot,
-                            status: isCoordenador ? 'aprovada' : 'pendente',
                             professorUid: currentUser.uid,
                             professorNome: userInfo?.name || currentUser.displayName || currentUser.email,
+                            status: isCoordenador ? 'aprovada' : 'pendente',
                             createdAt: serverTimestamp()
                         });
                     }
@@ -318,15 +336,11 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
             }
 
             const conflitosEncontrados = [];
-            for (const novaAula of aulasParaAgendar) {
-                const q = query(collection(db, "aulas"), 
-                    where("laboratorioSelecionado", "==", novaAula.laboratorioSelecionado),
-                    where("dataInicio", "==", Timestamp.fromDate(novaAula.dataInicio.toDate())),
-                    where("horarioSlotString", "==", novaAula.horarioSlotString)
-                );
-                const snap = await getDocs(q);
-                snap.docs.forEach(doc => {
-                    if (doc.id !== aulaId) conflitosEncontrados.push({ novaAula, conflito: { id: doc.id, ...doc.data() } });
+            for (const nova of aulasParaAgendar) {
+                const q = query(collection(db, "aulas"), where("laboratorioSelecionado", "==", nova.laboratorioSelecionado), where("dataInicio", "==", Timestamp.fromDate(nova.dataInicio.toDate())), where("horarioSlotString", "==", nova.horarioSlotString));
+                const querySnapshot = await getDocs(q);
+                querySnapshot.docs.forEach(doc => {
+                    if (doc.id !== aulaId) conflitosEncontrados.push({ novaAula: nova, conflito: { id: doc.id, ...doc.data() } });
                 });
             }
 
@@ -340,9 +354,6 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
             }
         } catch (error) {
             console.error("Erro ao preparar agendamento:", error);
-            setSnackbarMessage("Erro ao processar dados.");
-            setSnackbarSeverity('error');
-            setOpenSnackbar(true);
         } finally {
             setLoadingSubmit(false);
         }
@@ -358,7 +369,7 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
                 await batch.commit();
                 setOpenConfirmModal(true);
             } catch (error) {
-                console.error("Erro ao remover conflitos:", error);
+                console.error("Erro ao substituir aulas:", error);
             } finally {
                 setLoadingSubmit(false);
             }
@@ -371,40 +382,38 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
         setOpenConfirmModal(false);
         setLoadingSubmit(true);
         try {
-            const aulasParaAdicionar = [];
+            const finalizadas = [];
             if (isEditMode && aulaId) {
                 const aula = aulasParaConfirmar[0];
-                const { dynamicLabs, ...dadosSalvar } = aula;
                 const finalData = {
-                    ...dadosSalvar,
+                    ...aula,
                     dataInicio: Timestamp.fromDate(aula.dataInicio.toDate()),
                     dataFim: Timestamp.fromDate(aula.dataFim.toDate()),
                     updatedAt: serverTimestamp()
                 };
                 await updateDoc(doc(db, "aulas", aulaId), finalData);
-                aulasParaAdicionar.push(aula);
+                finalizadas.push(aula);
             } else {
                 for (const aula of aulasParaConfirmar) {
-                    const { dynamicLabs, ...dadosSalvar } = aula;
                     const finalData = {
-                        ...dadosSalvar,
+                        ...aula,
                         dataInicio: Timestamp.fromDate(aula.dataInicio.toDate()),
                         dataFim: Timestamp.fromDate(aula.dataFim.toDate())
                     };
-                    const docRef = await addDoc(collection(db, "aulas"), finalData);
-                    aulasParaAdicionar.push({ id: docRef.id, ...aula });
+                    await addDoc(collection(db, "aulas"), finalData);
+                    finalizadas.push(aula);
                 }
             }
 
-            const mensagemSucesso = isEditMode ? "Aula atualizada com sucesso!" : `${aulasParaConfirmar.length} aula(s) agendada(s) com sucesso!`;
-            await notificarTelegramBatch(aulasParaAdicionar, isEditMode ? 'editar' : 'adicionar');
-            setSnackbarMessage(mensagemSucesso);
+            await notificarTelegramBatch(finalizadas, isEditMode ? 'editar' : 'adicionar');
+
+            setSnackbarMessage(isEditMode ? 'Aula atualizada com sucesso!' : 'Aula(s) proposta(s) com sucesso!');
             setSnackbarSeverity('success');
             setOpenSnackbar(true);
-            if (isModal) onSuccess();
-            else setOpenKeepDataDialog(true);
+            if (onSuccess) onSuccess();
+            else if (!isEditMode) setOpenKeepDataDialog(true);
         } catch (error) {
-            setSnackbarMessage(`Erro ao salvar: ${error.message}`);
+            setSnackbarMessage('Erro ao salvar agendamento.');
             setSnackbarSeverity('error');
             setOpenSnackbar(true);
         } finally {
@@ -412,74 +421,65 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
         }
     };
 
-    const handleCloseSnackbar = (event, reason) => { if (reason === 'clickaway') return; setOpenSnackbar(false); };
-    const handleKeepData = (keep) => { setOpenKeepDataDialog(false); if (keep) clearForm(true); else navigate('/calendario'); };
-
-    const clearForm = (keepData = false) => {
-        if (keepData) {
-            setFormData(prev => ({ ...prev, dataInicio: null, horarioSlotString: [] }));
-            return;
-        }
-        setFormData({ assunto: '', observacoes: '', tipoAtividade: '', cursos: [], liga: '', dataInicio: null, horarioSlotString: [], dynamicLabs: [{ tipo: '', laboratorios: [] }] });
-        setCopiedTecnicos(null);
-        setErrors({});
+    const handleKeepData = (keep) => {
+        setOpenKeepDataDialog(false);
+        if (!keep) navigate('/calendario');
+        else setFormData(prev => ({ ...prev, horarioSlotString: [] }));
     };
+
+    const handleCloseSnackbar = () => setOpenSnackbar(false);
 
     return (
         <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="pt-br">
             <Container maxWidth="md">
-                <Typography variant="h4" component="h1" gutterBottom align="center" sx={{ mb: 4, color: '#3f51b5', fontWeight: 'bold', mt: 4 }}>
+                <Typography variant="h4" component="h1" gutterBottom align="center" sx={{ mb: 4, color: '#3f51b5', fontWeight: 'bold', mt: isModal ? 0 : 4 }}>
                     {formTitle || (isEditMode ? "Editar Aula" : "Propor Nova Aula")}
                 </Typography>
                 <form onSubmit={(e) => { e.preventDefault(); prepareAndConfirm(); }}>
                     <Grid container spacing={3} justifyContent="center">
                         <Grid item xs={12} md={6}>
-                            <Paper elevation={3} sx={{ p: 3, borderLeft: '5px solid #1976d2', height: '100%' }}>
-                                <Typography variant="h6" gutterBottom>1. Detalhes da Aula</Typography>
-                                <FormControl fullWidth sx={{ mb: 2 }} error={!!errors.tipoAtividade}>
-                                    <InputLabel>Tipo *</InputLabel>
-                                    <Select name="tipoAtividade" value={formData.tipoAtividade} label="Tipo *" onChange={handleChange}>
-                                        <MenuItem value="aula">Aula</MenuItem>
-                                        <MenuItem value="revisao">Revisão</MenuItem>
-                                    </Select>
-                                    {errors.tipoAtividade && <FormHelperText>{errors.tipoAtividade}</FormHelperText>}
-                                </FormControl>
+                            <Paper elevation={3} sx={{ p: 3, borderLeft: '5px solid #3f51b5', height: '100%' }}>
+                                <Typography variant="h6" gutterBottom>1. Detalhes da Atividade</Typography>
                                 <TextField fullWidth label="Assunto da Aula *" name="assunto" value={formData.assunto} onChange={handleChange} error={!!errors.assunto} helperText={errors.assunto} sx={{ mb: 2 }} />
+                                
                                 <Autocomplete
                                     multiple
                                     id="cursos-autocomplete"
                                     options={LISTA_CURSOS_CONSTANTS}
-                                    getOptionLabel={(option) => option.label}
-                                    isOptionEqualToValue={(option, value) => option.value === value.value}
-                                    value={formData.cursos.map(value => LISTA_CURSOS_CONSTANTS.find(c => c.value === value)).filter(Boolean)}
+                                    getOptionLabel={(option) => option.label || option}
+                                    isOptionEqualToValue={(option, value) => option.value === value.value || option.value === value}
+                                    value={formData.cursos.map(val => {
+                                        return LISTA_CURSOS_CONSTANTS.find(c => c.value === val) || val;
+                                    })}
                                     onChange={(event, newValue) => {
-                                        const syntheticEvent = { target: { name: 'cursos', value: newValue.map(item => item.value) } };
-                                        handleChange(syntheticEvent);
+                                        const values = newValue.map(item => item.value || item);
+                                        setFormData(prev => ({ ...prev, cursos: values }));
                                     }}
                                     renderInput={(params) => (
-                                        <TextField {...params} label="Curso(s) Relacionado(s) *" placeholder="Selecione os cursos" error={!!errors.cursos} helperText={errors.cursos} />
+                                        <TextField 
+                                            {...params} 
+                                            label="Curso(s) *" 
+                                            placeholder={formData.cursos.length === 0 ? "Selecione..." : ""}
+                                            error={!!errors.cursos} 
+                                            helperText={errors.cursos} 
+                                        />
                                     )}
                                     renderTags={(value, getTagProps) =>
-                                        value.map((option, index) => (
-                                            <Chip variant="outlined" label={option.label} {...getTagProps({ index })} size="small" />
-                                        ))
+                                        value.map((option, index) => {
+                                            const label = option.label || option;
+                                            return (
+                                                <Chip variant="outlined" label={label} {...getTagProps({ index })} size="small" />
+                                            );
+                                        })
                                     }
                                     sx={{ mb: 2 }}
                                 />
-                                {formData.tipoAtividade === 'revisao' && (
-                                    <FormControl fullWidth sx={{ mb: 2 }}>
-                                        <InputLabel>Liga</InputLabel>
-                                        <Select name="liga" value={formData.liga} label="Liga" onChange={handleChange}>
-                                            <MenuItem value=""><em>Nenhuma</em></MenuItem>
-                                            {LISTA_CURSOS_CONSTANTS.map(c => <MenuItem key={c.value} value={c.value}>{c.label}</MenuItem>)}
-                                        </Select>
-                                    </FormControl>
-                                )}
-                                <TextField fullWidth label="Observações" name="observacoes" value={formData.observacoes} onChange={handleChange} multiline rows={1} />
+
+                                <TextField fullWidth label="Observações" name="observacoes" value={formData.observacoes} onChange={handleChange} multiline rows={3} />
                             </Paper>
                         </Grid>
                         <Grid item xs={12} md={6}>
-                            <Paper elevation={3} sx={{ p: 3, borderLeft: '5px solid #ff9800', height: '100%', opacity: (!secao1Completa && !isEditMode) ? 0.8 : 1 }}>
+                            <Paper elevation={3} sx={{ p: 3, borderLeft: '5px solid #f50057', height: '100%', opacity: (!secao1Completa && !isEditMode) ? 0.8 : 1 }}>
                                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                         <Typography variant="h6" gutterBottom sx={{ mb: 0 }}>2. Laboratório(s)</Typography>
@@ -492,11 +492,10 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
                                     </Tooltip>
                                 </Box>
                                 {!secao1Completa && !isEditMode && (
-                                    <Alert severity="warning" sx={{ mt: 1, mb: 2 }}>
-                                        <strong>Seção bloqueada!</strong> Complete todos os campos obrigatórios (*) da Seção 1 para desbloquear.
+                                    <Alert severity="warning" sx={{ mb: 2, mt: 1 }}>
+                                        <strong>Seção bloqueada!</strong> Complete a Seção 1 para desbloquear.
                                     </Alert>
                                 )}
-                                {errors.dynamicLabs && <Alert severity="error" sx={{ mb: 1, fontSize: '0.8rem' }}>{errors.dynamicLabs}</Alert>}
                                 {formData.dynamicLabs.map((labSelection, index) => {
                                     if (!labSelection) return null;
                                     return (
@@ -555,6 +554,7 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
                                 )}
                                 <Grid container spacing={2}>
                                     <Grid item xs={12} md={6}>
+                                        {/* --- DATEPICKER COM BLOQUEIO DE FERIADOS --- */}
                                         <DatePicker
                                             label="Data da Aula *"
                                             value={formData.dataInicio}
@@ -563,14 +563,17 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
                                                 if (errors.dataInicio) setErrors(prev => ({ ...prev, dataInicio: null }));
                                             }}
                                             disabled={!secao2Completa && !isEditMode}
+                                            shouldDisableDate={isDayBlocked}
                                             slotProps={{
                                                 textField: { fullWidth: true, error: !!errors.dataInicio, helperText: errors.dataInicio },
                                                 day: {
                                                     sx: (day) => {
-                                                        // CORREÇÃO: Garante que 'day' seja convertido para Dayjs antes do .format()
                                                         const dateObj = dayjs(day);
                                                         if (!dateObj.isValid()) return {};
                                                         
+                                                        // Se bloqueado
+                                                        if (isDayBlocked(dateObj)) return { backgroundColor: 'rgba(0, 0, 0, 0.1)', color: '#999', pointerEvents: 'none', borderRadius: '50%' };
+
                                                         const dateStr = dateObj.format('YYYY-MM-DD');
                                                         if (diasTotalmenteOcupados.includes(dateStr)) return { backgroundColor: 'rgba(244, 67, 54, 0.2)', borderRadius: '50%' };
                                                         if (diasParcialmenteOcupados.includes(dateStr)) return { border: '1px solid #1976d2', borderRadius: '50%' };
