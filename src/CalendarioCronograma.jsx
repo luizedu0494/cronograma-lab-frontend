@@ -10,7 +10,7 @@ import {
 import {
     ChevronLeft, ChevronRight, FilterList as FilterListIcon, Edit as EditIcon,
     Delete as DeleteIcon, MoreVert as MoreVertIcon, Add as AddIcon,
-    EventNote as EventIcon, CalendarMonth as CalendarIcon
+    EventNote as EventIcon, CalendarMonth as CalendarIcon, ClearAll as ClearAllIcon
 } from '@mui/icons-material';
 import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
@@ -37,6 +37,9 @@ const CURSO_COLORS = {
     'med_veterinaria': '#8BC34A', 'quimica_tecnologica': '#607D8B', 'engenharia': '#9E9E9E',
     'tec_cosmetico': '#3F51B5', 'default': '#616161'
 };
+
+// Chave para salvar no LocalStorage
+const STORAGE_KEY_FILTROS = 'cronograma_filtros_v1';
 
 const AulaCard = ({ aula, onEdit, onDelete, isCoordenador }) => {
     const [expanded, setExpanded] = useState(false);
@@ -90,8 +93,20 @@ function CalendarioCronograma({ userInfo }) {
     const [eventosFiltrados, setEventosFiltrados] = useState([]);
     const [loading, setLoading] = useState(true);
     const [holidays, setHolidays] = useState([]);
-    const [filtrosVisiveis, setFiltrosVisiveis] = useState(false);
-    const [filtros, setFiltros] = useState({ laboratorio: [], cursos: [], assunto: '', turno: [], status: ['aprovada'] });
+    
+    // Inicializa Filtros do LocalStorage ou Padrão
+    const [filtros, setFiltros] = useState(() => {
+        const saved = localStorage.getItem(STORAGE_KEY_FILTROS);
+        return saved ? JSON.parse(saved) : { laboratorio: [], cursos: [], assunto: '', turno: [], status: ['aprovada'] };
+    });
+    
+    // Se tiver filtros salvos (diferentes do padrão vazio), abre o painel automaticamente
+    const [filtrosVisiveis, setFiltrosVisiveis] = useState(() => {
+        const saved = localStorage.getItem(STORAGE_KEY_FILTROS);
+        if (!saved) return false;
+        const parsed = JSON.parse(saved);
+        return parsed.laboratorio.length > 0 || parsed.cursos.length > 0 || parsed.turno.length > 0 || parsed.assunto !== '';
+    });
     
     // Modais
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -108,6 +123,17 @@ function CalendarioCronograma({ userInfo }) {
     const week = useMemo(() => currentDate.startOf('week'), [currentDate]);
     const weekDays = useMemo(() => Array.from({ length: 7 }, (_, i) => week.add(i, 'day')), [week]);
 
+    // Salva filtros no LocalStorage sempre que mudarem
+    useEffect(() => {
+        localStorage.setItem(STORAGE_KEY_FILTROS, JSON.stringify(filtros));
+    }, [filtros]);
+
+    const limparFiltros = () => {
+        const reset = { laboratorio: [], cursos: [], assunto: '', turno: [], status: ['aprovada'] };
+        setFiltros(reset);
+        setFiltrosVisiveis(false);
+    };
+
     const fetchDados = useCallback(async () => {
         setLoading(true);
         const inicioSemana = week.startOf('day').toDate();
@@ -121,7 +147,7 @@ function CalendarioCronograma({ userInfo }) {
             setEventos(eventosSnap.docs.map(doc => ({ id: doc.id, ...doc.data(), start: doc.data().dataInicio.toDate(), end: doc.data().dataFim.toDate() })));
             setHolidays(await getHolidays(currentDate.year(), 'AL', 'Maceió'));
         } catch (err) { console.error(err); } finally { setLoading(false); }
-    }, [week, currentDate]);
+    }, [week]);
 
     useEffect(() => { fetchDados(); }, [fetchDados]);
 
@@ -155,7 +181,6 @@ function CalendarioCronograma({ userInfo }) {
                                 value={currentDate}
                                 onChange={(val) => {
                                     if (val) {
-                                        // CORREÇÃO: Garante conversão para Dayjs
                                         setCurrentDate(dayjs(val));
                                         setIsPickerOpen(false);
                                     }
@@ -188,15 +213,30 @@ function CalendarioCronograma({ userInfo }) {
                         </Box>
                         <Box sx={{ display: 'flex', gap: 1 }}>
                             <Button onClick={() => setCurrentDate(dayjs())} variant="outlined" size="small">Hoje</Button>
-                            <Button onClick={() => setFiltrosVisiveis(!filtrosVisiveis)} startIcon={<FilterListIcon />} variant={filtrosVisiveis ? "contained" : "outlined"} size="small">Filtros</Button>
+                            <Button 
+                                onClick={() => setFiltrosVisiveis(!filtrosVisiveis)} 
+                                startIcon={<FilterListIcon />} 
+                                variant={filtrosVisiveis ? "contained" : "outlined"} 
+                                size="small"
+                                color={filtrosVisiveis ? "primary" : "inherit"}
+                            >
+                                Filtros {filtrosVisiveis ? '(Ativos)' : ''}
+                            </Button>
                         </Box>
                     </Box>
                     <Collapse in={filtrosVisiveis}>
-                        <Grid container spacing={2} sx={{ mb: 1 }}>
+                        <Grid container spacing={2} sx={{ pt: 2, alignItems: 'center' }}>
                             <Grid item xs={12} sm={6} md={3}><FormControl fullWidth size="small"><InputLabel>Laboratórios</InputLabel><Select multiple value={filtros.laboratorio} onChange={(e) => setFiltros({...filtros, laboratorio: e.target.value})} input={<OutlinedInput label="Laboratórios" />} renderValue={(s) => <Chip label={`${s.length} sel.`} size="small" />}>{LISTA_LABORATORIOS.map(l => <MenuItem key={l.id} value={l.name}>{l.name}</MenuItem>)}</Select></FormControl></Grid>
                             <Grid item xs={12} sm={6} md={3}><FormControl fullWidth size="small"><InputLabel>Cursos</InputLabel><Select multiple value={filtros.cursos} onChange={(e) => setFiltros({...filtros, cursos: e.target.value})} input={<OutlinedInput label="Cursos" />} renderValue={(s) => <Chip label={`${s.length} sel.`} size="small" />}>{LISTA_CURSOS.map(c => <MenuItem key={c.value} value={c.value}>{c.label}</MenuItem>)}</Select></FormControl></Grid>
                             <Grid item xs={12} sm={6} md={2}><FormControl fullWidth size="small"><InputLabel>Turnos</InputLabel><Select multiple value={filtros.turno} onChange={(e) => setFiltros({...filtros, turno: e.target.value})} input={<OutlinedInput label="Turnos" />} renderValue={(s) => <Chip label={`${s.length} sel.`} size="small" />}>{TURNOS.map(t => <MenuItem key={t} value={t}>{t}</MenuItem>)}</Select></FormControl></Grid>
-                            <Grid item xs={12} sm={6} md={4}><TextField fullWidth label="Buscar por nome ou assunto" size="small" value={filtros.assunto} onChange={(e) => setFiltros({...filtros, assunto: e.target.value})} /></Grid>
+                            <Grid item xs={12} sm={6} md={3}><TextField fullWidth label="Buscar por nome ou assunto" size="small" value={filtros.assunto} onChange={(e) => setFiltros({...filtros, assunto: e.target.value})} /></Grid>
+                            <Grid item xs={12} sm={6} md={1}>
+                                <Tooltip title="Limpar Filtros">
+                                    <IconButton onClick={limparFiltros} color="error" size="small">
+                                        <ClearAllIcon />
+                                    </IconButton>
+                                </Tooltip>
+                            </Grid>
                         </Grid>
                     </Collapse>
                 </Paper>
