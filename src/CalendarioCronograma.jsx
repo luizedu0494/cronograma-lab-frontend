@@ -5,14 +5,15 @@ import {
     Container, Typography, Box, CircularProgress, Alert, Paper, Grid,
     Button, IconButton, Tooltip, Collapse, FormControl, InputLabel,
     Select, MenuItem, OutlinedInput, Chip, TextField, Divider, Snackbar, Menu,
-    Dialog, DialogTitle, DialogContent, InputAdornment, Checkbox, Fade
+    Dialog, DialogTitle, DialogContent, InputAdornment, Checkbox, Fade, useTheme
 } from '@mui/material';
 import {
     ChevronLeft, ChevronRight, FilterList as FilterListIcon, Edit as EditIcon,
     Delete as DeleteIcon, MoreVert as MoreVertIcon, Add as AddIcon,
     EventNote as EventIcon, CalendarMonth as CalendarIcon, ClearAll as ClearAllIcon,
     CheckBox as CheckBoxIcon, CheckBoxOutlineBlank as CheckBoxOutlineBlankIcon,
-    Close as CloseIcon, Block as BlockIcon // Ícone de bloqueio
+    Close as CloseIcon, Block as BlockIcon, Search as SearchIcon, 
+    Today as TodayIcon, ViewWeek as ViewWeekIcon
 } from '@mui/icons-material';
 import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
@@ -20,7 +21,7 @@ import dayjs from 'dayjs';
 import 'dayjs/locale/pt-br';
 import isBetween from 'dayjs/plugin/isBetween';
 
-import { LISTA_LABORATORIOS } from './constants/laboratorios';
+import { LISTA_LABORATORIOS, TIPOS_LABORATORIO } from './constants/laboratorios';
 import ProporAulaForm from './ProporAulaForm';
 import ProporEventoForm from './ProporEventoForm';
 import DialogConfirmacao from './components/DialogConfirmacao';
@@ -46,44 +47,48 @@ const STORAGE_KEY_FILTROS = 'cronograma_filtros_v1';
 const AulaCard = ({ aula, onEdit, onDelete, isCoordenador, isSelectionMode, isSelected, onToggleSelect }) => {
     const [expanded, setExpanded] = useState(false);
     const [anchorEl, setAnchorEl] = useState(null);
+    const theme = useTheme();
     const openMenu = Boolean(anchorEl);
 
     const handleMenuClick = (event) => { event.stopPropagation(); setAnchorEl(event.currentTarget); };
     
-    const aulaDetalhes = {
-        ...aula,
-        horario: `${dayjs(aula.start).format('HH:mm')} - ${dayjs(aula.end).format('HH:mm')}`,
-        cursosNomes: (aula.cursos || []).map(c => LISTA_CURSOS.find(lc => lc.value === c)?.label || c).join(', '),
-    };
+    const cursosNomes = useMemo(() => {
+        if (!aula.cursos || !Array.isArray(aula.cursos)) return 'Nenhum curso';
+        return aula.cursos.map(c => {
+            if (typeof c === 'string') return LISTA_CURSOS.find(lc => lc.value === c)?.label || c;
+            return c.label || c.name || JSON.stringify(c);
+        }).join(', ');
+    }, [aula.cursos]);
+
+    const horarioFormatado = useMemo(() => {
+        const start = dayjs(aula.start);
+        const end = dayjs(aula.end);
+        return `${start.isValid() ? start.format('HH:mm') : '--:--'} - ${end.isValid() ? end.format('HH:mm') : '--:--'}`;
+    }, [aula.start, aula.end]);
 
     const handleCardClick = () => {
-        if (isSelectionMode) {
-            onToggleSelect(aula.id);
-        } else {
-            setExpanded(!expanded);
-        }
+        if (isSelectionMode) onToggleSelect(aula.id);
+        else setExpanded(!expanded);
     };
+
+    const corBorda = CURSO_COLORS[aula.cursos?.[0]] || CURSO_COLORS.default;
 
     return (
         <Paper 
             elevation={expanded ? 6 : 2} 
             sx={{ 
                 width: '100%', mb: 1, position: 'relative', 
-                borderLeft: `4px solid ${CURSO_COLORS[aula.cursos?.[0]] || CURSO_COLORS.default}`,
+                borderLeft: `4px solid ${corBorda}`,
                 transition: 'all 0.2s',
                 transform: isSelected ? 'scale(0.98)' : 'scale(1)',
-                bgcolor: isSelected ? 'rgba(25, 118, 210, 0.08)' : 'background.paper',
-                border: isSelected ? '1px solid #1976d2' : undefined
+                bgcolor: isSelected ? (theme.palette.mode === 'dark' ? 'rgba(25, 118, 210, 0.2)' : 'rgba(25, 118, 210, 0.08)') : 'background.paper',
+                border: isSelected ? '1px solid #1976d2' : undefined,
+                color: 'text.primary'
             }}
         >
             {isSelectionMode && (
                 <Box sx={{ position: 'absolute', top: 4, left: 4, zIndex: 2 }}>
-                    <Checkbox 
-                        size="small" 
-                        checked={isSelected} 
-                        onChange={() => onToggleSelect(aula.id)}
-                        onClick={(e) => e.stopPropagation()}
-                    />
+                    <Checkbox size="small" checked={isSelected} onChange={() => onToggleSelect(aula.id)} onClick={(e) => e.stopPropagation()} />
                 </Box>
             )}
 
@@ -98,12 +103,12 @@ const AulaCard = ({ aula, onEdit, onDelete, isCoordenador, isSelectionMode, isSe
             )}
 
             <Box onClick={handleCardClick} sx={{ p: 1.5, pl: isSelectionMode ? 5 : 1.5, cursor: 'pointer' }}>
-                <Typography variant="subtitle2" fontWeight="bold">{aulaDetalhes.title}</Typography>
-                <Typography variant="caption" color="text.secondary">{aulaDetalhes.horario}</Typography>
+                <Typography variant="subtitle2" fontWeight="bold" sx={{ color: 'text.primary' }}>{aula.title || 'Sem Título'}</Typography>
+                <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 0.5 }}>{horarioFormatado}</Typography>
                 <Collapse in={expanded && !isSelectionMode} timeout="auto" unmountOnExit>
                     <Divider sx={{ my: 1 }} />
-                    <Typography variant="body2"><strong>Lab:</strong> {aulaDetalhes.laboratorio}</Typography>
-                    <Typography variant="body2"><strong>Cursos:</strong> {aulaDetalhes.cursosNomes}</Typography>
+                    <Typography variant="body2" sx={{ color: 'text.primary' }}><strong>Lab:</strong> {aula.laboratorio || 'N/A'}</Typography>
+                    <Typography variant="body2" sx={{ color: 'text.primary' }}><strong>Cursos:</strong> {cursosNomes}</Typography>
                 </Collapse>
             </Box>
         </Paper>
@@ -111,7 +116,12 @@ const AulaCard = ({ aula, onEdit, onDelete, isCoordenador, isSelectionMode, isSe
 };
 
 function CalendarioCronograma({ userInfo }) {
-    const [searchParams] = useSearchParams();
+    const theme = useTheme();
+    const [searchParams, setSearchParams] = useSearchParams();
+    
+    // --- ESTADO DE VISUALIZAÇÃO ('week' ou 'day') ---
+    const [viewMode, setViewMode] = useState('week'); 
+
     const [currentDate, setCurrentDate] = useState(() => {
         const dateParam = searchParams.get('date');
         return dateParam ? dayjs(dateParam) : dayjs();
@@ -123,8 +133,6 @@ function CalendarioCronograma({ userInfo }) {
     const [aulasFiltradas, setAulasFiltradas] = useState([]);
     const [eventosFiltrados, setEventosFiltrados] = useState([]);
     const [loading, setLoading] = useState(true);
-    
-    // Lista de períodos de bloqueio vindos do Firebase
     const [periodosBloqueio, setPeriodosBloqueio] = useState([]); 
     
     const [filtros, setFiltros] = useState(() => {
@@ -146,7 +154,6 @@ function CalendarioCronograma({ userInfo }) {
     const [isEventModalOpen, setIsEventModalOpen] = useState(false);
     const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false);
     
-    // Ações
     const [aulaParaAcao, setAulaParaAcao] = useState(null);
     const [eventoParaAcao, setEventoParaAcao] = useState(null);
     const [actionLoading, setActionLoading] = useState(false);
@@ -156,48 +163,55 @@ function CalendarioCronograma({ userInfo }) {
     const [isSelectionMode, setIsSelectionMode] = useState(false);
     const [selectedAulasIds, setSelectedAulasIds] = useState([]);
 
-    const week = useMemo(() => currentDate.startOf('week'), [currentDate]);
-    const weekDays = useMemo(() => Array.from({ length: 7 }, (_, i) => week.add(i, 'day')), [week]);
+    // --- CÁLCULOS DE DATA ---
+    const weekStart = useMemo(() => currentDate.startOf('week'), [currentDate]);
+    const weekEnd = useMemo(() => currentDate.endOf('week'), [currentDate]);
+    const weekDays = useMemo(() => Array.from({ length: 7 }, (_, i) => weekStart.add(i, 'day')), [weekStart]);
+
+    // Define quais dias mostrar com base no modo
+    const daysToShow = useMemo(() => {
+        if (viewMode === 'day') return [currentDate]; // Mostra só o dia selecionado (expandido)
+        return weekDays; // Mostra os 7 dias
+    }, [viewMode, currentDate, weekDays]);
 
     useEffect(() => {
         localStorage.setItem(STORAGE_KEY_FILTROS, JSON.stringify(filtros));
     }, [filtros]);
 
     const limparFiltros = () => {
-        const reset = { laboratorio: [], cursos: [], assunto: '', turno: [], status: ['aprovada'] };
-        setFiltros(reset);
-        setFiltrosVisiveis(false);
+        setFiltros({ laboratorio: [], cursos: [], assunto: '', turno: [], status: ['aprovada'] });
     };
 
     const fetchDados = useCallback(async () => {
         setLoading(true);
-        const inicioSemana = week.startOf('day').toDate();
-        const fimSemana = week.endOf('week').endOf('day').toDate();
+        // Busca sempre a semana inteira para garantir que, se voltar para 'week', os dados já estão lá
+        const start = weekStart.toDate();
+        const end = weekEnd.toDate();
+        
         try {
-            const qAulas = query(collection(db, 'aulas'), where('dataInicio', '>=', Timestamp.fromDate(inicioSemana)), where('dataInicio', '<=', Timestamp.fromDate(fimSemana)), orderBy('dataInicio', 'asc'));
-            const qEventos = query(collection(db, 'eventosManutencao'), where('dataInicio', '>=', Timestamp.fromDate(inicioSemana)), where('dataInicio', '<=', Timestamp.fromDate(fimSemana)));
-            
-            // Busca periodos/feriados do banco que afetam esta semana
-            const qPeriodos = query(collection(db, 'periodosSemAtividade'), 
-                where('dataFim', '>=', Timestamp.fromDate(inicioSemana))
-            );
+            const qAulas = query(collection(db, 'aulas'), where('dataInicio', '>=', Timestamp.fromDate(start)), where('dataInicio', '<=', Timestamp.fromDate(end)), orderBy('dataInicio', 'asc'));
+            const qEventos = query(collection(db, 'eventosManutencao'), where('dataInicio', '>=', Timestamp.fromDate(start)), where('dataInicio', '<=', Timestamp.fromDate(end)));
+            const qPeriodos = query(collection(db, 'periodosSemAtividade'), where('dataFim', '>=', Timestamp.fromDate(start)));
 
             const [aulasSnap, eventosSnap, periodosSnap] = await Promise.all([getDocs(qAulas), getDocs(qEventos), getDocs(qPeriodos)]);
             
-            setAulas(aulasSnap.docs.map(doc => ({ id: doc.id, ...doc.data(), start: doc.data().dataInicio.toDate(), end: doc.data().dataFim.toDate(), title: doc.data().assunto, laboratorio: doc.data().laboratorioSelecionado })));
-            setEventos(eventosSnap.docs.map(doc => ({ id: doc.id, ...doc.data(), start: doc.data().dataInicio.toDate(), end: doc.data().dataFim.toDate() })));
-            
-            // Processa os periodos
-            const periodosList = periodosSnap.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data(),
-                start: dayjs(doc.data().dataInicio.toDate()),
-                end: dayjs(doc.data().dataFim.toDate())
+            setAulas(aulasSnap.docs.map(doc => {
+                const data = doc.data();
+                return { id: doc.id, ...data, start: data.dataInicio?.toDate() || new Date(), end: data.dataFim?.toDate() || new Date(), title: data.assunto || 'Sem Título', laboratorio: data.laboratorioSelecionado };
             }));
-            setPeriodosBloqueio(periodosList);
+
+            setEventos(eventosSnap.docs.map(doc => {
+                const data = doc.data();
+                return { id: doc.id, ...data, start: data.dataInicio?.toDate() || new Date(), end: data.dataFim?.toDate() || new Date() };
+            }));
+            
+            setPeriodosBloqueio(periodosSnap.docs.map(doc => {
+                const data = doc.data();
+                return { id: doc.id, ...data, start: dayjs(data.dataInicio?.toDate()), end: dayjs(data.dataFim?.toDate()) };
+            }));
 
         } catch (err) { console.error(err); } finally { setLoading(false); }
-    }, [week]);
+    }, [weekStart, weekEnd]);
 
     useEffect(() => { fetchDados(); }, [fetchDados]);
 
@@ -205,300 +219,287 @@ function CalendarioCronograma({ userInfo }) {
         const filtrar = (item, isEvento = false) => {
             const matchLab = filtros.laboratorio.length === 0 || filtros.laboratorio.includes(isEvento ? item.laboratorio : item.laboratorio);
             const matchCurso = isEvento ? true : (filtros.cursos.length === 0 || item.cursos?.some(c => filtros.cursos.includes(c)));
-            const matchAssunto = !filtros.assunto || (isEvento ? item.titulo : item.title).toLowerCase().includes(filtros.assunto.toLowerCase());
+            const matchAssunto = !filtros.assunto || (isEvento ? (item.titulo || '') : (item.title || '')).toLowerCase().includes(filtros.assunto.toLowerCase());
             let matchTurno = true;
             if (filtros.turno.length > 0) {
                 const hora = dayjs(item.start).hour();
-                matchTurno = (filtros.turno.includes('Manhã') && hora < 12) || (filtros.turno.includes('Tarde') && hora >= 12 && hora < 18) || (filtros.turno.includes('Noite') && hora >= 18);
+                const turnoItem = hora < 12 ? 'Manhã' : hora < 18 ? 'Tarde' : 'Noite';
+                matchTurno = filtros.turno.includes(turnoItem);
             }
-            return matchLab && matchCurso && matchAssunto && matchTurno && (isEvento ? true : (filtros.status.includes(item.status)));
+            return matchLab && matchCurso && matchAssunto && matchTurno;
         };
-        setAulasFiltradas(aulas.filter(a => filtrar(a, false)));
+        setAulasFiltradas(aulas.filter(a => filtrar(a)));
         setEventosFiltrados(eventos.filter(e => filtrar(e, true)));
     }, [aulas, eventos, filtros]);
 
-    const getIntervaloTexto = (date) => `${dayjs(date).startOf('week').format('DD/MM')} - ${dayjs(date).endOf('week').format('DD/MM/YYYY')}`;
-
-    // --- FUNÇÃO PARA VERIFICAR SE O DIA TEM ALGUM BLOQUEIO/FERIADO ---
-    const getPeriodoDoDia = (dia) => {
-        return periodosBloqueio.find(p => 
-            dia.isBetween(p.start, p.end, 'day', '[]')
-        );
+    // Navegação
+    const handlePrev = () => {
+        const unit = viewMode === 'day' ? 'day' : 'week';
+        const newDate = currentDate.subtract(1, unit);
+        setCurrentDate(newDate);
+        setSearchParams({ date: newDate.format('YYYY-MM-DD') });
     };
 
-    const handleToggleSelectAula = (id) => {
-        setSelectedAulasIds(prev => prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]);
+    const handleNext = () => {
+        const unit = viewMode === 'day' ? 'day' : 'week';
+        const newDate = currentDate.add(1, unit);
+        setCurrentDate(newDate);
+        setSearchParams({ date: newDate.format('YYYY-MM-DD') });
     };
 
-    const handleSelectAllVisible = () => {
-        if (selectedAulasIds.length === aulasFiltradas.length) {
-            setSelectedAulasIds([]);
-        } else {
-            setSelectedAulasIds(aulasFiltradas.map(a => a.id));
-        }
+    const handleToday = () => {
+        const today = dayjs();
+        setCurrentDate(today);
+        setSearchParams({ date: today.format('YYYY-MM-DD') });
+    };
+
+    const handleDayClick = (day) => {
+        setCurrentDate(day);
+        setViewMode('day');
+    };
+
+    const handleBackToWeek = () => {
+        setViewMode('week');
     };
 
     const handleBulkDelete = async () => {
         setActionLoading(true);
         try {
             const batch = writeBatch(db);
-            const logs = [];
-            const notificacoes = [];
-            const aulasParaExcluir = aulas.filter(a => selectedAulasIds.includes(a.id));
-
-            for (const aula of aulasParaExcluir) {
-                const aulaRef = doc(db, 'aulas', aula.id);
-                batch.delete(aulaRef);
-
-                logs.push(addDoc(collection(db, 'logs'), {
-                    type: 'exclusao',
-                    collection: 'aulas',
-                    aula: {
-                        assunto: aula.title,
-                        laboratorio: aula.laboratorio,
-                        cursos: aula.cursos,
-                        status: 'removida_em_lote',
-                        dataInicio: aula.start instanceof Date ? Timestamp.fromDate(aula.start) : aula.start
-                    },
-                    timestamp: serverTimestamp(),
-                    user: { nome: userInfo?.name || 'Coordenador', uid: userInfo?.uid || 'unknown' }
-                }));
-
-                notificacoes.push(notificadorTelegram.enviarNotificacao(import.meta.env.VITE_TELEGRAM_CHAT_ID, {
-                    assunto: aula.title,
-                    laboratorio: aula.laboratorio,
-                    cursos: aula.cursos,
-                    data: dayjs(aula.start).format('DD/MM/YYYY'),
-                    horario: `${dayjs(aula.start).format('HH:mm')} - ${dayjs(aula.end).format('HH:mm')}`
-                }, 'excluir'));
-            }
-
+            selectedAulasIds.forEach(id => batch.delete(doc(db, 'aulas', id)));
             await batch.commit();
-            await Promise.all(logs);
-            await Promise.all(notificacoes);
-
-            setFeedback({ open: true, message: `${aulasParaExcluir.length} aulas excluídas com sucesso.`, severity: 'success' });
-            setSelectedAulasIds([]);
+            setFeedback({ open: true, message: `${selectedAulasIds.length} aulas excluídas!`, severity: 'success' });
             setIsSelectionMode(false);
-            setIsBulkDeleteModalOpen(false);
+            setSelectedAulasIds([]);
             fetchDados();
-
-        } catch (error) {
-            console.error(error);
+        } catch (e) {
             setFeedback({ open: true, message: 'Erro ao excluir aulas.', severity: 'error' });
         } finally {
             setActionLoading(false);
+            setIsBulkDeleteModalOpen(false);
         }
     };
 
     return (
         <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="pt-br">
-            <Container maxWidth="xl">
-                
-                <Fade in={isSelectionMode}>
-                    <Paper 
-                        elevation={8} 
-                        sx={{ 
-                            position: 'sticky', top: 10, zIndex: 100, mb: 2, p: 1, 
-                            display: isSelectionMode ? 'flex' : 'none', 
-                            alignItems: 'center', justifyContent: 'space-between',
-                            bgcolor: '#e3f2fd', border: '1px solid #90caf9'
-                        }}
-                    >
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                            <Button 
-                                startIcon={selectedAulasIds.length === aulasFiltradas.length && aulasFiltradas.length > 0 ? <CheckBoxIcon /> : <CheckBoxOutlineBlankIcon />}
-                                onClick={handleSelectAllVisible}
-                            >
-                                Selecionar Visíveis
-                            </Button>
-                            <Typography variant="subtitle1" fontWeight="bold" color="primary">
-                                {selectedAulasIds.length} selecionadas
-                            </Typography>
-                        </Box>
-                        <Box sx={{ display: 'flex', gap: 1 }}>
-                            <Button 
-                                variant="contained" 
-                                color="error" 
-                                startIcon={<DeleteIcon />} 
-                                disabled={selectedAulasIds.length === 0}
-                                onClick={() => setIsBulkDeleteModalOpen(true)}
-                            >
-                                Excluir Selecionadas
-                            </Button>
-                            <IconButton onClick={() => { setIsSelectionMode(false); setSelectedAulasIds([]); }}>
-                                <CloseIcon />
-                            </IconButton>
-                        </Box>
-                    </Paper>
-                </Fade>
-
-                <Paper elevation={3} sx={{ p: { xs: 2, sm: 3 }, mb: 4, mt: 2, display: isSelectionMode ? 'none' : 'block' }}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 2 }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'nowrap' }}>
-                            <IconButton onClick={() => setCurrentDate(d => d.subtract(1, 'week'))}><ChevronLeft /></IconButton>
+            <Container maxWidth="xl" sx={{ mt: 4, mb: 4, color: 'text.primary' }}>
+                <Paper elevation={3} sx={{ p: 2, mb: 3, borderRadius: 2 }}>
+                    <Grid container spacing={2} alignItems="center">
+                        <Grid item xs={12} md={4}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                <Typography variant="h5" fontWeight="bold" color="primary" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                    <CalendarIcon /> Cronograma
+                                </Typography>
+                                {viewMode === 'day' && (
+                                    <Button variant="outlined" size="small" onClick={handleBackToWeek} startIcon={<ViewWeekIcon />}>
+                                        Voltar à Semana
+                                    </Button>
+                                )}
+                            </Box>
+                        </Grid>
+                        <Grid item xs={12} md={4} sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 1 }}>
+                            <Tooltip title={viewMode === 'day' ? "Dia Anterior" : "Semana Anterior"}><IconButton onClick={handlePrev}><ChevronLeft /></IconButton></Tooltip>
+                            <Button variant="outlined" size="small" onClick={handleToday} startIcon={<TodayIcon />}>Hoje</Button>
                             
-                            <DatePicker
-                                enableAccessibleFieldDOMStructure={false}
-                                value={currentDate}
-                                onChange={(val) => { if (val) { setCurrentDate(dayjs(val)); setIsPickerOpen(false); } }}
-                                open={isPickerOpen}
-                                onClose={() => setIsPickerOpen(false)}
-                                onOpen={() => setIsPickerOpen(true)}
-                                slots={{ textField: (p) => (
-                                    <TextField 
-                                        {...p} onClick={() => setIsPickerOpen(true)} variant="standard" 
-                                        InputProps={{ 
-                                            ...p.InputProps, disableUnderline: true, readOnly: true, 
-                                            endAdornment: (<InputAdornment position="end" sx={{ cursor: 'pointer' }}><CalendarIcon onClick={(e) => { e.stopPropagation(); setIsPickerOpen(true); }} sx={{ fontSize: '1.1rem', color: 'primary.main', mr: 1 }} /></InputAdornment>) 
-                                        }} 
-                                        value={getIntervaloTexto(currentDate)} 
-                                        sx={{ width: { xs: '180px', sm: '230px' }, '& .MuiInputBase-input': { textAlign: 'center', fontWeight: 'bold', color: 'primary.main', cursor: 'pointer', fontSize: { xs: '0.8rem', sm: '1rem' } } }} 
-                                    />
-                                )}}
-                            />
+                            <Box sx={{ position: 'relative' }}>
+                                <Typography 
+                                    variant="h6" 
+                                    sx={{ minWidth: 220, textAlign: 'center', fontWeight: 'medium', cursor: 'pointer', '&:hover': { color: 'primary.main' } }} 
+                                    onClick={() => setIsPickerOpen(true)}
+                                >
+                                    {viewMode === 'week' 
+                                        ? `${weekStart.format('DD MMM')} - ${weekEnd.format('DD MMM YYYY')}`
+                                        : currentDate.format('dddd, DD [de] MMMM [de] YYYY')
+                                    }
+                                </Typography>
+                                <DatePicker 
+                                    enableAccessibleFieldDOMStructure={false} // <--- CORREÇÃO AQUI
+                                    open={isPickerOpen}
+                                    onClose={() => setIsPickerOpen(false)}
+                                    onOpen={() => setIsPickerOpen(true)}
+                                    value={currentDate}
+                                    onChange={(val) => { if(val) { setCurrentDate(dayjs(val)); setIsPickerOpen(false); setSearchParams({ date: dayjs(val).format('YYYY-MM-DD') }); } }}
+                                    slots={{ textField: () => null }}
+                                />
+                            </Box>
                             
-                            <IconButton onClick={() => setCurrentDate(d => d.add(1, 'week'))}><ChevronRight /></IconButton>
-                        </Box>
-                        <Box sx={{ display: 'flex', gap: 1 }}>
-                            <Button onClick={() => setCurrentDate(dayjs())} variant="outlined" size="small">Hoje</Button>
-                            <Button onClick={() => setFiltrosVisiveis(!filtrosVisiveis)} startIcon={<FilterListIcon />} variant={filtrosVisiveis ? "contained" : "outlined"} size="small" color={filtrosVisiveis ? "primary" : "inherit"}>Filtros</Button>
+                            <Tooltip title={viewMode === 'day' ? "Próximo Dia" : "Próxima Semana"}><IconButton onClick={handleNext}><ChevronRight /></IconButton></Tooltip>
+                        </Grid>
+                        <Grid item xs={12} md={4} sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+                            <Button variant={filtrosVisiveis ? "contained" : "outlined"} startIcon={<FilterListIcon />} onClick={() => setFiltrosVisiveis(!filtrosVisiveis)}>Filtros</Button>
                             
                             {userInfo?.role === 'coordenador' && (
-                                <Tooltip title="Gerenciamento em Massa (Selecionar Várias)">
+                                <Tooltip title="Gerenciamento em Massa">
                                     <Button 
-                                        onClick={() => setIsSelectionMode(true)} 
-                                        variant="outlined" 
+                                        onClick={() => setIsSelectionMode(!isSelectionMode)} 
+                                        variant={isSelectionMode ? "contained" : "outlined"} 
                                         color="secondary" 
-                                        size="small" 
-                                        startIcon={<CheckBoxOutlineBlankIcon />}
+                                        startIcon={isSelectionMode ? <CloseIcon /> : <CheckBoxIcon />}
                                     >
-                                        Selecionar
+                                        {isSelectionMode ? "Cancelar" : "Selecionar"}
                                     </Button>
                                 </Tooltip>
                             )}
-                        </Box>
-                    </Box>
-                    <Collapse in={filtrosVisiveis}>
-                        <Grid container spacing={2} sx={{ pt: 2, alignItems: 'center' }}>
-                            <Grid item xs={12} sm={6} md={3}><FormControl fullWidth size="small"><InputLabel>Laboratórios</InputLabel><Select multiple value={filtros.laboratorio} onChange={(e) => setFiltros({...filtros, laboratorio: e.target.value})} input={<OutlinedInput label="Laboratórios" />} renderValue={(s) => <Chip label={`${s.length} sel.`} size="small" />}>{LISTA_LABORATORIOS.map(l => <MenuItem key={l.id} value={l.name}>{l.name}</MenuItem>)}</Select></FormControl></Grid>
-                            <Grid item xs={12} sm={6} md={3}><FormControl fullWidth size="small"><InputLabel>Cursos</InputLabel><Select multiple value={filtros.cursos} onChange={(e) => setFiltros({...filtros, cursos: e.target.value})} input={<OutlinedInput label="Cursos" />} renderValue={(s) => <Chip label={`${s.length} sel.`} size="small" />}>{LISTA_CURSOS.map(c => <MenuItem key={c.value} value={c.value}>{c.label}</MenuItem>)}</Select></FormControl></Grid>
-                            <Grid item xs={12} sm={6} md={2}><FormControl fullWidth size="small"><InputLabel>Turnos</InputLabel><Select multiple value={filtros.turno} onChange={(e) => setFiltros({...filtros, turno: e.target.value})} input={<OutlinedInput label="Turnos" />} renderValue={(s) => <Chip label={`${s.length} sel.`} size="small" />}>{TURNOS.map(t => <MenuItem key={t} value={t}>{t}</MenuItem>)}</Select></FormControl></Grid>
-                            <Grid item xs={12} sm={6} md={3}><TextField fullWidth label="Buscar por nome ou assunto" size="small" value={filtros.assunto} onChange={(e) => setFiltros({...filtros, assunto: e.target.value})} /></Grid>
-                            <Grid item xs={12} sm={6} md={1}><Tooltip title="Limpar Filtros"><IconButton onClick={limparFiltros} color="error" size="small"><ClearAllIcon /></IconButton></Tooltip></Grid>
+                            
+                            <Button variant="contained" startIcon={<AddIcon />} onClick={() => setIsAddModalOpen(true)}>Nova Aula</Button>
                         </Grid>
+                    </Grid>
+
+                    <Fade in={isSelectionMode}>
+                        <Box sx={{ mt: 2, p: 1, bgcolor: theme.palette.mode === 'dark' ? 'rgba(144, 202, 249, 0.1)' : '#e3f2fd', borderRadius: 1, display: isSelectionMode ? 'flex' : 'none', alignItems: 'center', justifyContent: 'space-between', border: '1px solid', borderColor: 'primary.main' }}>
+                            <Typography variant="body2" sx={{ ml: 1 }}>{selectedAulasIds.length} selecionadas</Typography>
+                            <Button size="small" variant="contained" color="error" startIcon={<DeleteIcon />} disabled={selectedAulasIds.length === 0} onClick={() => setIsBulkDeleteModalOpen(true)}>Excluir Selecionadas</Button>
+                        </Box>
+                    </Fade>
+
+                    <Collapse in={filtrosVisiveis}>
+                        <Box sx={{ mt: 2, pt: 2, borderTop: '1px solid', borderColor: 'divider' }}>
+                            <Grid container spacing={2}>
+                                <Grid item xs={12} md={3}>
+                                    <TextField fullWidth size="small" label="Buscar Assunto" value={filtros.assunto} onChange={(e) => setFiltros({...filtros, assunto: e.target.value})} InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> }} />
+                                </Grid>
+                                <Grid item xs={12} md={3}>
+                                    <FormControl fullWidth size="small">
+                                        <InputLabel>Laboratórios</InputLabel>
+                                        <Select multiple value={filtros.laboratorio} onChange={(e) => setFiltros({...filtros, laboratorio: e.target.value})} input={<OutlinedInput label="Laboratórios" />} renderValue={(selected) => <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>{selected.map(v => <Chip key={v} label={v} size="small" />)}</Box>}>
+                                            {LISTA_LABORATORIOS.map(l => <MenuItem key={l.id} value={l.name}>{l.name}</MenuItem>)}
+                                        </Select>
+                                    </FormControl>
+                                </Grid>
+                                <Grid item xs={12} md={3}>
+                                    <FormControl fullWidth size="small">
+                                        <InputLabel>Cursos</InputLabel>
+                                        <Select multiple value={filtros.cursos} onChange={(e) => setFiltros({...filtros, cursos: e.target.value})} input={<OutlinedInput label="Cursos" />} renderValue={(selected) => <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>{selected.map(v => <Chip key={v} label={LISTA_CURSOS.find(lc => lc.value === v)?.label || v} size="small" />)}</Box>}>
+                                            {LISTA_CURSOS.map(c => <MenuItem key={c.value} value={c.value}>{c.label}</MenuItem>)}
+                                        </Select>
+                                    </FormControl>
+                                </Grid>
+                                <Grid item xs={12} md={3}>
+                                    <Button fullWidth variant="outlined" color="inherit" onClick={limparFiltros} startIcon={<ClearAllIcon />}>Limpar</Button>
+                                </Grid>
+                            </Grid>
+                        </Box>
                     </Collapse>
                 </Paper>
 
-                <Grid container spacing={2}>
-                    {weekDays.map(day => {
-                        // Verifica se o dia é feriado ou período bloqueado
-                        const periodoInativo = getPeriodoDoDia(day);
-                        const isBlocked = !!periodoInativo;
+                {loading ? (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}><CircularProgress /></Box>
+                ) : (
+                    <Grid container spacing={1.5}>
+                        {daysToShow.map((day) => {
+                            const isToday = day.isSame(dayjs(), 'day');
+                            const periodoInativo = periodosBloqueio.find(p => day.isBetween(p.start, p.end, 'day', '[]'));
+                            const isBlocked = !!periodoInativo;
 
-                        return (
-                            <Grid item xs={12} sm={6} md={4} lg={1.7} key={day.toString()}>
-                                <Paper 
-                                    elevation={2} 
-                                    sx={{ 
-                                        p: 1.5, height: '100%', minHeight: '400px', 
-                                        borderTop: day.isSame(dayjs(), 'day') ? '4px solid #1976d2' : 'none', 
-                                        bgcolor: isBlocked ? 'rgba(211, 47, 47, 0.05)' : 'inherit', // Fundo levemente vermelho se bloqueado
-                                        position: 'relative'
-                                    }}
-                                >
-                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1, alignItems: 'center' }}>
-                                        <Typography variant="subtitle1" fontWeight="bold">{day.format('ddd, DD')}</Typography>
+                            return (
+                                <Grid item xs={12} md={viewMode === 'day' ? 12 : 1.71} key={day.format('YYYY-MM-DD')}>
+                                    <Paper 
+                                        elevation={isToday ? 4 : 1}
+                                        sx={{ 
+                                            p: 1, minHeight: '70vh', 
+                                            bgcolor: isBlocked 
+                                                ? (theme.palette.mode === 'dark' ? 'rgba(211, 47, 47, 0.1)' : 'rgba(244, 67, 54, 0.05)') 
+                                                : (isToday ? (theme.palette.mode === 'dark' ? 'rgba(25, 118, 210, 0.1)' : 'rgba(25, 118, 210, 0.04)') : 'background.paper'),
+                                            borderTop: isToday ? '4px solid #1976d2' : 'none',
+                                            borderRadius: 2,
+                                            position: 'relative'
+                                        }}
+                                    >
+                                        <Tooltip title={viewMode === 'week' ? "Clique para ampliar este dia" : ""}>
+                                            <Box 
+                                                onClick={() => handleDayClick(day)}
+                                                sx={{ 
+                                                    cursor: viewMode === 'week' ? 'pointer' : 'default',
+                                                    p: 1, mb: 1, borderRadius: 1,
+                                                    transition: 'background-color 0.2s',
+                                                    '&:hover': viewMode === 'week' ? { bgcolor: 'action.hover' } : {}
+                                                }}
+                                            >
+                                                <Typography variant={viewMode === 'day' ? "h6" : "subtitle2"} align="center" sx={{ fontWeight: 'bold', color: isToday ? 'primary.main' : 'text.secondary', textTransform: 'capitalize' }}>
+                                                    {day.format('ddd, DD/MM')}
+                                                </Typography>
+                                                {isBlocked && (
+                                                    <Box sx={{ textAlign: 'center', mt: 0.5 }}>
+                                                        <Chip label={periodoInativo.descricao} size="small" color="error" variant="outlined" sx={{ height: 20, fontSize: '0.65rem' }} />
+                                                    </Box>
+                                                )}
+                                            </Box>
+                                        </Tooltip>
+                                        <Divider sx={{ mb: 1.5 }} />
                                         
-                                        {/* Só mostra os botões de adicionar se NÃO estiver bloqueado */}
-                                        {userInfo?.role === 'coordenador' && !isSelectionMode && !isBlocked && (
-                                            <Box>
-                                                <IconButton size="small" color="secondary" onClick={() => { setEventoParaAcao({ dataInicio: day }); setIsEventModalOpen(true); }}><EventIcon fontSize="small" /></IconButton>
-                                                <IconButton size="small" color="primary" onClick={() => { setAulaParaAcao({ dataInicio: day }); setIsAddModalOpen(true); }}><AddIcon fontSize="small" /></IconButton>
+                                        {!isBlocked && (
+                                            <Box sx={viewMode === 'day' ? { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 2 } : { display: 'flex', flexDirection: 'column', gap: 1 }}>
+                                                {eventosFiltrados.filter(e => dayjs(e.start).isSame(day, 'day')).map(evento => (
+                                                    <EventoCard 
+                                                        key={evento.id} 
+                                                        evento={evento} 
+                                                        isCoordenador={userInfo?.role === 'coordenador'}
+                                                        onEdit={() => { setEventoParaAcao(evento); setIsEventModalOpen(true); }}
+                                                        onDelete={async () => {
+                                                            if(window.confirm("Excluir evento?")) {
+                                                                await deleteDoc(doc(db, 'eventosManutencao', evento.id));
+                                                                fetchDados();
+                                                            }
+                                                        }}
+                                                    />
+                                                ))}
+                                                {aulasFiltradas.filter(a => dayjs(a.start).isSame(day, 'day')).map(aula => (
+                                                    <AulaCard 
+                                                        key={aula.id} 
+                                                        aula={aula} 
+                                                        isCoordenador={userInfo?.role === 'coordenador'}
+                                                        onEdit={(a) => { setAulaParaAcao(a); setIsEditModalOpen(true); }}
+                                                        onDelete={(a) => { setAulaParaAcao(a); setIsDeleteModalOpen(true); }}
+                                                        isSelectionMode={isSelectionMode} 
+                                                        isSelected={selectedAulasIds.includes(aula.id)}
+                                                        onToggleSelect={(id) => setSelectedAulasIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id])}
+                                                    />
+                                                ))}
                                             </Box>
                                         )}
-
-                                        {/* Se estiver bloqueado, mostra um cadeado discreto no lugar dos botões */}
-                                        {isBlocked && (
-                                            <Tooltip title="Dia bloqueado (Feriado/Recesso)">
-                                                <BlockIcon color="disabled" fontSize="small" />
-                                            </Tooltip>
+                                        
+                                        {userInfo?.role === 'coordenador' && !isBlocked && !isSelectionMode && (
+                                            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2, opacity: 0.3, '&:hover': { opacity: 1 } }}>
+                                                <IconButton size="small" onClick={() => { setAulaParaAcao({ dataInicio: day }); setIsAddModalOpen(true); }}>
+                                                    <AddIcon fontSize="small" />
+                                                </IconButton>
+                                            </Box>
                                         )}
-                                    </Box>
-                                    
-                                    {/* --- NOME DO FERIADO EM DESTAQUE --- */}
-                                    {isBlocked && (
-                                        <Box sx={{ 
-                                            bgcolor: '#ffebee', 
-                                            border: '1px solid #ffcdd2', 
-                                            borderRadius: 1, 
-                                            p: 1, 
-                                            mb: 1, 
-                                            textAlign: 'center' 
-                                        }}>
-                                            <Typography variant="body2" color="error" fontWeight="bold">
-                                                {periodoInativo.descricao}
-                                            </Typography>
-                                            <Typography variant="caption" display="block" color="text.secondary">
-                                                (Não há atividades)
-                                            </Typography>
-                                        </Box>
-                                    )}
+                                    </Paper>
+                                </Grid>
+                            );
+                        })}
+                    </Grid>
+                )}
 
-                                    <Divider sx={{ mb: 1 }} />
-                                    
-                                    {eventosFiltrados.filter(e => dayjs(e.start).isSame(day, 'day')).map(evento => (
-                                        <EventoCard 
-                                            key={evento.id} 
-                                            evento={evento} 
-                                            isCoordenador={userInfo?.role === 'coordenador'} 
-                                            onEdit={() => { setEventoParaAcao(evento); setIsEventModalOpen(true); }} 
-                                            onDelete={async () => { 
-                                                if (window.confirm("Deseja excluir este evento?")) { 
-                                                    await notificadorTelegram.enviarNotificacao(import.meta.env.VITE_TELEGRAM_CHAT_ID, { titulo: evento.titulo, tipoEvento: evento.tipo, laboratorio: evento.laboratorio, dataInicio: dayjs(evento.start).format('DD/MM/YYYY HH:mm'), dataFim: dayjs(evento.end).format('DD/MM/YYYY HH:mm'), dataISO: dayjs(evento.start).format('YYYY-MM-DD') }, 'evento_excluir');
-                                                    await deleteDoc(doc(db, 'eventosManutencao', evento.id)); 
-                                                    fetchDados(); 
-                                                } 
-                                            }} 
-                                        />
-                                    ))}
-
-                                    {aulasFiltradas.filter(a => dayjs(a.start).isSame(day, 'day')).map(aula => (
-                                        <AulaCard 
-                                            key={aula.id} 
-                                            aula={aula} 
-                                            isCoordenador={userInfo?.role === 'coordenador'} 
-                                            isSelectionMode={isSelectionMode}
-                                            isSelected={selectedAulasIds.includes(aula.id)}
-                                            onToggleSelect={handleToggleSelectAula}
-                                            onEdit={() => { setAulaParaAcao(aula); setIsEditModalOpen(true); }} 
-                                            onDelete={() => { setAulaParaAcao(aula); setIsDeleteModalOpen(true); }} 
-                                        />
-                                    ))}
-                                </Paper>
-                            </Grid>
-                        );
-                    })}
-                </Grid>
-
-                <Dialog open={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} fullWidth maxWidth="md">
-                    <DialogTitle>Nova Aula</DialogTitle>
-                    <DialogContent>
-                        <ProporAulaForm userInfo={userInfo} currentUser={userInfo} initialDate={aulaParaAcao?.dataInicio} onSuccess={() => { setIsAddModalOpen(false); fetchDados(); }} onCancel={() => setIsAddModalOpen(false)} isModal />
+                {/* MODAIS */}
+                <Dialog open={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} maxWidth="md" fullWidth>
+                    <DialogTitle sx={{ m: 0, p: 2, bgcolor: 'primary.main', color: 'white' }}>
+                        Agendar Nova Aula 
+                        <IconButton onClick={() => setIsAddModalOpen(false)} sx={{ position: 'absolute', right: 8, top: 8, color: 'white' }}><CloseIcon /></IconButton>
+                    </DialogTitle>
+                    <DialogContent sx={{ mt: 2 }}>
+                        <ProporAulaForm userInfo={userInfo} currentUser={{uid: userInfo?.uid || 'user'}} initialDate={aulaParaAcao?.dataInicio} onCancel={() => setIsAddModalOpen(false)} onSuccess={() => { setIsAddModalOpen(false); fetchDados(); }} />
                     </DialogContent>
                 </Dialog>
 
-                <Dialog open={isEventModalOpen} onClose={() => setIsEventModalOpen(false)} fullWidth maxWidth="md">
-                    <DialogTitle>{eventoParaAcao?.id ? "Editar Evento" : "Novo Evento"}</DialogTitle>
-                    <DialogContent>
-                        <ProporEventoForm userInfo={userInfo} currentUser={userInfo} eventoId={eventoParaAcao?.id} initialDate={eventoParaAcao?.start ? dayjs(eventoParaAcao.start) : eventoParaAcao?.dataInicio} formTitle={eventoParaAcao?.id ? "Editar Evento" : "Novo Evento"} onSuccess={() => { setIsEventModalOpen(false); fetchDados(); }} onCancel={() => setIsEventModalOpen(false)} isModal />
+                <Dialog open={isEventModalOpen} onClose={() => setIsEventModalOpen(false)} maxWidth="md" fullWidth>
+                    <DialogTitle sx={{ m: 0, p: 2, bgcolor: 'secondary.main', color: 'white' }}>
+                        {eventoParaAcao?.id ? "Editar Evento" : "Novo Evento"}
+                        <IconButton onClick={() => setIsEventModalOpen(false)} sx={{ position: 'absolute', right: 8, top: 8, color: 'white' }}><CloseIcon /></IconButton>
+                    </DialogTitle>
+                    <DialogContent sx={{ mt: 2 }}>
+                        <ProporEventoForm userInfo={userInfo} currentUser={{uid: userInfo?.uid || 'user'}} eventoId={eventoParaAcao?.id} initialDate={eventoParaAcao?.dataInicio} onCancel={() => setIsEventModalOpen(false)} onSuccess={() => { setIsEventModalOpen(false); fetchDados(); }} />
                     </DialogContent>
                 </Dialog>
 
-                <Dialog open={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} fullWidth maxWidth="md">
-                    <DialogTitle>Editar Aula</DialogTitle>
-                    <DialogContent>
-                        <ProporAulaForm userInfo={userInfo} currentUser={userInfo} aulaId={aulaParaAcao?.id} initialDate={aulaParaAcao?.start ? dayjs(aulaParaAcao.start) : null} formTitle="Editar Aula" onSuccess={() => { setIsEditModalOpen(false); fetchDados(); }} onCancel={() => setIsEditModalOpen(false)} isModal />
+                <Dialog open={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} maxWidth="md" fullWidth>
+                    <DialogTitle sx={{ m: 0, p: 2, bgcolor: 'primary.main', color: 'white' }}>
+                        Editar Aula
+                        <IconButton onClick={() => setIsEditModalOpen(false)} sx={{ position: 'absolute', right: 8, top: 8, color: 'white' }}><CloseIcon /></IconButton>
+                    </DialogTitle>
+                    <DialogContent sx={{ mt: 2 }}>
+                        <ProporAulaForm userInfo={userInfo} currentUser={{uid: userInfo?.uid || 'user'}} aulaId={aulaParaAcao?.id} onCancel={() => setIsEditModalOpen(false)} onSuccess={() => { setIsEditModalOpen(false); fetchDados(); }} />
                     </DialogContent>
                 </Dialog>
 
@@ -510,10 +511,15 @@ function CalendarioCronograma({ userInfo }) {
                     onConfirm={async () => { 
                         setActionLoading(true); 
                         try {
-                            await notificadorTelegram.enviarNotificacao(import.meta.env.VITE_TELEGRAM_CHAT_ID, { assunto: aulaParaAcao.title, laboratorio: aulaParaAcao.laboratorio, cursos: aulaParaAcao.cursos, data: dayjs(aulaParaAcao.start).format('DD/MM/YYYY'), horario: `${dayjs(aulaParaAcao.start).format('HH:mm')} - ${dayjs(aulaParaAcao.end).format('HH:mm')}` }, 'excluir');
+                            await notificadorTelegram.enviarNotificacao(import.meta.env.VITE_TELEGRAM_CHAT_ID, { 
+                                assunto: aulaParaAcao.title, 
+                                laboratorio: aulaParaAcao.laboratorio, 
+                                data: dayjs(aulaParaAcao.start).format('DD/MM/YYYY') 
+                            }, 'excluir');
                             await deleteDoc(doc(db, 'aulas', aulaParaAcao.id)); 
                             setIsDeleteModalOpen(false); 
                             fetchDados(); 
+                            setFeedback({ open: true, message: 'Aula excluída com sucesso!', severity: 'success' });
                         } catch(e) { console.error(e); } 
                         finally { setActionLoading(false); } 
                     }} 
@@ -523,13 +529,13 @@ function CalendarioCronograma({ userInfo }) {
                     open={isBulkDeleteModalOpen} 
                     onClose={() => setIsBulkDeleteModalOpen(false)} 
                     title={`Excluir ${selectedAulasIds.length} Aulas?`} 
-                    message="Tem certeza que deseja excluir todas as aulas selecionadas? Esta ação não pode ser desfeita."
+                    message="Tem certeza? Esta ação não pode ser desfeita."
                     confirmText="Excluir Tudo"
                     confirmColor="error"
                     loading={actionLoading} 
                     onConfirm={handleBulkDelete}
                 />
-                
+
                 <Snackbar open={feedback.open} autoHideDuration={4000} onClose={() => setFeedback({...feedback, open: false})}><Alert severity={feedback.severity}>{feedback.message}</Alert></Snackbar>
             </Container>
         </LocalizationProvider>
