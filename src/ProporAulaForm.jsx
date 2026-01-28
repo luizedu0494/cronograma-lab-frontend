@@ -15,9 +15,6 @@ import {
 } from 'firebase/firestore';
 import dayjs from 'dayjs';
 import 'dayjs/locale/pt-br';
-// Plugin necessário para verificar intervalos de datas (feriados longos)
-import isBetween from 'dayjs/plugin/isBetween';
-
 import { LISTA_LABORATORIOS, TIPOS_LABORATORIO } from './constants/laboratorios';
 import { LISTA_CURSOS as LISTA_CURSOS_CONSTANTS } from './constants/cursos';
 import PropTypes from 'prop-types';
@@ -25,7 +22,6 @@ import DialogConfirmacao from './components/DialogConfirmacao';
 import { notificadorTelegram } from './ia-estruturada/NotificadorTelegram';
 
 dayjs.locale('pt-br');
-dayjs.extend(isBetween);
 
 const BLOCOS_HORARIO = [
     { "value": "07:00-09:10", "label": "07:00 - 09:10", "turno": "Matutino" },
@@ -57,13 +53,12 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
     const [aulasParaConfirmar, setAulasParaConfirmar] = useState([]);
     const [openKeepDataDialog, setOpenKeepDataDialog] = useState(false);
     
-    // Estados de Disponibilidade
-    const [horariosOcupados, setHorariosOcupados] = useState([]);
+    // --- MUDANÇA AQUI: Estado agora guarda um Objeto { horario: "Nome da Aula" } ---
+    const [infoOcupacao, setInfoOcupacao] = useState({});
+    
     const [verificandoDisp, setVerificandoDisp] = useState(false);
     const [diasTotalmenteOcupados, setDiasTotalmenteOcupados] = useState([]);
     const [diasParcialmenteOcupados, setDiasParcialmenteOcupados] = useState([]);
-    const [periodosBloqueados, setPeriodosBloqueados] = useState([]); // Feriados/Recessos
-
     const [mesVisivel, setMesVisivel] = useState(dayjs());
     const [loadingCalendario, setLoadingCalendario] = useState(false);
 
@@ -118,19 +113,16 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
         setSecao2Completa(labsCompletos && secao1Completa);
     }, [formData.dynamicLabs, secao1Completa, aulaId]);
 
-    // Busca dados para pintar o calendário (Aulas, Eventos Manuais e Feriados)
     useEffect(() => {
         const fetchOcupacaoDoMes = async () => {
             setLoadingCalendario(true);
             const inicioDoMes = mesVisivel.startOf('month').toDate();
             const fimDoMes = mesVisivel.endOf('month').toDate();
             try {
-                // 1. Busca Aulas
                 const q = query(collection(db, "aulas"), where("dataInicio", ">=", Timestamp.fromDate(inicioDoMes)), where("dataInicio", "<=", Timestamp.fromDate(fimDoMes)));
                 const querySnapshot = await getDocs(q);
                 const aulasDoMes = querySnapshot.docs.map(doc => doc.data());
                 
-                // 2. Busca Eventos Manuais (Manutenção, etc)
                 const qEventos = query(collection(db, "eventosManutencao"), where("dataInicio", ">=", Timestamp.fromDate(inicioDoMes)), where("dataInicio", "<=", Timestamp.fromDate(fimDoMes)));
                 const querySnapshotEventos = await getDocs(qEventos);
                 const eventosDoMes = querySnapshotEventos.docs
@@ -140,19 +132,6 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
                         return dayjs(start).isAfter(dayjs(inicioDoMes)) || dayjs(start).isSame(dayjs(inicioDoMes));
                     });
 
-                // 3. Busca Feriados/Recessos (PeriodosSemAtividade)
-                // Busca qualquer periodo que termine depois do inicio do mes (pode ter começado antes)
-                const qPeriodos = query(collection(db, "periodosSemAtividade"), where("dataFim", ">=", Timestamp.fromDate(inicioDoMes)));
-                const snapPeriodos = await getDocs(qPeriodos);
-                const periodosList = snapPeriodos.docs.map(doc => ({
-                    id: doc.id,
-                    ...doc.data(),
-                    start: dayjs(doc.data().dataInicio.toDate()),
-                    end: dayjs(doc.data().dataFim.toDate())
-                }));
-                setPeriodosBloqueados(periodosList);
-
-                // Processa ocupação visual (bolinhas) para Aulas e Eventos de Manutenção
                 const ocupacaoPorDia = {};
                 aulasDoMes.forEach(aula => {
                     const dia = dayjs(aula.dataInicio.toDate()).format('YYYY-MM-DD');
@@ -194,32 +173,53 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
         fetchOcupacaoDoMes();
     }, [mesVisivel]);
 
+    // --- VERIFICAÇÃO COM DETALHES DE QUEM OCUPA ---
     useEffect(() => {
         const verificarDisponibilidadeHorarios = async () => {
             if (!secao2Completa && !aulaId) {
-                setHorariosOcupados([]);
+                setInfoOcupacao({});
                 return;
             }
             const laboratoriosParaVerificar = formData.dynamicLabs.flatMap(lab => lab.laboratorios).filter(Boolean);
             if (!formData.dataInicio || laboratoriosParaVerificar.length === 0) {
-                setHorariosOcupados([]);
+                setInfoOcupacao({});
                 return;
             }
             setVerificandoDisp(true);
             try {
                 const diaSelecionado = dayjs(formData.dataInicio).startOf('day');
+                
+                // 1. Busca Aulas
                 const q = query(collection(db, "aulas"), where("laboratorioSelecionado", "in", laboratoriosParaVerificar), where("dataInicio", ">=", Timestamp.fromDate(diaSelecionado.toDate())), where("dataInicio", "<", Timestamp.fromDate(diaSelecionado.add(1, 'day').toDate())));
                 const querySnapshot = await getDocs(q);
-                const slotsOcupados = querySnapshot.docs.filter(doc => doc.id !== aulaId).map(doc => doc.data().horarioSlotString);
                 
+                // 2. Busca Eventos
                 const qEventos = query(collection(db, "eventosManutencao"), where("dataInicio", ">=", Timestamp.fromDate(diaSelecionado.startOf('day').toDate())), where("dataInicio", "<=", Timestamp.fromDate(diaSelecionado.endOf('day').toDate())));
                 const querySnapshotEventos = await getDocs(qEventos);
-                const eventosDoDia = querySnapshotEventos.docs
-                    .map(doc => doc.data())
-                    .filter(e => e.laboratorio === 'Todos' || laboratoriosParaVerificar.includes(e.laboratorio))
-                    .map(e => e.horarioSlotString);
+
+                const ocupacaoMap = {};
+
+                // Processa Aulas
+                querySnapshot.docs.forEach(doc => {
+                    if (doc.id !== aulaId) {
+                        const data = doc.data();
+                        ocupacaoMap[data.horarioSlotString] = data.assunto; // Guarda o nome da matéria
+                    }
+                });
+
+                // Processa Eventos
+                querySnapshotEventos.docs.forEach(doc => {
+                    const data = doc.data();
+                    if (data.laboratorio === 'Todos' || laboratoriosParaVerificar.includes(data.laboratorio)) {
+                        // Se o evento não tiver slot (dia todo), não marcamos slot específico aqui (mas poderia bloquear tudo)
+                        if (data.horarioSlotString) {
+                            ocupacaoMap[data.horarioSlotString] = data.titulo || "Evento/Manutenção";
+                        }
+                    }
+                });
                 
-                setHorariosOcupados([...new Set([...slotsOcupados, ...eventosDoDia])]);
+                setInfoOcupacao(ocupacaoMap);
+
             } catch (error) {
                 console.error("Erro ao verificar disponibilidade:", error);
             } finally {
@@ -228,11 +228,6 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
         };
         verificarDisponibilidadeHorarios();
     }, [formData.dataInicio, formData.dynamicLabs, secao2Completa, aulaId]);
-
-    // Função para verificar se o dia está bloqueado por feriado
-    const isDayBlocked = (day) => {
-        return periodosBloqueados.some(p => day.isBetween(p.start, p.end, 'day', '[]'));
-    };
 
     useEffect(() => {
         const loadAulaData = async () => {
@@ -504,9 +499,7 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
                                                 <FormControl fullWidth size="small" disabled={!secao1Completa && !isEditMode}>
                                                     <InputLabel>Tipo *</InputLabel>
                                                     <Select value={labSelection.tipo || ''} onChange={(e) => handleLabTipoChange(index, e.target.value)}>
-                                                        {TIPOS_LABORATORIO.map(t => (
-                                                            <MenuItem key={t.id} value={t.id}>{t.name}</MenuItem>
-                                                        ))}
+                                                        {TIPOS_LABORATORIO.map(t => <MenuItem key={t.id} value={t.id}>{t.name}</MenuItem>)}
                                                     </Select>
                                                 </FormControl>
                                             </Grid>
@@ -554,7 +547,6 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
                                 )}
                                 <Grid container spacing={2}>
                                     <Grid item xs={12} md={6}>
-                                        {/* --- DATEPICKER COM BLOQUEIO DE FERIADOS --- */}
                                         <DatePicker
                                             label="Data da Aula *"
                                             value={formData.dataInicio}
@@ -563,17 +555,12 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
                                                 if (errors.dataInicio) setErrors(prev => ({ ...prev, dataInicio: null }));
                                             }}
                                             disabled={!secao2Completa && !isEditMode}
-                                            shouldDisableDate={isDayBlocked}
                                             slotProps={{
                                                 textField: { fullWidth: true, error: !!errors.dataInicio, helperText: errors.dataInicio },
                                                 day: {
                                                     sx: (day) => {
                                                         const dateObj = dayjs(day);
                                                         if (!dateObj.isValid()) return {};
-                                                        
-                                                        // Se bloqueado
-                                                        if (isDayBlocked(dateObj)) return { backgroundColor: 'rgba(0, 0, 0, 0.1)', color: '#999', pointerEvents: 'none', borderRadius: '50%' };
-
                                                         const dateStr = dateObj.format('YYYY-MM-DD');
                                                         if (diasTotalmenteOcupados.includes(dateStr)) return { backgroundColor: 'rgba(244, 67, 54, 0.2)', borderRadius: '50%' };
                                                         if (diasParcialmenteOcupados.includes(dateStr)) return { border: '1px solid #1976d2', borderRadius: '50%' };
@@ -602,11 +589,29 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
                                                     </Box>
                                                 )}
                                             >
-                                                {BLOCOS_HORARIO.map((bloco) => (
-                                                    <MenuItem key={bloco.value} value={bloco.value} disabled={horariosOcupados.includes(bloco.value)}>
-                                                        {bloco.label} {horariosOcupados.includes(bloco.value) ? '(Ocupado)' : ''}
-                                                    </MenuItem>
-                                                ))}
+                                                {BLOCOS_HORARIO.map((bloco) => {
+                                                    // Verifica se está ocupado
+                                                    const isOccupied = infoOcupacao.hasOwnProperty(bloco.value);
+                                                    const aulaQueOcupa = infoOcupacao[bloco.value];
+                                                    
+                                                    return (
+                                                        <MenuItem 
+                                                            key={bloco.value} 
+                                                            value={bloco.value} 
+                                                            disabled={isOccupied}
+                                                            sx={isOccupied ? { opacity: 0.9 } : {}} // Mantém legível mesmo desabilitado
+                                                        >
+                                                            <Box>
+                                                                <Typography variant="body1">{bloco.label}</Typography>
+                                                                {isOccupied && (
+                                                                    <Typography variant="caption" color="error" display="block">
+                                                                        🚫 Ocupado: {aulaQueOcupa}
+                                                                    </Typography>
+                                                                )}
+                                                            </Box>
+                                                        </MenuItem>
+                                                    );
+                                                })}
                                             </Select>
                                             {errors.horarioSlotString && <FormHelperText>{errors.horarioSlotString}</FormHelperText>}
                                             {verificandoDisp && <CircularProgress size={20} sx={{ mt: 1 }} />}
