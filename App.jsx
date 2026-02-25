@@ -41,7 +41,7 @@ const AnaliseEventos = lazy(() => import('./AnaliseEventos'));
 const VerificarIntegridadeDados = lazy(() => import('./VerificarIntegridadeDados'));
 const HistoricoAulas = lazy(() => import('./HistoricoAulas'));
 const AssistenteIA = lazy(() => import('./AssistenteIA'));
-const ImportarAgendamento = lazy(() => import('./ImportarAgendamento'));
+const ImportarCronograma = lazy(() => import('./ImportarCronograma'));
 
 const LoadingFallback = () => (<Box display="flex" justifyContent="center" alignItems="center" height="80vh"><CircularProgress /></Box>);
 const MainLayout = () => (<Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}><Outlet /></Container>);
@@ -142,16 +142,15 @@ function App() {
         ...(role === 'coordenador' && !approvalPending ? [
             <MenuItem key="agend" component={Link} to="/propor-aula" onClick={handleMenuClose}><PlusCircle size={18} style={menuIconStyle}/> Agendar Aula</MenuItem>,
 <MenuItem key="agend-evento" component={Link} to="/propor-evento" onClick={handleMenuClose}><PlusCircle size={18} style={menuIconStyle}/> Agendar Evento</MenuItem>,
-            <MenuItem key="importar" component={Link} to="/importar-agendamento" onClick={handleMenuClose}><Upload size={18} style={menuIconStyle}/> Importar do Arquivo</MenuItem>,
             <MenuItem key="gerenciar-menu" onClick={handleCoordenadorMenuOpen}><ListTodo size={18} style={menuIconStyle}/> Gerenciar</MenuItem>,
             <MenuItem key="users" component={Link} to="/gerenciar-usuarios" onClick={handleMenuClose}><Users size={18} style={menuIconStyle}/> Usuários</MenuItem>,
             <MenuItem key="grupos" component={Link} to="/gerenciar-grupos" onClick={handleMenuClose}><Group size={18} style={menuIconStyle}/> Grupos</MenuItem>,
             <MenuItem key="periodos" component={Link} to="/gerenciar-periodos" onClick={handleMenuClose}><CalendarOff size={18} style={menuIconStyle}/> Eventos</MenuItem>,
             <MenuItem key="gerenciar-avisos" component={Link} to="/gerenciar-avisos" onClick={handleMenuClose}><Settings size={18} style={menuIconStyle}/> Gerenciar Avisos</MenuItem>,
+            <MenuItem key="importar-cronograma" component={Link} to="/importar-cronograma" onClick={handleMenuClose}><Upload size={18} style={menuIconStyle}/> Importar Cronograma</MenuItem>,
         ] : []),
         ...(role === 'tecnico' && !approvalPending ? [
             <MenuItem key="aula" component={Link} to="/propor-aula" onClick={handleMenuClose}><PlusCircle size={18} style={menuIconStyle}/> Propor Aula</MenuItem>,
-            <MenuItem key="importar-tec" component={Link} to="/importar-agendamento" onClick={handleMenuClose}><Upload size={18} style={menuIconStyle}/> Importar do Arquivo</MenuItem>,
             <MenuItem key="design" component={Link} to="/minhas-designacoes" onClick={handleMenuClose}><UserCheck size={18} style={menuIconStyle}/> Designações</MenuItem>,
             <MenuItem key="prop" component={Link} to="/minhas-propostas" onClick={handleMenuClose}><ListTodo size={18} style={menuIconStyle}/> Minhas Propostas</MenuItem>,
         ] : []),
@@ -216,10 +215,10 @@ function App() {
                                         <Route path="/analise-aulas" element={<AnaliseAulas />} />
                                         <Route path="/analise-eventos" element={<AnaliseEventos />} />
                                         <Route path="/verificar-integridade" element={<VerificarIntegridadeDados />} />
+                                        <Route path="/importar-cronograma" element={<ImportarCronograma />} />
                                     </>)}
                                     {/* Rota aberta para ambos */}
                                     <Route path="/assistente-ia" element={<AssistenteIA userInfo={userProfileData} currentUser={user} mode={darkMode ? 'dark' : 'light'} />} />
-                                    {isCoordenadorOrTecnico && (<Route path="/importar-agendamento" element={<ImportarAgendamento userInfo={userProfileData} currentUser={user} />} />)}
                                     {isCoordenadorOrTecnico && (<Route path="/download-cronograma" element={<DownloadCronograma />} />)}
                                     <Route path="*" element={<Navigate to="/" />} />
                                 </Route>
