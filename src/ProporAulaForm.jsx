@@ -323,6 +323,8 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
                             horarioSlotString: slot,
                             professorUid: currentUser.uid,
                             professorNome: userInfo?.name || currentUser.displayName || currentUser.email,
+                            propostoPorUid: currentUser.uid,
+                            propostoPorNome: userInfo?.name || currentUser.displayName || currentUser.email,
                             status: isCoordenador ? 'aprovada' : 'pendente',
                             createdAt: serverTimestamp()
                         });

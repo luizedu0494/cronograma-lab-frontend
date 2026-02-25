@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import dayjs from 'dayjs';
 import { db } from './firebaseConfig';
-import { collection, query, where, getDocs, doc, getDoc, setDoc, onSnapshot, orderBy, limit } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, getDoc, setDoc, onSnapshot, orderBy, limit, Timestamp } from 'firebase/firestore';
 import {
     Container, Grid, Paper, Typography, Box, CircularProgress, Alert, Button,
     FormControlLabel, Switch, Dialog, DialogContent, IconButton, Badge,
@@ -15,7 +15,7 @@ import {
 } from '@mui/icons-material'; // Ícones MUI padrão para componentes visuais
 import { 
     Clock, FileText, Bell, UserCheck, CalendarOff, 
-    PlusCircle, Trash2, CalendarCheck, LayoutDashboard 
+    PlusCircle, Trash2, CalendarCheck, LayoutDashboard, BookOpen
 } from 'lucide-react'; // Ícones Lucide para os cards
 import { useNavigate } from 'react-router-dom';
 
@@ -45,6 +45,7 @@ const PaginaInicial = ({ userInfo }) => {
     const [avisosNaoLidos, setAvisosNaoLidos] = useState(0);
     const [ultimosEventos, setUltimosEventos] = useState([]);
     const [ultimosEventosExcluidos, setUltimosEventosExcluidos] = useState([]);
+    const [revisoesTecnicoHoje, setRevisoesTecnicoHoje] = useState([]);
 
     // Estados de UI
     const [isCalendarEnabled, setIsCalendarEnabled] = useState(false);
@@ -94,6 +95,13 @@ const PaginaInicial = ({ userInfo }) => {
 
             if (userInfo?.role === 'tecnico') {
                 promises.push(getDocs(query(aulasRef, where('propostoPorUid', '==', userInfo.uid))));
+                // Revisões de hoje
+                promises.push(getDocs(query(
+                    collection(db, 'revisoesTecnicos'),
+                    where('data', '>=', Timestamp.fromDate(today.toDate())),
+                    where('data', '<',  Timestamp.fromDate(tomorrow.toDate())),
+                    orderBy('data', 'asc')
+                )));
             }
 
             const results = await Promise.all(promises);
@@ -112,6 +120,8 @@ const PaginaInicial = ({ userInfo }) => {
             }
             if (userInfo?.role === 'tecnico') {
                 setMinhasPropostasCount(results[idx].size);
+                const revisoesDocs = results[idx + 1]?.docs || [];
+                setRevisoesTecnicoHoje(revisoesDocs.map(d => ({ id: d.id, ...d.data() })));
             }
         } catch (err) {
             console.error("Erro ao buscar dados:", err);
@@ -236,19 +246,136 @@ const PaginaInicial = ({ userInfo }) => {
                         </Grid>
                     </>
                 ) : userInfo?.role === 'tecnico' ? (
-                    <Grid item xs={6} sm={6} md={3}>
-                        <MiniStatCard 
-                            icon={<UserCheck size={24} />} 
-                            value={minhasPropostasCount} 
-                            label="Minhas Propostas" 
-                            color={theme.palette.primary.main}
-                            onClick={() => navigate('/minhas-propostas')}
-                        />
-                    </Grid>
+                    <>
+                        <Grid item xs={6} sm={6} md={3}>
+                            <MiniStatCard 
+                                icon={<UserCheck size={24} />} 
+                                value={minhasPropostasCount} 
+                                label="Minhas Propostas" 
+                                color={theme.palette.primary.main}
+                                onClick={() => navigate('/minhas-propostas')}
+                            />
+                        </Grid>
+                        <Grid item xs={6} sm={6} md={3}>
+                            <MiniStatCard 
+                                icon={<BookOpen size={24} />} 
+                                value={revisoesTecnicoHoje.length} 
+                                label="Revisões Hoje" 
+                                color={theme.palette.secondary.main}
+                                onClick={() => navigate('/revisoes')}
+                            />
+                        </Grid>
+                    </>
                 ) : null}
             </Grid>
 
-            {/* 3. ASSISTENTE IA (Opcional/Compacto) */}
+            {/* 3. REVISÕES DO DIA (Só Técnico, só quando houver) */}
+            {userInfo?.role === 'tecnico' && revisoesTecnicoHoje.length > 0 && (
+                <Paper elevation={2} sx={{
+                    mb: 3, overflow: 'hidden',
+                    border: '1px solid', borderColor: 'secondary.light'
+                }}>
+                    <Box sx={{
+                        px: 2, py: 1.5,
+                        bgcolor: 'secondary.main', color: 'white',
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+                    }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <BookOpen size={18} />
+                            <Typography variant="subtitle2" fontWeight="bold">
+                                Revisões agendadas para hoje
+                            </Typography>
+                            <Chip
+                                label={revisoesTecnicoHoje.length}
+                                size="small"
+                                sx={{ bgcolor: 'rgba(255,255,255,0.25)', color: 'white', fontWeight: 'bold', height: 20, fontSize: '0.7rem' }}
+                            />
+                        </Box>
+                        <Button
+                            size="small"
+                            sx={{ color: 'white', borderColor: 'rgba(255,255,255,0.5)', fontSize: '0.7rem' }}
+                            variant="outlined"
+                            onClick={() => navigate('/revisoes')}
+                        >
+                            Ver calendário
+                        </Button>
+                    </Box>
+                    <List dense disablePadding>
+                        {revisoesTecnicoHoje.map((rev, i) => {
+                            const TIPOS_ICONE = {
+                                revisao_conteudo:  '📖',
+                                revisao_pre_prova: '📝',
+                                aula_reforco:      '💡',
+                                pratica_extra:     '🔬',
+                                monitoria:         '🎓',
+                                outro:             '📌',
+                            };
+                            const STATUS_COR = {
+                                planejada:  'default',
+                                confirmada: 'info',
+                                realizada:  'success',
+                                cancelada:  'error',
+                            };
+                            const STATUS_LABEL = {
+                                planejada:  'Planejada',
+                                confirmada: 'Confirmada',
+                                realizada:  'Realizada',
+                                cancelada:  'Cancelada',
+                            };
+                            const BLOCOS_LABEL = {
+                                '07:00-09:10': '07:00 - 09:10',
+                                '09:30-12:00': '09:30 - 12:00',
+                                '13:00-15:10': '13:00 - 15:10',
+                                '15:30-18:00': '15:30 - 18:00',
+                                '18:30-20:10': '18:30 - 20:10',
+                                '20:30-22:00': '20:30 - 22:00',
+                            };
+                            const icone = TIPOS_ICONE[rev.tipo] || '📌';
+                            const horario = BLOCOS_LABEL[rev.horarioSlot] || rev.horarioSlot || 'Horário não definido';
+                            return (
+                                <React.Fragment key={rev.id}>
+                                    {i > 0 && <Divider />}
+                                    <ListItem sx={{ py: 1.2, px: 2 }}>
+                                        <ListItemText
+                                            primary={
+                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8 }}>
+                                                    <Typography variant="body2">{icone}</Typography>
+                                                    <Typography variant="body2" fontWeight="medium">{rev.titulo}</Typography>
+                                                </Box>
+                                            }
+                                            secondary={
+                                                <Box sx={{ display: 'flex', gap: 1, mt: 0.3, flexWrap: 'wrap', alignItems: 'center' }}>
+                                                    <Typography variant="caption" color="text.secondary">
+                                                        🕐 {horario}
+                                                    </Typography>
+                                                    {rev.laboratorio && (
+                                                        <Typography variant="caption" color="text.secondary">
+                                                            🏛️ {rev.laboratorio}
+                                                        </Typography>
+                                                    )}
+                                                    {rev.professor && (
+                                                        <Typography variant="caption" color="text.secondary">
+                                                            👨‍🏫 {rev.professor}
+                                                        </Typography>
+                                                    )}
+                                                </Box>
+                                            }
+                                        />
+                                        <Chip
+                                            label={STATUS_LABEL[rev.status] || rev.status}
+                                            color={STATUS_COR[rev.status] || 'default'}
+                                            size="small"
+                                            sx={{ ml: 1, flexShrink: 0 }}
+                                        />
+                                    </ListItem>
+                                </React.Fragment>
+                            );
+                        })}
+                    </List>
+                </Paper>
+            )}
+
+            {/* 4. ASSISTENTE IA (Opcional/Compacto) */}
             {canUseAI && (
                 <Accordion sx={{ mb: 3, bgcolor: 'background.paper', boxShadow: 1, '&:before': { display: 'none' } }}>
                     <AccordionSummary expandIcon={<ExpandMoreIcon />}>
@@ -263,7 +390,7 @@ const PaginaInicial = ({ userInfo }) => {
                 </Accordion>
             )}
 
-            {/* 4. CONTEÚDO PRINCIPAL (Abas para economizar espaço) */}
+            {/* 5. CONTEÚDO PRINCIPAL (Abas para economizar espaço) */}
             <Paper elevation={2} sx={{ mb: 3 }}>
                 <Tabs 
                     value={tabValue} 
@@ -344,7 +471,7 @@ const PaginaInicial = ({ userInfo }) => {
                 )}
             </Paper>
 
-            {/* 5. CALENDÁRIO ACADÊMICO (Acordeão para não ocupar espaço) */}
+            {/* 6. CALENDÁRIO ACADÊMICO (Acordeão para não ocupar espaço) */}
             <Accordion elevation={2}>
                 <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                     <Box display="flex" alignItems="center" gap={1}>

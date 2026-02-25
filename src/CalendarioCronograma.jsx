@@ -374,7 +374,17 @@ function CalendarioCronograma({ userInfo }) {
                                         </Select>
                                     </FormControl>
                                 </Grid>
-                                <Grid item xs={12} md={3}>
+                                <Grid item xs={12} md={2}>
+                                    <FormControl fullWidth size="small">
+                                        <InputLabel>Turno</InputLabel>
+                                        <Select multiple value={filtros.turno} onChange={(e) => setFiltros({...filtros, turno: e.target.value})} input={<OutlinedInput label="Turno" />} renderValue={(selected) => <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>{selected.map(v => <Chip key={v} label={v} size="small" />)}</Box>}>
+                                            <MenuItem value="Manhã">🌅 Manhã</MenuItem>
+                                            <MenuItem value="Tarde">☀️ Tarde</MenuItem>
+                                            <MenuItem value="Noite">🌙 Noite</MenuItem>
+                                        </Select>
+                                    </FormControl>
+                                </Grid>
+                                <Grid item xs={12} md={1}>
                                     <Button fullWidth variant="outlined" color="inherit" onClick={limparFiltros} startIcon={<ClearAllIcon />}>Limpar</Button>
                                 </Grid>
                             </Grid>

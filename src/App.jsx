@@ -16,7 +16,7 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import 'dayjs/locale/pt-br';
 import AccountCircle from '@mui/icons-material/AccountCircle';
 import {
-    Menu as MenuIcon, Sun, Moon, LogOut, User, HelpCircle, UserCheck, Users, Group, CalendarOff, Settings, Bell, ListTodo, Calendar, LayoutDashboard, ThumbsUp, PlusCircle, Download, BarChart, Bug, History, Bot, Upload
+    Menu as MenuIcon, Sun, Moon, LogOut, User, HelpCircle, UserCheck, Users, Group, CalendarOff, Settings, Bell, ListTodo, Calendar, LayoutDashboard, ThumbsUp, PlusCircle, Download, BarChart, Bug, History, Bot, Upload, FlaskConical
 } from 'lucide-react';
 
 // --- LAZY LOADING ---
@@ -42,6 +42,7 @@ const VerificarIntegridadeDados = lazy(() => import('./VerificarIntegridadeDados
 const HistoricoAulas = lazy(() => import('./HistoricoAulas'));
 const AssistenteIA = lazy(() => import('./AssistenteIA'));
 const ImportarAgendamento = lazy(() => import('./ImportarAgendamento'));
+const CalendarioRevisoesTecnico = lazy(() => import('./CalendarioRevisoesTecnico'));
 
 const LoadingFallback = () => (<Box display="flex" justifyContent="center" alignItems="center" height="80vh"><CircularProgress /></Box>);
 const MainLayout = () => (<Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}><Outlet /></Container>);
@@ -154,6 +155,7 @@ function App() {
             <MenuItem key="importar-tec" component={Link} to="/importar-agendamento" onClick={handleMenuClose}><Upload size={18} style={menuIconStyle}/> Importar do Arquivo</MenuItem>,
             <MenuItem key="design" component={Link} to="/minhas-designacoes" onClick={handleMenuClose}><UserCheck size={18} style={menuIconStyle}/> Designações</MenuItem>,
             <MenuItem key="prop" component={Link} to="/minhas-propostas" onClick={handleMenuClose}><ListTodo size={18} style={menuIconStyle}/> Minhas Propostas</MenuItem>,
+            <MenuItem key="revisoes" component={Link} to="/revisoes" onClick={handleMenuClose}><FlaskConical size={18} style={menuIconStyle}/> Revisões</MenuItem>,
         ] : []),
         <Divider key="div2" sx={{ my: 0.5 }} />,
         isCoordenadorOrTecnico && !approvalPending ? (<MenuItem key="download-cronograma" component={Link} to="/download-cronograma" onClick={handleMenuClose}><Download size={18} style={menuIconStyle}/> Baixar Cronograma</MenuItem>) : null,
@@ -205,7 +207,7 @@ function App() {
                                     <Route path="/avisos" element={<PainelAvisos />} />
                                     <Route path="/ajuda" element={<AjudaFAQ />} />
                                     <Route path="/perfil" element={<ConfiguracoesPerfil />} />
-                                    {role === 'tecnico' && (<><Route path="/minhas-propostas" element={<MinhasPropostas />} /><Route path="/minhas-designacoes" element={<MinhasDesignacoes />} /></>)}
+                                    {role === 'tecnico' && (<><Route path="/minhas-propostas" element={<MinhasPropostas />} /><Route path="/minhas-designacoes" element={<MinhasDesignacoes />} /><Route path="/revisoes" element={<CalendarioRevisoesTecnico userInfo={userProfileData} />} /></>)}
                                     {role === 'coordenador' && (<>
                                         <Route path="/gerenciar-aprovacoes" element={<GerenciarAprovacoes />} />
                                         <Route path="/gerenciar-usuarios" element={<GerenciarUsuarios />} />
