@@ -5,7 +5,8 @@ import {
     Container, Typography, Box, CircularProgress, Alert, Paper, Grid,
     Button, IconButton, Tooltip, Collapse, FormControl, InputLabel,
     Select, MenuItem, OutlinedInput, Chip, TextField, Divider, Snackbar, Menu,
-    Dialog, DialogTitle, DialogContent, InputAdornment, Checkbox, Fade, useTheme
+    Dialog, DialogTitle, DialogContent, InputAdornment, Checkbox, Fade, useTheme,
+    useMediaQuery, SwipeableDrawer, Badge
 } from '@mui/material';
 import {
     ChevronLeft, ChevronRight, FilterList as FilterListIcon, Edit as EditIcon,
@@ -13,7 +14,8 @@ import {
     EventNote as EventIcon, CalendarMonth as CalendarIcon, ClearAll as ClearAllIcon,
     CheckBox as CheckBoxIcon, CheckBoxOutlineBlank as CheckBoxOutlineBlankIcon,
     Close as CloseIcon, Block as BlockIcon, Search as SearchIcon, 
-    Today as TodayIcon, ViewWeek as ViewWeekIcon
+    Today as TodayIcon, ViewWeek as ViewWeekIcon, ExpandMore as ExpandMoreIcon,
+    Schedule as ScheduleIcon, School as SchoolIcon
 } from '@mui/icons-material';
 import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
@@ -46,12 +48,14 @@ const STORAGE_KEY_FILTROS = 'cronograma_filtros_v1';
 
 const AulaCard = ({ aula, onEdit, onDelete, isCoordenador, isSelectionMode, isSelected, onToggleSelect }) => {
     const [expanded, setExpanded] = useState(false);
+    const [drawerOpen, setDrawerOpen] = useState(false);
     const [anchorEl, setAnchorEl] = useState(null);
     const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('md'));
     const openMenu = Boolean(anchorEl);
 
     const handleMenuClick = (event) => { event.stopPropagation(); setAnchorEl(event.currentTarget); };
-    
+
     const cursosNomes = useMemo(() => {
         if (!aula.cursos || !Array.isArray(aula.cursos)) return 'Nenhum curso';
         return aula.cursos.map(c => {
@@ -67,51 +71,262 @@ const AulaCard = ({ aula, onEdit, onDelete, isCoordenador, isSelectionMode, isSe
     }, [aula.start, aula.end]);
 
     const handleCardClick = () => {
-        if (isSelectionMode) onToggleSelect(aula.id);
+        if (isSelectionMode) { onToggleSelect(aula.id); return; }
+        if (isMobile) setDrawerOpen(true);
         else setExpanded(!expanded);
     };
 
     const corBorda = CURSO_COLORS[aula.cursos?.[0]] || CURSO_COLORS.default;
 
     return (
-        <Paper 
-            elevation={expanded ? 6 : 2} 
-            sx={{ 
-                width: '100%', mb: 1, position: 'relative', 
-                borderLeft: `4px solid ${corBorda}`,
-                transition: 'all 0.2s',
-                transform: isSelected ? 'scale(0.98)' : 'scale(1)',
-                bgcolor: isSelected ? (theme.palette.mode === 'dark' ? 'rgba(25, 118, 210, 0.2)' : 'rgba(25, 118, 210, 0.08)') : 'background.paper',
-                border: isSelected ? '1px solid #1976d2' : undefined,
-                color: 'text.primary'
-            }}
-        >
-            {isSelectionMode && (
-                <Box sx={{ position: 'absolute', top: 4, left: 4, zIndex: 2 }}>
-                    <Checkbox size="small" checked={isSelected} onChange={() => onToggleSelect(aula.id)} onClick={(e) => e.stopPropagation()} />
+        <>
+            <Paper 
+                elevation={expanded ? 6 : 2} 
+                sx={{ 
+                    width: '100%', mb: 1, position: 'relative', 
+                    borderLeft: `4px solid ${corBorda}`,
+                    transition: 'all 0.2s',
+                    transform: isSelected ? 'scale(0.98)' : 'scale(1)',
+                    bgcolor: isSelected ? (theme.palette.mode === 'dark' ? 'rgba(25, 118, 210, 0.2)' : 'rgba(25, 118, 210, 0.08)') : 'background.paper',
+                    border: isSelected ? '1px solid #1976d2' : undefined,
+                    color: 'text.primary'
+                }}
+            >
+                {isSelectionMode && (
+                    <Box sx={{ position: 'absolute', top: 4, left: 4, zIndex: 2 }}>
+                        <Checkbox size="small" checked={isSelected} onChange={() => onToggleSelect(aula.id)} onClick={(e) => e.stopPropagation()} />
+                    </Box>
+                )}
+
+                {isCoordenador && !isSelectionMode && (
+                    <>
+                        <IconButton size="small" onClick={handleMenuClick} sx={{ position: 'absolute', top: 4, right: 4, zIndex: 2 }}><MoreVertIcon fontSize="small" /></IconButton>
+                        <Menu anchorEl={anchorEl} open={openMenu} onClose={() => setAnchorEl(null)}>
+                            <MenuItem onClick={() => { onEdit(aula); setAnchorEl(null); }}><EditIcon fontSize="small" sx={{ mr: 1 }}/> Editar</MenuItem>
+                            <MenuItem onClick={() => { onDelete(aula); setAnchorEl(null); }} sx={{ color: 'error.main' }}><DeleteIcon fontSize="small" sx={{ mr: 1 }}/> Excluir</MenuItem>
+                        </Menu>
+                    </>
+                )}
+
+                <Box onClick={handleCardClick} sx={{ p: 1.5, pl: isSelectionMode ? 5 : 1.5, cursor: 'pointer' }}>
+                    <Typography variant="subtitle2" fontWeight="bold" sx={{ color: 'text.primary', pr: isCoordenador ? 3 : 0 }}>{aula.title || 'Sem Título'}</Typography>
+                    <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 0.5 }}>{horarioFormatado}</Typography>
+                    {/* Expand inline — só desktop */}
+                    {!isMobile && (
+                        <Collapse in={expanded && !isSelectionMode} timeout="auto" unmountOnExit>
+                            <Divider sx={{ my: 1 }} />
+                            <Typography variant="body2" sx={{ color: 'text.primary' }}><strong>Lab:</strong> {aula.laboratorio || 'N/A'}</Typography>
+                            <Typography variant="body2" sx={{ color: 'text.primary' }}><strong>Cursos:</strong> {cursosNomes}</Typography>
+                        </Collapse>
+                    )}
                 </Box>
-            )}
+            </Paper>
 
-            {isCoordenador && !isSelectionMode && (
-                <>
-                    <IconButton size="small" onClick={handleMenuClick} sx={{ position: 'absolute', top: 4, right: 4, zIndex: 2 }}><MoreVertIcon fontSize="small" /></IconButton>
-                    <Menu anchorEl={anchorEl} open={openMenu} onClose={() => setAnchorEl(null)}>
-                        <MenuItem onClick={() => { onEdit(aula); setAnchorEl(null); }}><EditIcon fontSize="small" sx={{ mr: 1 }}/> Editar</MenuItem>
-                        <MenuItem onClick={() => { onDelete(aula); setAnchorEl(null); }} sx={{ color: 'error.main' }}><DeleteIcon fontSize="small" sx={{ mr: 1 }}/> Excluir</MenuItem>
-                    </Menu>
-                </>
-            )}
+            {/* Bottom Drawer — mobile */}
+            <SwipeableDrawer
+                anchor="bottom"
+                open={drawerOpen}
+                onClose={() => setDrawerOpen(false)}
+                onOpen={() => {}}
+                disableSwipeToOpen
+                PaperProps={{ sx: { borderTopLeftRadius: 16, borderTopRightRadius: 16, pb: 4 } }}
+            >
+                {/* Alça */}
+                <Box sx={{ display: 'flex', justifyContent: 'center', pt: 1.5, pb: 1 }}>
+                    <Box sx={{ width: 40, height: 4, borderRadius: 2, bgcolor: 'divider' }} />
+                </Box>
 
-            <Box onClick={handleCardClick} sx={{ p: 1.5, pl: isSelectionMode ? 5 : 1.5, cursor: 'pointer' }}>
-                <Typography variant="subtitle2" fontWeight="bold" sx={{ color: 'text.primary' }}>{aula.title || 'Sem Título'}</Typography>
-                <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 0.5 }}>{horarioFormatado}</Typography>
-                <Collapse in={expanded && !isSelectionMode} timeout="auto" unmountOnExit>
-                    <Divider sx={{ my: 1 }} />
-                    <Typography variant="body2" sx={{ color: 'text.primary' }}><strong>Lab:</strong> {aula.laboratorio || 'N/A'}</Typography>
-                    <Typography variant="body2" sx={{ color: 'text.primary' }}><strong>Cursos:</strong> {cursosNomes}</Typography>
-                </Collapse>
-            </Box>
-        </Paper>
+                {/* Header colorido */}
+                <Box sx={{ px: 2, mb: 2 }}>
+                    <Box sx={{ p: 1.5, borderRadius: 2, borderLeft: `5px solid ${corBorda}`, bgcolor: `${corBorda}18` }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                            <Typography variant="h6" fontWeight="bold" sx={{ flex: 1, pr: 1 }}>
+                                {aula.title || 'Sem Título'}
+                            </Typography>
+                            <IconButton size="small" onClick={() => setDrawerOpen(false)}>
+                                <CloseIcon fontSize="small" />
+                            </IconButton>
+                        </Box>
+                    </Box>
+                </Box>
+
+                <Box sx={{ px: 2, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <ScheduleIcon fontSize="small" sx={{ color: 'text.secondary' }} />
+                        <Box>
+                            <Typography variant="caption" color="text.secondary">Horário</Typography>
+                            <Typography variant="body2" fontWeight="medium">{horarioFormatado}</Typography>
+                        </Box>
+                    </Box>
+                    {aula.laboratorio && (
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Typography sx={{ fontSize: 18 }}>🏛️</Typography>
+                            <Box>
+                                <Typography variant="caption" color="text.secondary">Laboratório</Typography>
+                                <Typography variant="body2" fontWeight="medium">{aula.laboratorio}</Typography>
+                            </Box>
+                        </Box>
+                    )}
+                    <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+                        <SchoolIcon fontSize="small" sx={{ color: 'text.secondary', mt: 0.3 }} />
+                        <Box>
+                            <Typography variant="caption" color="text.secondary">Cursos</Typography>
+                            <Typography variant="body2" fontWeight="medium">{cursosNomes}</Typography>
+                        </Box>
+                    </Box>
+
+                    {isCoordenador && (
+                        <>
+                            <Divider />
+                            <Box sx={{ display: 'flex', gap: 1 }}>
+                                <Button fullWidth variant="outlined" startIcon={<EditIcon />}
+                                    onClick={() => { setDrawerOpen(false); onEdit(aula); }}>
+                                    Editar
+                                </Button>
+                                <Button fullWidth variant="outlined" color="error" startIcon={<DeleteIcon />}
+                                    onClick={() => { setDrawerOpen(false); onDelete(aula); }}>
+                                    Excluir
+                                </Button>
+                            </Box>
+                        </>
+                    )}
+                </Box>
+            </SwipeableDrawer>
+        </>
+    );
+};
+
+// ─── DayColumn: coluna de um dia no calendário semanal ────────────────────────
+const DayColumn = ({ day, viewMode, aulasFiltradas, eventosFiltrados, periodosBloqueio,
+    filtroAtivo, userInfo, theme, handleDayClick,
+    setEventoParaAcao, setIsEventModalOpen, fetchDados,
+    setAulaParaAcao, setIsEditModalOpen, setIsDeleteModalOpen, setIsAddModalOpen,
+    isSelectionMode, selectedAulasIds, setSelectedAulasIds }) => {
+
+    const isToday = day.isSame(dayjs(), 'day');
+    const periodoInativo = periodosBloqueio.find(p => day.isBetween(p.start, p.end, 'day', '[]'));
+    const isBlocked = !!periodoInativo;
+    const isDayMode = viewMode === 'day';
+    const LIMITE = 4;
+
+    const aulasDay   = aulasFiltradas.filter(a => dayjs(a.start).isSame(day, 'day'));
+    const eventosDay = eventosFiltrados.filter(e => dayjs(e.start).isSame(day, 'day'));
+    const totalItens = aulasDay.length + eventosDay.length;
+
+    const compactar = !isDayMode && !filtroAtivo;
+    const [expandidoColuna, setExpandidoColuna] = useState(false);
+    const mostrarTudo = !compactar || expandidoColuna;
+    const aulasVisiveis   = mostrarTudo ? aulasDay   : aulasDay.slice(0, LIMITE);
+    const eventosVisiveis = mostrarTudo ? eventosDay : eventosDay.slice(0, LIMITE);
+    const ocultos = Math.max(0, totalItens - LIMITE);
+
+    return (
+        <Grid item xs={12} md={isDayMode ? 12 : 1.71}>
+            <Paper 
+                elevation={isToday ? 4 : 1}
+                sx={{ 
+                    p: 1,
+                    minHeight: isDayMode ? 'auto' : '70vh',
+                    bgcolor: isBlocked 
+                        ? (theme.palette.mode === 'dark' ? 'rgba(211, 47, 47, 0.1)' : 'rgba(244, 67, 54, 0.05)') 
+                        : (isToday ? (theme.palette.mode === 'dark' ? 'rgba(25, 118, 210, 0.1)' : 'rgba(25, 118, 210, 0.04)') : 'background.paper'),
+                    borderTop: isToday ? '4px solid #1976d2' : 'none',
+                    borderRadius: 2,
+                    position: 'relative'
+                }}
+            >
+                <Tooltip title={viewMode === 'week' ? "Clique para ampliar este dia" : ""}>
+                    <Box 
+                        onClick={() => handleDayClick(day)}
+                        sx={{ 
+                            cursor: viewMode === 'week' ? 'pointer' : 'default',
+                            p: 1, mb: 1, borderRadius: 1,
+                            transition: 'background-color 0.2s',
+                            '&:hover': viewMode === 'week' ? { bgcolor: 'action.hover' } : {}
+                        }}
+                    >
+                        <Typography
+                            variant={isDayMode ? "h6" : "subtitle2"} align="center"
+                            sx={{ fontWeight: 'bold', color: isToday ? 'primary.main' : 'text.secondary', textTransform: 'capitalize' }}>
+                            {day.format(isDayMode ? 'dddd, DD [de] MMMM' : 'ddd, DD/MM')}
+                        </Typography>
+                        {!isDayMode && totalItens > 0 && (
+                            <Typography variant="caption" display="block" align="center"
+                                sx={{ color: 'text.disabled', fontSize: '0.65rem', mt: 0.2 }}>
+                                {totalItens} aula{totalItens !== 1 ? 's' : ''}
+                            </Typography>
+                        )}
+                        {isBlocked && (
+                            <Box sx={{ textAlign: 'center', mt: 0.5 }}>
+                                <Chip label={periodoInativo.descricao} size="small" color="error" variant="outlined" sx={{ height: 20, fontSize: '0.65rem' }} />
+                            </Box>
+                        )}
+                    </Box>
+                </Tooltip>
+                <Divider sx={{ mb: 1.5 }} />
+                
+                {!isBlocked && (
+                    <>
+                        <Box sx={isDayMode
+                            ? { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 2 }
+                            : { display: 'flex', flexDirection: 'column', gap: 1 }
+                        }>
+                            {eventosVisiveis.map(evento => (
+                                <EventoCard 
+                                    key={evento.id} evento={evento}
+                                    isCoordenador={userInfo?.role === 'coordenador'}
+                                    onEdit={() => { setEventoParaAcao(evento); setIsEventModalOpen(true); }}
+                                    onDelete={async () => {
+                                        if(window.confirm("Excluir evento?")) {
+                                            await deleteDoc(doc(db, 'eventosManutencao', evento.id));
+                                            fetchDados();
+                                        }
+                                    }}
+                                />
+                            ))}
+                            {aulasVisiveis.map(aula => (
+                                <AulaCard 
+                                    key={aula.id} aula={aula}
+                                    isCoordenador={userInfo?.role === 'coordenador'}
+                                    onEdit={(a) => { setAulaParaAcao(a); setIsEditModalOpen(true); }}
+                                    onDelete={(a) => { setAulaParaAcao(a); setIsDeleteModalOpen(true); }}
+                                    isSelectionMode={isSelectionMode} 
+                                    isSelected={selectedAulasIds.includes(aula.id)}
+                                    onToggleSelect={(id) => setSelectedAulasIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id])}
+                                />
+                            ))}
+                        </Box>
+
+                        {compactar && ocultos > 0 && (
+                            <Box
+                                onClick={() => setExpandidoColuna(v => !v)}
+                                sx={{
+                                    mt: 1, py: 0.8, px: 1,
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5,
+                                    cursor: 'pointer', borderRadius: 1,
+                                    bgcolor: 'action.hover',
+                                    '&:hover': { bgcolor: 'action.selected' },
+                                    transition: 'background-color 0.15s',
+                                }}
+                            >
+                                <ExpandMoreIcon sx={{ fontSize: 14, color: 'text.secondary', transform: expandidoColuna ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+                                <Typography variant="caption" color="text.secondary">
+                                    {expandidoColuna ? 'Ver menos' : `+${ocultos} mais`}
+                                </Typography>
+                            </Box>
+                        )}
+                    </>
+                )}
+                
+                {userInfo?.role === 'coordenador' && !isBlocked && !isSelectionMode && (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2, opacity: 0.3, '&:hover': { opacity: 1 } }}>
+                        <IconButton size="small" onClick={() => { setAulaParaAcao({ dataInicio: day }); setIsAddModalOpen(true); }}>
+                            <AddIcon fontSize="small" />
+                        </IconButton>
+                    </Box>
+                )}
+            </Paper>
+        </Grid>
     );
 };
 
@@ -394,93 +609,38 @@ function CalendarioCronograma({ userInfo }) {
 
                 {loading ? (
                     <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}><CircularProgress /></Box>
-                ) : (
-                    <Grid container spacing={1.5}>
-                        {daysToShow.map((day) => {
-                            const isToday = day.isSame(dayjs(), 'day');
-                            const periodoInativo = periodosBloqueio.find(p => day.isBetween(p.start, p.end, 'day', '[]'));
-                            const isBlocked = !!periodoInativo;
-
-                            return (
-                                <Grid item xs={12} md={viewMode === 'day' ? 12 : 1.71} key={day.format('YYYY-MM-DD')}>
-                                    <Paper 
-                                        elevation={isToday ? 4 : 1}
-                                        sx={{ 
-                                            p: 1, minHeight: '70vh', 
-                                            bgcolor: isBlocked 
-                                                ? (theme.palette.mode === 'dark' ? 'rgba(211, 47, 47, 0.1)' : 'rgba(244, 67, 54, 0.05)') 
-                                                : (isToday ? (theme.palette.mode === 'dark' ? 'rgba(25, 118, 210, 0.1)' : 'rgba(25, 118, 210, 0.04)') : 'background.paper'),
-                                            borderTop: isToday ? '4px solid #1976d2' : 'none',
-                                            borderRadius: 2,
-                                            position: 'relative'
-                                        }}
-                                    >
-                                        <Tooltip title={viewMode === 'week' ? "Clique para ampliar este dia" : ""}>
-                                            <Box 
-                                                onClick={() => handleDayClick(day)}
-                                                sx={{ 
-                                                    cursor: viewMode === 'week' ? 'pointer' : 'default',
-                                                    p: 1, mb: 1, borderRadius: 1,
-                                                    transition: 'background-color 0.2s',
-                                                    '&:hover': viewMode === 'week' ? { bgcolor: 'action.hover' } : {}
-                                                }}
-                                            >
-                                                <Typography variant={viewMode === 'day' ? "h6" : "subtitle2"} align="center" sx={{ fontWeight: 'bold', color: isToday ? 'primary.main' : 'text.secondary', textTransform: 'capitalize' }}>
-                                                    {day.format('ddd, DD/MM')}
-                                                </Typography>
-                                                {isBlocked && (
-                                                    <Box sx={{ textAlign: 'center', mt: 0.5 }}>
-                                                        <Chip label={periodoInativo.descricao} size="small" color="error" variant="outlined" sx={{ height: 20, fontSize: '0.65rem' }} />
-                                                    </Box>
-                                                )}
-                                            </Box>
-                                        </Tooltip>
-                                        <Divider sx={{ mb: 1.5 }} />
-                                        
-                                        {!isBlocked && (
-                                            <Box sx={viewMode === 'day' ? { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 2 } : { display: 'flex', flexDirection: 'column', gap: 1 }}>
-                                                {eventosFiltrados.filter(e => dayjs(e.start).isSame(day, 'day')).map(evento => (
-                                                    <EventoCard 
-                                                        key={evento.id} 
-                                                        evento={evento} 
-                                                        isCoordenador={userInfo?.role === 'coordenador'}
-                                                        onEdit={() => { setEventoParaAcao(evento); setIsEventModalOpen(true); }}
-                                                        onDelete={async () => {
-                                                            if(window.confirm("Excluir evento?")) {
-                                                                await deleteDoc(doc(db, 'eventosManutencao', evento.id));
-                                                                fetchDados();
-                                                            }
-                                                        }}
-                                                    />
-                                                ))}
-                                                {aulasFiltradas.filter(a => dayjs(a.start).isSame(day, 'day')).map(aula => (
-                                                    <AulaCard 
-                                                        key={aula.id} 
-                                                        aula={aula} 
-                                                        isCoordenador={userInfo?.role === 'coordenador'}
-                                                        onEdit={(a) => { setAulaParaAcao(a); setIsEditModalOpen(true); }}
-                                                        onDelete={(a) => { setAulaParaAcao(a); setIsDeleteModalOpen(true); }}
-                                                        isSelectionMode={isSelectionMode} 
-                                                        isSelected={selectedAulasIds.includes(aula.id)}
-                                                        onToggleSelect={(id) => setSelectedAulasIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id])}
-                                                    />
-                                                ))}
-                                            </Box>
-                                        )}
-                                        
-                                        {userInfo?.role === 'coordenador' && !isBlocked && !isSelectionMode && (
-                                            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2, opacity: 0.3, '&:hover': { opacity: 1 } }}>
-                                                <IconButton size="small" onClick={() => { setAulaParaAcao({ dataInicio: day }); setIsAddModalOpen(true); }}>
-                                                    <AddIcon fontSize="small" />
-                                                </IconButton>
-                                            </Box>
-                                        )}
-                                    </Paper>
-                                </Grid>
-                            );
-                        })}
-                    </Grid>
-                )}
+                ) : (() => {
+                    const filtroAtivo = filtros.laboratorio.length > 0 || filtros.cursos.length > 0
+                        || filtros.turno.length > 0 || !!filtros.assunto;
+                    return (
+                        <Grid container spacing={1.5}>
+                            {daysToShow.map((day) => (
+                                <DayColumn
+                                    key={day.format('YYYY-MM-DD')}
+                                    day={day}
+                                    viewMode={viewMode}
+                                    aulasFiltradas={aulasFiltradas}
+                                    eventosFiltrados={eventosFiltrados}
+                                    periodosBloqueio={periodosBloqueio}
+                                    filtroAtivo={filtroAtivo}
+                                    userInfo={userInfo}
+                                    theme={theme}
+                                    handleDayClick={handleDayClick}
+                                    setEventoParaAcao={setEventoParaAcao}
+                                    setIsEventModalOpen={setIsEventModalOpen}
+                                    fetchDados={fetchDados}
+                                    setAulaParaAcao={setAulaParaAcao}
+                                    setIsEditModalOpen={setIsEditModalOpen}
+                                    setIsDeleteModalOpen={setIsDeleteModalOpen}
+                                    setIsAddModalOpen={setIsAddModalOpen}
+                                    isSelectionMode={isSelectionMode}
+                                    selectedAulasIds={selectedAulasIds}
+                                    setSelectedAulasIds={setSelectedAulasIds}
+                                />
+                            ))}
+                        </Grid>
+                    );
+                })()}
 
                 {/* MODAIS */}
                 <Dialog open={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} maxWidth="md" fullWidth>
