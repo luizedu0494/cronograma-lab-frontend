@@ -354,8 +354,8 @@ function EventosManutencao() {
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
-                <FormControl fullWidth>
-                  <InputLabel>Tipo</InputLabel>
+                <FormControl sx={{ minWidth: 120 }}>
+                  <InputLabel shrink>Tipo</InputLabel>
                   <Select 
                     value={formData.tipo} 
                     label="Tipo" 
@@ -367,8 +367,8 @@ function EventosManutencao() {
               </Grid>
               
               <Grid item xs={12} sm={6}>
-                <FormControl fullWidth>
-                  <InputLabel>Área do Laboratório</InputLabel>
+                <FormControl sx={{ minWidth: 160 }}>
+                  <InputLabel shrink>Área do Laboratório</InputLabel>
                   <Select 
                     value={formData.tipoLaboratorio} 
                     label="Área do Laboratório" 
@@ -383,8 +383,8 @@ function EventosManutencao() {
               </Grid>
 
               <Grid item xs={12}>
-                <FormControl fullWidth disabled={formData.tipoLaboratorio === 'Todos'}>
-                  <InputLabel>Laboratório Específico</InputLabel>
+                <FormControl sx={{ minWidth: 160 }} disabled={formData.tipoLaboratorio === 'Todos'}>
+                  <InputLabel shrink>Laboratório Específico</InputLabel>
                   <Select 
                     value={formData.laboratorio} 
                     label="Laboratório Específico" 
@@ -409,8 +409,8 @@ function EventosManutencao() {
               </Grid>
 
               <Grid item xs={12} sm={6}>
-                <FormControl fullWidth error={!!errors.horarios}>
-                  <InputLabel>Horário(s) *</InputLabel>
+                <FormControl sx={{ minWidth: 150 }} error={!!errors.horarios}>
+                  <InputLabel shrink>Horário(s) *</InputLabel>
                   <Select
                     multiple
                     value={formData.horarios}

@@ -600,8 +600,8 @@ function CardCandidato({ candidato, onChange, onRemover, index }) {
               />
             </Grid>
             <Grid item xs={12} sm={4}>
-              <FormControl fullWidth size="small" error={!labEncontrado && !!candidato.laboratorio}>
-                <InputLabel>Laboratório</InputLabel>
+              <FormControl sx={{ minWidth: 160 }} size="small" error={!labEncontrado && !!candidato.laboratorio}>
+                <InputLabel shrink>Laboratório</InputLabel>
                 <Select
                   value={candidato.laboratorio}
                   onChange={handleField('laboratorio')}
@@ -627,8 +627,8 @@ function CardCandidato({ candidato, onChange, onRemover, index }) {
               />
             </Grid>
             <Grid item xs={12} sm={3}>
-              <FormControl fullWidth size="small">
-                <InputLabel>Tipo</InputLabel>
+              <FormControl sx={{ minWidth: 120 }} size="small">
+                <InputLabel shrink>Tipo</InputLabel>
                 <Select value={candidato.tipoAtividade} onChange={handleField('tipoAtividade')} label="Tipo">
                   {TIPOS_ATIVIDADE.map((t) => (
                     <MenuItem key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</MenuItem>

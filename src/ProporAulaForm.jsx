@@ -558,8 +558,8 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
                                         <Typography variant="caption" color="primary" fontWeight="bold" display="block" sx={{ mb: 1.5 }}>
                                             📖 Classificação da Revisão
                                         </Typography>
-                                        <FormControl fullWidth sx={{ mb: 2 }}>
-                                            <InputLabel>Tipo de Revisão</InputLabel>
+                                        <FormControl sx={{ minWidth: 120 }} sx={{ mb: 2 }}>
+                                            <InputLabel shrink>Tipo de Revisão</InputLabel>
                                             <Select
                                                 value={formData.tipoRevisao}
                                                 onChange={(e) => setFormData(p => ({ ...p, tipoRevisao: e.target.value }))}
@@ -607,16 +607,16 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
                                     return (
                                         <Grid container spacing={1} key={index} sx={{ mt: index > 0 ? 1 : 0, alignItems: 'center' }}>
                                             <Grid item xs={5}>
-                                                <FormControl fullWidth size="small" disabled={!secao1Completa && !isEditMode}>
-                                                    <InputLabel>Tipo *</InputLabel>
+                                                <FormControl sx={{ minWidth: 120 }} size="small" disabled={!secao1Completa && !isEditMode}>
+                                                    <InputLabel shrink>Tipo *</InputLabel>
                                                     <Select value={labSelection.tipo || ''} onChange={(e) => handleLabTipoChange(index, e.target.value)}>
                                                         {TIPOS_LABORATORIO.map(t => <MenuItem key={t.id} value={t.id}>{t.name}</MenuItem>)}
                                                     </Select>
                                                 </FormControl>
                                             </Grid>
                                             <Grid item xs={6}>
-                                                <FormControl fullWidth size="small" disabled={!labSelection.tipo || (!secao1Completa && !isEditMode)}>
-                                                    <InputLabel>Lab(s) *</InputLabel>
+                                                <FormControl sx={{ minWidth: 140 }} size="small" disabled={!labSelection.tipo || (!secao1Completa && !isEditMode)}>
+                                                    <InputLabel shrink>Lab(s) *</InputLabel>
                                                     <Select
                                                         multiple
                                                         value={labSelection.laboratorios || []}
@@ -684,14 +684,14 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
                                         />
                                     </Grid>
                                     <Grid item xs={12} md={6}>
-                                        <FormControl fullWidth error={!!errors.horarioSlotString} disabled={!formData.dataInicio || (!secao2Completa && !isEditMode)}>
-                                            <InputLabel>Horário(s) *</InputLabel>
+                                        <FormControl sx={{ minWidth: 150 }} error={!!errors.horarioSlotString} disabled={!formData.dataInicio || (!secao2Completa && !isEditMode)}>
+                                            <InputLabel shrink>Horário(s) *</InputLabel>
                                             <Select
                                                 multiple
                                                 name="horarioSlotString"
                                                 value={formData.horarioSlotString}
                                                 onChange={handleChange}
-                                                input={<OutlinedInput label="Horário(s) *" />}
+                                                input={<OutlinedInput notched label="Horário(s) *" />}
                                                 renderValue={(selected) => (
                                                     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                                                         {selected.map((value) => (

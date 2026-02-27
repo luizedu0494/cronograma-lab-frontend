@@ -296,9 +296,9 @@ const HistoricoAulas = () => {
                         />
                     </Grid>
 
-                    <Grid item xs={12} sm={6} md={2}>
-                        <FormControl fullWidth size="small" variant="outlined">
-                            <InputLabel>Curso/Tipo</InputLabel>
+                    <Grid item xs={12} sm={6} md={3}>
+                        <FormControl sx={{ minWidth: 140 }} size="small" variant="outlined">
+                            <InputLabel shrink>Curso/Tipo</InputLabel>
                             <Select
                                 value={filtroCurso}
                                 onChange={(e) => setFiltroCurso(e.target.value)}
@@ -312,9 +312,9 @@ const HistoricoAulas = () => {
                         </FormControl>
                     </Grid>
 
-                    <Grid item xs={12} sm={6} md={2}>
-                        <FormControl fullWidth size="small" variant="outlined">
-                            <InputLabel>Ano</InputLabel>
+                    <Grid item xs={12} sm={6} md={3}>
+                        <FormControl sx={{ minWidth: 140 }} size="small" variant="outlined">
+                            <InputLabel shrink>Ano</InputLabel>
                             <Select
                                 value={filtroAno}
                                 onChange={(e) => setFiltroAno(e.target.value)}
@@ -328,9 +328,9 @@ const HistoricoAulas = () => {
                         </FormControl>
                     </Grid>
 
-                    <Grid item xs={12} sm={6} md={2}>
-                        <FormControl fullWidth size="small" variant="outlined">
-                            <InputLabel>Status</InputLabel>
+                    <Grid item xs={12} sm={6} md={3}>
+                        <FormControl sx={{ minWidth: 130 }} size="small" variant="outlined">
+                            <InputLabel shrink>Status</InputLabel>
                             <Select
                                 value={filtroStatus}
                                 onChange={(e) => setFiltroStatus(e.target.value)}

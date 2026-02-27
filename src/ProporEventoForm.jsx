@@ -415,8 +415,8 @@ function ProporEventoForm({ userInfo, currentUser, initialDate, onSuccess, onCan
                         <Grid item xs={12} md={6}>
                             <Paper elevation={3} sx={{ p: 3, borderLeft: '5px solid #1976d2', height: '100%' }}>
                                 <Typography variant="h6" gutterBottom>1. Detalhes do Evento</Typography>
-                                <FormControl fullWidth sx={{ mb: 2 }}>
-                                    <InputLabel>Tipo *</InputLabel>
+                                <FormControl sx={{ minWidth: 120 }} sx={{ mb: 2 }}>
+                                    <InputLabel shrink>Tipo *</InputLabel>
                                     <Select name="tipo" value={formData.tipo} label="Tipo *" onChange={handleChange}>
                                         {EVENT_TYPES.map(t => <MenuItem key={t} value={t}>{t}</MenuItem>)}
                                     </Select>
@@ -448,17 +448,17 @@ function ProporEventoForm({ userInfo, currentUser, initialDate, onSuccess, onCan
                                     return (
                                         <Grid container spacing={1} key={index} sx={{ mt: index > 0 ? 1 : 0, alignItems: 'center' }}>
                                             <Grid item xs={5}>
-                                                <FormControl fullWidth size="small" disabled={!secao1Completa && !isEditMode}>
-                                                    <InputLabel>Tipo *</InputLabel>
+                                                <FormControl sx={{ minWidth: 120 }} size="small" disabled={!secao1Completa && !isEditMode}>
+                                                    <InputLabel shrink>Tipo *</InputLabel>
                                                     <Select value={labSelection.tipo || ''} onChange={(e) => handleLabTipoChange(index, e.target.value)}>
                                                         {TIPOS_LABORATORIO.map(t => <MenuItem key={t.id} value={t.id}>{t.name}</MenuItem>)}
                                                     </Select>
                                                 </FormControl>
                                             </Grid>
                                             <Grid item xs={6}>
-                                                <FormControl fullWidth size="small" disabled={!labSelection.tipo || (!secao1Completa && !isEditMode)}>
-                                                    <InputLabel>Lab(s) *</InputLabel>
-                                                    <Select multiple value={labSelection.laboratorios || []} onChange={(e) => handleLabSelectionChange(index, e.target.value)} renderValue={(selected) => <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>{selected.map((value) => <Chip key={value} label={value} size="small" />)}</Box>}>
+                                                <FormControl sx={{ minWidth: 140 }} size="small" disabled={!labSelection.tipo || (!secao1Completa && !isEditMode)}>
+                                                    <InputLabel shrink>Lab(s) *</InputLabel>
+                                                    <Select multiple value={labSelection.laboratorios || []} onChange={(e) => handleLabSelectionChange(index, e.target.value)} renderValue={(selected) => (<Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>{selected.map((value) => (<Chip key={value} label={value} size="small" />))}</Box>)}>
                                                         {LISTA_LABORATORIOS.filter(l => l.tipo === labSelection.tipo).map(l => <MenuItem key={l.id} value={l.name}>{l.name}</MenuItem>)}
                                                     </Select>
                                                 </FormControl>
@@ -517,9 +517,9 @@ function ProporEventoForm({ userInfo, currentUser, initialDate, onSuccess, onCan
                                         />
                                     </Grid>
                                     <Grid item xs={12} md={6}>
-                                        <FormControl fullWidth error={!!errors.horarioSlotString} disabled={!formData.dataInicio || (!secao2Completa && !isEditMode)}>
-                                            <InputLabel>Horário(s) *</InputLabel>
-                                            <Select multiple name="horarioSlotString" value={formData.horarioSlotString} onChange={handleChange} input={<OutlinedInput label="Horário(s) *" />} renderValue={(selected) => <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>{selected.map((value) => <Chip key={value} label={BLOCOS_HORARIO.find(b => b.value === value)?.label || value} size="small" />)}</Box>}>
+                                        <FormControl sx={{ minWidth: 150 }} error={!!errors.horarioSlotString} disabled={!formData.dataInicio || (!secao2Completa && !isEditMode)}>
+                                            <InputLabel shrink>Horário(s) *</InputLabel>
+                                            <Select multiple name="horarioSlotString" value={formData.horarioSlotString} onChange={handleChange} input={<OutlinedInput notched label="Horário(s) *" />} renderValue={(selected) => selected.length === 0 ? <em style={{color:'rgba(200,200,200,0.5)'}}>Horário(s) *</em> : selected.length === 1 ? selected[0] : `${selected[0]} +${selected.length - 1}`}>
                                                 {BLOCOS_HORARIO.map((bloco) => <MenuItem key={bloco.value} value={bloco.value} disabled={horariosOcupados.includes(bloco.value)}>{bloco.label} {horariosOcupados.includes(bloco.value) ? '(Ocupado)' : ''}</MenuItem>)}
                                             </Select>
                                             {errors.horarioSlotString && <FormHelperText>{errors.horarioSlotString}</FormHelperText>}

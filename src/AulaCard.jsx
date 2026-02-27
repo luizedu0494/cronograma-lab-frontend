@@ -81,8 +81,8 @@ function AulaCard({ aula, onOpenMenu, onSave, isCoordenador }) {
                         />
                     </Grid>
                     <Grid item xs={12} sm={6}>
-                        <FormControl fullWidth size="small">
-                            <InputLabel>Laboratório</InputLabel>
+                        <FormControl sx={{ minWidth: 160 }} size="small">
+                            <InputLabel shrink>Laboratório</InputLabel>
                             <Select
                                 defaultValue={editData.laboratorioSelecionado}
                                 label="Laboratório"
@@ -93,8 +93,8 @@ function AulaCard({ aula, onOpenMenu, onSave, isCoordenador }) {
                         </FormControl>
                     </Grid>
                     <Grid item xs={12} sm={6}>
-                        <FormControl fullWidth size="small">
-                            <InputLabel>Horário</InputLabel>
+                        <FormControl sx={{ minWidth: 150 }} size="small">
+                            <InputLabel shrink>Horário</InputLabel>
                             <Select
                                 defaultValue={editData.horarioSlotString}
                                 label="Horário"

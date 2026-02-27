@@ -493,16 +493,16 @@ function FormRevisao({ revisaoInicial, dataInicial, aulasDodia, onSalvar, onCanc
 
             <Grid container spacing={2}>
                 <Grid item xs={12} sm={6}>
-                    <FormControl fullWidth size="small">
-                        <InputLabel>Tipo de Revisão</InputLabel>
+                    <FormControl sx={{ minWidth: 120 }} size="small">
+                        <InputLabel shrink>Tipo de Revisão</InputLabel>
                         <Select value={form.tipo} onChange={f('tipo')} label="Tipo de Revisão">
                             {TIPOS_REVISAO.map(t => <MenuItem key={t.value} value={t.value}>{t.icon} {t.label}</MenuItem>)}
                         </Select>
                     </FormControl>
                 </Grid>
                 <Grid item xs={12} sm={6}>
-                    <FormControl fullWidth size="small">
-                        <InputLabel>Situação</InputLabel>
+                    <FormControl sx={{ minWidth: 140 }} size="small">
+                        <InputLabel shrink>Situação</InputLabel>
                         <Select value={form.status} onChange={f('status')} label="Situação">
                             {STATUS_REVISAO.map(s => (
                                 <MenuItem key={s.value} value={s.value}>
@@ -541,8 +541,8 @@ function FormRevisao({ revisaoInicial, dataInicial, aulasDodia, onSalvar, onCanc
                     </LocalizationProvider>
                 </Grid>
                 <Grid item xs={12} sm={6}>
-                    <FormControl fullWidth size="small">
-                        <InputLabel>Bloco de Horário</InputLabel>
+                    <FormControl sx={{ minWidth: 150 }} size="small">
+                        <InputLabel shrink>Bloco de Horário</InputLabel>
                         <Select value={form.horarioSlot} onChange={f('horarioSlot')} label="Bloco de Horário">
                             <MenuItem value=""><em>Não definido</em></MenuItem>
                             {Object.entries(blocosPorTurno).map(([turno, blocos]) => [
@@ -581,8 +581,8 @@ function FormRevisao({ revisaoInicial, dataInicial, aulasDodia, onSalvar, onCanc
 
             <Grid container spacing={2}>
                 <Grid item xs={12} sm={6}>
-                    <FormControl fullWidth size="small">
-                        <InputLabel>Laboratório (opcional)</InputLabel>
+                    <FormControl sx={{ minWidth: 160 }} size="small">
+                        <InputLabel shrink>Laboratório (opcional)</InputLabel>
                         <Select value={form.laboratorio} onChange={f('laboratorio')} label="Laboratório (opcional)">
                             <MenuItem value="">Nenhum</MenuItem>
                             {LISTA_LABORATORIOS.map(l => <MenuItem key={l.id} value={l.name}>{l.name}</MenuItem>)}
@@ -820,14 +820,14 @@ function CalendarioRevisoesTecnico({ userInfo }) {
                                     InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> }}
                                     sx={{ flex: 1, minWidth: 120 }} />
                                 <FormControl size="small" sx={{ minWidth: 130 }}>
-                                    <InputLabel>Situação</InputLabel>
+                                    <InputLabel shrink>Situação</InputLabel>
                                     <Select value={filtroStatus} onChange={e => setFiltroStatus(e.target.value)} label="Situação">
                                         <MenuItem value="">Todas</MenuItem>
                                         {STATUS_REVISAO.map(s => <MenuItem key={s.value} value={s.value}>{s.label}</MenuItem>)}
                                     </Select>
                                 </FormControl>
                                 <FormControl size="small" sx={{ minWidth: 140 }}>
-                                    <InputLabel>Tipo</InputLabel>
+                                    <InputLabel shrink>Tipo</InputLabel>
                                     <Select value={filtroTipo} onChange={e => setFiltroTipo(e.target.value)} label="Tipo">
                                         <MenuItem value="">Todos</MenuItem>
                                         {TIPOS_REVISAO.map(t => <MenuItem key={t.value} value={t.value}>{t.icon} {t.label}</MenuItem>)}

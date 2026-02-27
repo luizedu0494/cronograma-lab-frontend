@@ -250,8 +250,8 @@ function GerenciarAulasAvancado({ userInfo }) {
                             <DatePicker label="Data Fim" value={filtros.dataFim} onChange={handleDateChange('dataFim')} slotProps={{ textField: { fullWidth: true, size: 'small' } }} />
                         </Grid>
                         <Grid item xs={12} sm={6} md={3}>
-                            <FormControl fullWidth size="small">
-                                <InputLabel>Status</InputLabel>
+                            <FormControl sx={{ minWidth: 130 }} size="small">
+                                <InputLabel shrink>Status</InputLabel>
                                 <Select value={filtros.status} label="Status" onChange={handleFiltroChange('status')}>
                                     <MenuItem value=""><em>Todos</em></MenuItem>
                                     {STATUS_AULA.map(s => <MenuItem key={s} value={s}>{s}</MenuItem>)}
@@ -259,9 +259,9 @@ function GerenciarAulasAvancado({ userInfo }) {
                             </FormControl>
                         </Grid>
                         <Grid item xs={12} sm={6} md={3}>
-                            <FormControl fullWidth size="small">
-                                <InputLabel>Laboratório(s)</InputLabel>
-                                <Select multiple value={filtros.laboratorio} onChange={handleFiltroChange('laboratorio')} input={<OutlinedInput label="Laboratório(s)" />} renderValue={(selected) => <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>{selected.map((value) => <Chip key={value} label={value} size="small" />)}</Box>}>
+                            <FormControl sx={{ minWidth: 160 }} size="small">
+                                <InputLabel shrink>Laboratório(s)</InputLabel>
+                                <Select multiple value={filtros.laboratorio} onChange={handleFiltroChange('laboratorio')} input={<OutlinedInput notched label="Laboratório(s)" />} renderValue={(selected) => selected.length === 0 ? <em style={{color:'rgba(200,200,200,0.5)'}}>Laboratório(s)</em> : selected.length === 1 ? selected[0] : `${selected[0]} +${selected.length - 1}`}>
                                     {LISTA_LABORATORIOS.map(l => <MenuItem key={l.id} value={l.name}>{l.name}</MenuItem>)}
                                 </Select>
                             </FormControl>
@@ -309,7 +309,7 @@ function GerenciarAulasAvancado({ userInfo }) {
                         confirmText="Excluir"
                         confirmColor="error"
                     />
-                <Dialog open={openEditDialog} onClose={() => setOpenEditDialog(false)} fullWidth maxWidth="sm"><DialogTitle>Editar {selectedAulas.length} Aulas Selecionadas</DialogTitle><DialogContent><Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>Apenas os campos preenchidos serão atualizados. Deixe em branco para não alterar.</Typography><Grid container spacing={3}><Grid item xs={12}><TextField fullWidth label="Novo Assunto" value={editFields.assunto} onChange={handleEditFieldChange('assunto')} /></Grid><Grid item xs={12}><FormControl fullWidth><InputLabel>Novo Laboratório</InputLabel><Select value={editFields.laboratorioSelecionado} label="Novo Laboratório" onChange={handleEditFieldChange('laboratorioSelecionado')}>{LISTA_LABORATORIOS.map(l => <MenuItem key={l.id} value={l.name}>{l.name}</MenuItem>)}</Select></FormControl></Grid><Grid item xs={12}><FormControl fullWidth><InputLabel>Novo Status</InputLabel><Select value={editFields.status} label="Novo Status" onChange={handleEditFieldChange('status')}>{STATUS_AULA.map(s => <MenuItem key={s} value={s}>{s}</MenuItem>)}</Select></FormControl></Grid></Grid></DialogContent><DialogActions><Button onClick={() => setOpenEditDialog(false)}>Cancelar</Button><Button onClick={handleUpdateSelected} variant="contained">Salvar Edição</Button></DialogActions></Dialog>
+                <Dialog open={openEditDialog} onClose={() => setOpenEditDialog(false)} fullWidth maxWidth="sm"><DialogTitle>Editar {selectedAulas.length} Aulas Selecionadas</DialogTitle><DialogContent><Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>Apenas os campos preenchidos serão atualizados. Deixe em branco para não alterar.</Typography><Grid container spacing={3}><Grid item xs={12}><TextField fullWidth label="Novo Assunto" value={editFields.assunto} onChange={handleEditFieldChange('assunto')} /></Grid><Grid item xs={12}><FormControl sx={{ minWidth: 160 }}><InputLabel shrink>Novo Laboratório</InputLabel><Select value={editFields.laboratorioSelecionado} label="Novo Laboratório" onChange={handleEditFieldChange('laboratorioSelecionado')}>{LISTA_LABORATORIOS.map(l => <MenuItem key={l.id} value={l.name}>{l.name}</MenuItem>)}</Select></FormControl></Grid><Grid item xs={12}><FormControl sx={{ minWidth: 130 }}><InputLabel shrink>Novo Status</InputLabel><Select value={editFields.status} label="Novo Status" onChange={handleEditFieldChange('status')}>{STATUS_AULA.map(s => <MenuItem key={s} value={s}>{s}</MenuItem>)}</Select></FormControl></Grid></Grid></DialogContent><DialogActions><Button onClick={() => setOpenEditDialog(false)}>Cancelar</Button><Button onClick={handleUpdateSelected} variant="contained">Salvar Edição</Button></DialogActions></Dialog>
             </Container>
         </LocalizationProvider>
     );

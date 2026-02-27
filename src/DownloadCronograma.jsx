@@ -165,17 +165,17 @@ function DownloadCronograma() {
               />
             </Grid>
             <Grid item xs={12} sm={6} md={4}>
-              <FormControl fullWidth>
-                <InputLabel>Laboratório(s)</InputLabel>
-                <Select multiple value={laboratorioFiltro} onChange={(e) => setLaboratorioFiltro(e.target.value)} input={<OutlinedInput label="Laboratório(s)" />} renderValue={(selected) => (<Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>{selected.map((value) => (<Chip key={value} label={value} size="small" />))}</Box>)}>
+              <FormControl sx={{ minWidth: 160 }}>
+                <InputLabel shrink>Laboratório(s)</InputLabel>
+                <Select multiple value={laboratorioFiltro} onChange={(e) => setLaboratorioFiltro(e.target.value)} input={<OutlinedInput notched label="Laboratório(s)" />} renderValue={(selected) => (<Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>{selected.map((value) => (<Chip key={value} label={value} size="small" />))}</Box>)}>
                   {LISTA_LABORATORIOS.map(l => <MenuItem key={l.id} value={l.name}>{l.name}</MenuItem>)}
                 </Select>
               </FormControl>
             </Grid>
             <Grid item xs={12} sm={6} md={4}>
-              <FormControl fullWidth>
-                <InputLabel>Horário(s)</InputLabel>
-                <Select multiple value={horarioFiltro} onChange={(e) => setHorarioFiltro(e.target.value)} input={<OutlinedInput label="Horário(s)" />} renderValue={(selected) => (<Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>{selected.map((value) => (<Chip key={value} label={value} size="small" />))}</Box>)}>
+              <FormControl sx={{ minWidth: 150 }}>
+                <InputLabel shrink>Horário(s)</InputLabel>
+                <Select multiple value={horarioFiltro} onChange={(e) => setHorarioFiltro(e.target.value)} input={<OutlinedInput notched label="Horário(s)" />} renderValue={(selected) => (<Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>{selected.map((value) => (<Chip key={value} label={value} size="small" />))}</Box>)}>
                   {BLOCOS_HORARIO.map(bloco => (<MenuItem key={bloco.value} value={bloco.value}>{bloco.label}</MenuItem>))}
                 </Select>
               </FormControl>
@@ -184,16 +184,16 @@ function DownloadCronograma() {
               <TextField fullWidth label="Assunto da Aula" value={assuntoFiltro} onChange={(e) => setAssuntoFiltro(e.target.value)} />
             </Grid>
             <Grid item xs={12} sm={6} md={4}>
-              <FormControl fullWidth>
-                <InputLabel>Curso(s)</InputLabel>
-                <Select multiple value={cursosFiltro} onChange={(e) => setCursosFiltro(e.target.value)} input={<OutlinedInput label="Curso(s)" />} renderValue={(selected) => (<Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>{selected.map((value) => (<Chip key={value} label={LISTA_CURSOS.find(c => c.value === value)?.label || value} size="small" />))}</Box>)}>
+              <FormControl sx={{ minWidth: 140 }}>
+                <InputLabel shrink>Curso(s)</InputLabel>
+                <Select multiple value={cursosFiltro} onChange={(e) => setCursosFiltro(e.target.value)} input={<OutlinedInput notched label="Curso(s)" />} renderValue={(selected) => (<Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>{selected.map((value) => (<Chip key={value} label={value} size="small" />))}</Box>)}>
                   {LISTA_CURSOS.map(c => <MenuItem key={c.value} value={c.value}>{c.label}</MenuItem>)}
                 </Select>
               </FormControl>
             </Grid>
             <Grid item xs={12} sm={6} md={4}>
-              <FormControl fullWidth>
-                <InputLabel>Liga</InputLabel>
+              <FormControl sx={{ minWidth: 130 }}>
+                <InputLabel shrink>Liga</InputLabel>
                 <Select value={ligaFiltro} label="Liga" onChange={(e) => setLigaFiltro(e.target.value)}>
                   <MenuItem value=""><em>Todas</em></MenuItem>
                   {LISTA_CURSOS.map(c => <MenuItem key={c.value} value={c.value}>{c.label}</MenuItem>)}

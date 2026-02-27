@@ -561,8 +561,8 @@ function AulaCard({ aula, index, onChange, onToggle, onRemove }) {
                 </Grid>
 
                 {/* Laboratório */}
-                <FormControl fullWidth size="small" sx={{ mt: 2 }} disabled={!aula.selecionada}>
-                    <InputLabel>Laboratório *</InputLabel>
+                <FormControl sx={{ minWidth: 160 }} size="small" sx={{ mt: 2 }} disabled={!aula.selecionada}>
+                    <InputLabel shrink>Laboratório *</InputLabel>
                     <Select
                         value={aula.laboratorio || ''}
                         label="Laboratório *"

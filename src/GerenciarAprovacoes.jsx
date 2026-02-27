@@ -307,13 +307,13 @@ function GerenciarAprovacoes() {
                             <Collapse in={filtrosVisiveis} orientation="horizontal">
                                 <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
                                     <FormControl sx={{ minWidth: 140 }} size="small">
-                                        <InputLabel>Mês</InputLabel>
+                                        <InputLabel shrink>Mês</InputLabel>
                                         <Select value={selectedMonth} label="Mês" onChange={e => setSelectedMonth(e.target.value)}>
                                             {MONTHS.map(m => <MenuItem key={m.value} value={m.value}>{m.label}</MenuItem>)}
                                         </Select>
                                     </FormControl>
                                     <FormControl sx={{ minWidth: 100 }} size="small">
-                                        <InputLabel>Ano</InputLabel>
+                                        <InputLabel shrink>Ano</InputLabel>
                                         <Select value={selectedYear} label="Ano" onChange={e => setSelectedYear(e.target.value)}>
                                             {YEARS.map(y => <MenuItem key={y} value={y}>{y}</MenuItem>)}
                                         </Select>

@@ -162,21 +162,21 @@ function AnaliseEventos() {
             <Paper sx={{ p: 3, mb: 4, borderRadius: 2 }}>
                 <Grid container spacing={3} alignItems="center">
                     <Grid item xs={12} md={3}>
-                        <FormControl fullWidth size="small">
-                            <InputLabel>Ano de Referência</InputLabel>
+                        <FormControl sx={{ minWidth: 140 }} size="small">
+                            <InputLabel shrink>Ano de Referência</InputLabel>
                             <Select value={anoFiltro} label="Ano de Referência" onChange={(e) => setAnoFiltro(e.target.value)}>
                                 {anosDisponiveis.map(year => <MenuItem key={year} value={year}>{year}</MenuItem>)}
                             </Select>
                         </FormControl>
                     </Grid>
                     <Grid item xs={12} md={9}>
-                        <FormControl fullWidth size="small">
-                            <InputLabel>Filtrar por Laboratórios</InputLabel>
+                        <FormControl sx={{ minWidth: 160 }} size="small">
+                            <InputLabel shrink>Filtrar por Laboratórios</InputLabel>
                             <Select
                                 multiple
                                 value={laboratoriosFiltro}
                                 onChange={(e) => setLaboratoriosFiltro(e.target.value)}
-                                input={<OutlinedInput label="Filtrar por Laboratórios" />}
+                                input={<OutlinedInput notched label="Filtrar por Laboratórios" />}
                                 renderValue={(selected) => (
                                     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                                         {selected.map((value) => <Chip key={value} label={value} size="small" />)}

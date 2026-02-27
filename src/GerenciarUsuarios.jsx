@@ -130,7 +130,7 @@ function GerenciarUsuarios( ) {
 
             <Dialog open={openEditDialog} onClose={() => setOpenEditDialog(false)}>
                 <DialogTitle>Editar Cargo de {usuarioParaEditar?.name}</DialogTitle>
-                <DialogContent><FormControl fullWidth sx={{ mt: 2 }}><InputLabel>Cargo</InputLabel><Select value={novoRole} label="Cargo" onChange={(e) => setNovoRole(e.target.value)}>{ROLES.map(role => <MenuItem key={role} value={role}>{role}</MenuItem>)}</Select></FormControl></DialogContent>
+                <DialogContent><FormControl sx={{ minWidth: 140 }} sx={{ mt: 2 }}><InputLabel shrink>Cargo</InputLabel><Select value={novoRole} label="Cargo" onChange={(e) => setNovoRole(e.target.value)}>{ROLES.map(role => <MenuItem key={role} value={role}>{role}</MenuItem>)}</Select></FormControl></DialogContent>
                 <DialogActions>
                     <Button onClick={() => setOpenEditDialog(false)}>Cancelar</Button>
                     <Button onClick={() => handleAction('editRole', usuarioParaEditar.id, { role: novoRole })} variant="contained">Salvar</Button>

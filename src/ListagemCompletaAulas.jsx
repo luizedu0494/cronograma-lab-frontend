@@ -246,8 +246,8 @@ const ListagemCompletaAulas = () => {
 
                         {/* Filtro por Status */}
                         <Grid item xs={12} sm={6} md={4}>
-                            <FormControl fullWidth size="small">
-                                <InputLabel>Status</InputLabel>
+                            <FormControl sx={{ minWidth: 130 }} size="small">
+                                <InputLabel shrink>Status</InputLabel>
                                 <Select
                                     value={filtroStatus}
                                     onChange={(e) => {
@@ -266,8 +266,8 @@ const ListagemCompletaAulas = () => {
 
                         {/* Filtro por Autor */}
                         <Grid item xs={12} sm={6} md={4}>
-                            <FormControl fullWidth size="small">
-                                <InputLabel>Autor</InputLabel>
+                            <FormControl sx={{ minWidth: 140 }} size="small">
+                                <InputLabel shrink>Autor</InputLabel>
                                 <Select
                                     value={filtroAutor}
                                     onChange={(e) => {
@@ -288,8 +288,8 @@ const ListagemCompletaAulas = () => {
 
                         {/* Tipo de Filtro de Data */}
                         <Grid item xs={12} sm={6} md={4}>
-                            <FormControl fullWidth size="small">
-                                <InputLabel>Filtro de Data</InputLabel>
+                            <FormControl sx={{ minWidth: 140 }} size="small">
+                                <InputLabel shrink>Filtro de Data</InputLabel>
                                 <Select
                                     value={filtroTipo}
                                     onChange={(e) => {

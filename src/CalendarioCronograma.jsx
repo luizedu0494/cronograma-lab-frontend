@@ -616,54 +616,38 @@ function CalendarioCronograma({ userInfo }) {
 
                     <Collapse in={filtrosVisiveis}>
                         <Box sx={{ mt: 2, pt: 2, borderTop: '1px solid', borderColor: 'divider' }}>
-                            <Grid container spacing={2}>
-                                <Grid item xs={12} md={3}>
-                                    <TextField fullWidth size="small" label="Buscar Assunto" value={filtros.assunto} onChange={(e) => setFiltros({...filtros, assunto: e.target.value})} InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> }} />
-                                </Grid>
-                                <Grid item xs={12} md={3}>
-                                    <FormControl fullWidth size="small">
-                                        <InputLabel>Laboratórios</InputLabel>
-                                        <Select multiple value={filtros.laboratorio} onChange={(e) => setFiltros({...filtros, laboratorio: e.target.value})} input={<OutlinedInput label="Laboratórios" />} renderValue={(selected) => <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>{selected.map(v => <Chip key={v} label={v} size="small" />)}</Box>}>
-                                            {LISTA_LABORATORIOS.map(l => <MenuItem key={l.id} value={l.name}>{l.name}</MenuItem>)}
-                                        </Select>
-                                    </FormControl>
-                                </Grid>
-                                <Grid item xs={12} md={3}>
-                                    <FormControl fullWidth size="small">
-                                        <InputLabel>Cursos</InputLabel>
-                                        <Select multiple value={filtros.cursos} onChange={(e) => setFiltros({...filtros, cursos: e.target.value})} input={<OutlinedInput label="Cursos" />} renderValue={(selected) => <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>{selected.map(v => <Chip key={v} label={LISTA_CURSOS.find(lc => lc.value === v)?.label || v} size="small" />)}</Box>}>
-                                            {LISTA_CURSOS.map(c => <MenuItem key={c.value} value={c.value}>{c.label}</MenuItem>)}
-                                        </Select>
-                                    </FormControl>
-                                </Grid>
-                                <Grid item xs={12} md={2}>
-                                    <FormControl fullWidth size="small">
-                                        <InputLabel>Turno</InputLabel>
-                                        <Select multiple value={filtros.turno} onChange={(e) => setFiltros({...filtros, turno: e.target.value})} input={<OutlinedInput label="Turno" />} renderValue={(selected) => <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>{selected.map(v => <Chip key={v} label={v} size="small" />)}</Box>}>
-                                            <MenuItem value="Manhã">🌅 Manhã</MenuItem>
-                                            <MenuItem value="Tarde">☀️ Tarde</MenuItem>
-                                            <MenuItem value="Noite">🌙 Noite</MenuItem>
-                                        </Select>
-                                    </FormControl>
-                                </Grid>
-                                <Grid item xs={12} md={2}>
-                                    <FormControl fullWidth size="small">
-                                        <InputLabel>Tipo</InputLabel>
-                                        <Select
-                                            value={filtros.tipoConteudo || 'todos'}
-                                            onChange={(e) => setFiltros({...filtros, tipoConteudo: e.target.value})}
-                                            label="Tipo"
-                                        >
-                                            <MenuItem value="todos">📅 Todos</MenuItem>
-                                            <MenuItem value="aula">🎓 Só Aulas</MenuItem>
-                                            <MenuItem value="revisao">📖 Só Revisões</MenuItem>
-                                        </Select>
-                                    </FormControl>
-                                </Grid>
-                                <Grid item xs={12} md={1}>
-                                    <Button fullWidth variant="outlined" color="inherit" onClick={limparFiltros} startIcon={<ClearAllIcon />}>Limpar</Button>
-                                </Grid>
-                            </Grid>
+                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5, alignItems: 'center' }}>
+                                <TextField size="small" label="Buscar Assunto" value={filtros.assunto} onChange={(e) => setFiltros({...filtros, assunto: e.target.value})} sx={{ minWidth: 180 }} InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> }} />
+                                <FormControl size="small" sx={{ minWidth: 160 }}>
+                                    <InputLabel shrink>Laboratórios</InputLabel>
+                                    <Select multiple value={filtros.laboratorio} onChange={(e) => setFiltros({...filtros, laboratorio: e.target.value})} input={<OutlinedInput notched label="Laboratórios" />} renderValue={(selected) => (<Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>{selected.map((value) => (<Chip key={value} label={value} size="small" />))}</Box>)}>
+                                        {LISTA_LABORATORIOS.map(l => <MenuItem key={l.id} value={l.name}>{l.name}</MenuItem>)}
+                                    </Select>
+                                </FormControl>
+                                <FormControl size="small" sx={{ minWidth: 140 }}>
+                                    <InputLabel shrink>Cursos</InputLabel>
+                                    <Select multiple value={filtros.cursos} onChange={(e) => setFiltros({...filtros, cursos: e.target.value})} input={<OutlinedInput notched label="Cursos" />} renderValue={(selected) => (<Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>{selected.map((value) => (<Chip key={value} label={value} size="small" />))}</Box>)}>
+                                        {LISTA_CURSOS.map(c => <MenuItem key={c.value} value={c.value}>{c.label}</MenuItem>)}
+                                    </Select>
+                                </FormControl>
+                                <FormControl size="small" sx={{ minWidth: 120 }}>
+                                    <InputLabel shrink>Turno</InputLabel>
+                                    <Select multiple value={filtros.turno} onChange={(e) => setFiltros({...filtros, turno: e.target.value})} input={<OutlinedInput notched label="Turno" />} renderValue={(selected) => (<Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>{selected.map((value) => (<Chip key={value} label={value} size="small" />))}</Box>)}>
+                                        <MenuItem value="Manhã">🌅 Manhã</MenuItem>
+                                        <MenuItem value="Tarde">☀️ Tarde</MenuItem>
+                                        <MenuItem value="Noite">🌙 Noite</MenuItem>
+                                    </Select>
+                                </FormControl>
+                                <FormControl size="small" sx={{ minWidth: 130 }}>
+                                    <InputLabel shrink>Tipo</InputLabel>
+                                    <Select value={filtros.tipoConteudo || 'todos'} onChange={(e) => setFiltros({...filtros, tipoConteudo: e.target.value})} input={<OutlinedInput notched label="Tipo" />}>
+                                        <MenuItem value="todos">📅 Todos</MenuItem>
+                                        <MenuItem value="aula">🎓 Só Aulas</MenuItem>
+                                        <MenuItem value="revisao">📖 Só Revisões</MenuItem>
+                                    </Select>
+                                </FormControl>
+                                <Button variant="outlined" color="inherit" onClick={limparFiltros} startIcon={<ClearAllIcon />}>Limpar</Button>
+                            </Box>
                         </Box>
                     </Collapse>
                 </Paper>

@@ -343,24 +343,24 @@ function AnaliseAulas() {
                 <Typography variant="h6" gutterBottom>Filtros</Typography>
                 <Grid container spacing={2}>
                     <Grid item xs={12} sm={4}>
-                        <FormControl fullWidth size="small">
-                            <InputLabel>Laboratório(s)</InputLabel>
-                            <Select multiple value={laboratoriosFiltro} onChange={(e) => setLaboratoriosFiltro(e.target.value)} input={<OutlinedInput label="Laboratório(s)" />} renderValue={(selected) => <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>{selected.map((value) => <Chip key={value} label={value} size="small" />)}</Box>}>
+                        <FormControl sx={{ minWidth: 160 }} size="small">
+                            <InputLabel shrink>Laboratório(s)</InputLabel>
+                            <Select multiple value={laboratoriosFiltro} onChange={(e) => setLaboratoriosFiltro(e.target.value)} input={<OutlinedInput notched label="Laboratório(s)" />} renderValue={(selected) => (<Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>{selected.map((value) => (<Chip key={value} label={value} size="small" />))}</Box>)}>
                                 {LISTA_LABORATORIOS.map(l => <MenuItem key={l.id} value={l.name}>{l.name}</MenuItem>)}
                             </Select>
                         </FormControl>
                     </Grid>
                     <Grid item xs={12} sm={4}>
-                        <FormControl fullWidth size="small">
-                            <InputLabel>Curso(s)</InputLabel>
-                            <Select multiple value={cursosFiltro} onChange={(e) => setCursosFiltro(e.target.value)} input={<OutlinedInput label="Curso(s)" />} renderValue={(selected) => (<Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>{selected.map(value => <Chip key={value} label={LISTA_CURSOS.find(c => c.value === value)?.label || value} size="small" />)}</Box>)}>
+                        <FormControl sx={{ minWidth: 140 }} size="small">
+                            <InputLabel shrink>Curso(s)</InputLabel>
+                            <Select multiple value={cursosFiltro} onChange={(e) => setCursosFiltro(e.target.value)} input={<OutlinedInput notched label="Curso(s)" />} renderValue={(selected) => (<Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>{selected.map((value) => (<Chip key={value} label={LISTA_CURSOS.find(c => c.value === value)?.label || value} size="small" />))}</Box>)}>
                                 {LISTA_CURSOS.map(c => <MenuItem key={c.value} value={c.value}>{c.label}</MenuItem>)}
                             </Select>
                         </FormControl>
                     </Grid>
                     <Grid item xs={12} sm={4}>
-                        <FormControl fullWidth size="small">
-                            <InputLabel>Ano</InputLabel>
+                        <FormControl sx={{ minWidth: 140 }} size="small">
+                            <InputLabel shrink>Ano</InputLabel>
                             <Select value={anoFiltro} onChange={(e) => setAnoFiltro(e.target.value)} label="Ano">
                                 {anosDisponiveis.map(ano => <MenuItem key={ano} value={ano}>{ano}</MenuItem>)}
                             </Select>
