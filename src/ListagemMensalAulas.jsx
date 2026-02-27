@@ -24,13 +24,18 @@ function ListagemMensalAulas({ userInfo, setSnackBar }) {
         try {
             await addDoc(collection(db, "logs"), {
                 type: type,
+                collection: 'aulas',
                 aula: {
-                    disciplina: aulaData.title,
+                    assunto: aulaData.title || aulaData.assunto,
+                    disciplina: aulaData.title || aulaData.assunto,
+                    cursos: aulaData.cursos || [],
                     curso: aulaData.cursos?.join(', '),
                     ano: aulaData.ano,
                     status: aulaData.status,
-                    dataInicio: aulaData.start,
-                    laboratorioSelecionado: aulaData.laboratorio,
+                    dataInicio: aulaData.start || aulaData.dataInicio,
+                    laboratorioSelecionado: aulaData.laboratorio || aulaData.laboratorioSelecionado,
+                    isRevisao: aulaData.isRevisao || false,
+                    tipoRevisaoLabel: aulaData.tipoRevisaoLabel || null,
                 },
                 timestamp: serverTimestamp(),
                 user: {

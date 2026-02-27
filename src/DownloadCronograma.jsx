@@ -79,6 +79,7 @@ function DownloadCronograma() {
   const [horarioFiltro, setHorarioFiltro] = useState([]);
   const [cursosFiltro, setCursosFiltro] = useState([]);
   const [ligaFiltro, setLigaFiltro] = useState('');
+  const [tipoFiltro, setTipoFiltro] = useState('todos'); // 'todos' | 'aula' | 'revisao'
 
 	  const handleDownload = async (format) => {
 	    setLoading(true);
@@ -104,7 +105,21 @@ function DownloadCronograma() {
 	        q = query(q, orderBy('dataInicio', 'asc'));
 	
 	        const querySnapshot = await getDocs(q);
-	        const aulasDoMes = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+	        let aulasDoMes = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+	        // Filtro de tipo no frontend
+	        if (tipoFiltro === 'aula') aulasDoMes = aulasDoMes.filter(a => !a.isRevisao);
+	        if (tipoFiltro === 'revisao') aulasDoMes = aulasDoMes.filter(a => a.isRevisao === true);
+
+	        // Ordenar por laboratório (alfabético) e depois por data crescente
+	        aulasDoMes.sort((a, b) => {
+	            const labA = (a.laboratorioSelecionado || '').toLowerCase();
+	            const labB = (b.laboratorioSelecionado || '').toLowerCase();
+	            if (labA !== labB) return labA.localeCompare(labB, 'pt-BR');
+	            const dataA = a.dataInicio?.toDate ? a.dataInicio.toDate() : new Date(a.dataInicio);
+	            const dataB = b.dataInicio?.toDate ? b.dataInicio.toDate() : new Date(b.dataInicio);
+	            return dataA - dataB;
+	        });
 	
 	        if (aulasDoMes.length === 0) {
 	            setFeedback({ open: true, message: 'Nenhuma aula encontrada para os filtros selecionados.', severity: 'warning' });
@@ -115,14 +130,14 @@ function DownloadCronograma() {
 	        if (format === 'excel') {
 	            // Importação dinâmica da função de geração de Excel
 	            const { gerarRelatorioExcel } = await import('./utils/downloadHelper');
-	            const nomeArquivo = `Relatorio_Aulas_${selectedDate.format('MMMM_YYYY')}.xlsx`;
+	            const nomeArquivo = `Relatorio_Aulas_${selectedDate.locale('pt-br').format('MMMM_YYYY')}.xlsx`;
 	            
 	            await gerarRelatorioExcel(aulasDoMes, nomeArquivo);
 	            setFeedback({ open: true, message: 'Relatório em Excel gerado com sucesso!', severity: 'success' });
 	        } else if (format === 'ics') {
 	            const icalContent = generateICalContent(aulasDoMes);
 	            const blob = new Blob([icalContent], { type: 'text/calendar;charset=utf-8' });
-	            saveAs(blob, `Cronograma_Lab_${selectedDate.format('MMMM_YYYY')}.ics`);
+	            saveAs(blob, `Cronograma_Lab_${selectedDate.locale('pt-br').format('MMMM_YYYY')}.ics`);
 	            setFeedback({ open: true, message: 'Arquivo de calendário (.ics) gerado com sucesso!', severity: 'success' });
 	        }
 	
@@ -141,6 +156,7 @@ function DownloadCronograma() {
     setAssuntoFiltro('');
     setCursosFiltro([]);
     setLigaFiltro('');
+    setTipoFiltro('todos');
   };
 
   const handleCloseSnackbar = (event, reason) => {
@@ -194,9 +210,19 @@ function DownloadCronograma() {
             <Grid item xs={12} sm={6} md={4}>
               <FormControl sx={{ minWidth: 130 }}>
                 <InputLabel shrink>Liga</InputLabel>
-                <Select value={ligaFiltro} label="Liga" onChange={(e) => setLigaFiltro(e.target.value)}>
+                <Select value={ligaFiltro} label="Liga" onChange={(e) => setLigaFiltro(e.target.value)} input={<OutlinedInput notched label="Liga" />}>
                   <MenuItem value=""><em>Todas</em></MenuItem>
                   {LISTA_CURSOS.map(c => <MenuItem key={c.value} value={c.value}>{c.label}</MenuItem>)}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} sm={6} md={4}>
+              <FormControl sx={{ minWidth: 160 }}>
+                <InputLabel shrink>Tipo de Conteúdo</InputLabel>
+                <Select value={tipoFiltro} onChange={(e) => setTipoFiltro(e.target.value)} input={<OutlinedInput notched label="Tipo de Conteúdo" />}>
+                  <MenuItem value="todos">📅 Todos</MenuItem>
+                  <MenuItem value="aula">🎓 Somente Aulas</MenuItem>
+                  <MenuItem value="revisao">📖 Somente Revisões</MenuItem>
                 </Select>
               </FormControl>
             </Grid>

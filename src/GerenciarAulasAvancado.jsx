@@ -56,13 +56,18 @@ function GerenciarAulasAvancado({ userInfo }) {
         try {
             await addDoc(collection(db, "logs"), {
                 type: type,
+                collection: 'aulas',
                 aula: {
+                    assunto: aulaData.assunto,
                     disciplina: aulaData.assunto,
+                    cursos: aulaData.cursos || [],
                     curso: aulaData.cursos?.join(', '),
                     ano: aulaData.ano,
                     status: aulaData.status,
                     dataInicio: aulaData.dataInicio,
                     laboratorioSelecionado: aulaData.laboratorioSelecionado,
+                    isRevisao: aulaData.isRevisao || false,
+                    tipoRevisaoLabel: aulaData.tipoRevisaoLabel || null,
                 },
                 timestamp: serverTimestamp(),
                 user: {

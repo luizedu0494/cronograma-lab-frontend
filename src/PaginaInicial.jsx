@@ -4,14 +4,17 @@ import { db } from './firebaseConfig';
 import { collection, query, where, getDocs, doc, getDoc, setDoc, onSnapshot, orderBy, limit, Timestamp } from 'firebase/firestore';
 import {
     Container, Grid, Paper, Typography, Box, CircularProgress, Alert, Button,
-    FormControlLabel, Switch, Dialog, DialogContent, IconButton, Badge,
+    FormControlLabel, Switch, Dialog, DialogContent, DialogTitle, DialogActions,
+    IconButton, Badge, Tooltip, Checkbox, FormGroup,
     Card, CardActionArea, Divider, Chip, List, ListItem, ListItemText,
     Accordion, AccordionSummary, AccordionDetails, Tab, Tabs
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import { 
     Close as CloseIcon, ExpandMore as ExpandMoreIcon, 
-    CalendarMonth as CalendarIcon
+    CalendarMonth as CalendarIcon,
+    Settings as SettingsIcon,
+    FilterList as FilterListIcon
 } from '@mui/icons-material'; // Ícones MUI padrão para componentes visuais
 import { 
     Clock, FileText, Bell, UserCheck, CalendarOff, 
@@ -19,6 +22,8 @@ import {
 } from 'lucide-react'; // Ícones Lucide para os cards
 import { useNavigate } from 'react-router-dom';
 
+// Constantes
+import { LISTA_LABORATORIOS, TIPOS_LABORATORIO } from './constants/laboratorios';
 // Imagens
 import calendarioAcademico from './assets/images/destaque-calendario.jpeg';
 
@@ -38,20 +43,35 @@ const PaginaInicial = ({ userInfo }) => {
 
     // Estados de Dados
     const [aulasHoje, setAulasHoje] = useState(0);
+    const [revisoesHoje, setRevisoesHoje] = useState(0);
     const [propostasPendentes, setPropostasPendentes] = useState(0);
     const [totalAulasNoCronograma, setTotalAulasNoCronograma] = useState(0);
+    const [totalRevisoesNoCronograma, setTotalRevisoesNoCronograma] = useState(0);
     const [totalEventosNoCronograma, setTotalEventosNoCronograma] = useState(0);
     const [minhasPropostasCount, setMinhasPropostasCount] = useState(0);
     const [avisosNaoLidos, setAvisosNaoLidos] = useState(0);
     const [ultimosEventos, setUltimosEventos] = useState([]);
     const [ultimosEventosExcluidos, setUltimosEventosExcluidos] = useState([]);
     const [revisoesTecnicoHoje, setRevisoesTecnicoHoje] = useState([]);
+    const [aulasOficiaisHoje, setAulasOficiaisHoje] = useState([]);
+    const [revisoesOficiaisHoje, setRevisoesOficiaisHoje] = useState([]);
 
     // Estados de UI
     const [isCalendarEnabled, setIsCalendarEnabled] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [showWelcomeAlert, setShowWelcomeAlert] = useState(true);
     const [tabValue, setTabValue] = useState(0); // Controle das Abas (0 = Aulas, 1 = Eventos)
+
+    // Filtro de laboratórios favoritos do técnico (salvo no localStorage por usuário)
+    const storageKey = userInfo?.uid ? `labsFavoritos_${userInfo.uid}` : null;
+    const [labsFavoritos, setLabsFavoritos] = useState(() => {
+        if (!storageKey) return [];
+        try {
+            const saved = localStorage.getItem(storageKey);
+            return saved ? JSON.parse(saved) : [];
+        } catch { return []; }
+    });
+    const [isLabFilterOpen, setIsLabFilterOpen] = useState(false);
 
     const currentYear = dayjs().year();
 
@@ -82,7 +102,13 @@ const PaginaInicial = ({ userInfo }) => {
             const logsRef = collection(db, 'logs');
             const configDocRef = doc(db, 'config', 'geral');
 
-            const qAulasHoje = query(aulasRef, where('status', '==', 'aprovada'), where('dataInicio', '>=', today.toDate()), where('dataInicio', '<', tomorrow.toDate()));
+            // Busca todas as aulas aprovadas de hoje — filtramos isRevisao no frontend
+            // (Firestore não permite desigualdade em dois campos diferentes)
+            const qAulasHoje = query(aulasRef,
+                where('status', '==', 'aprovada'),
+                where('dataInicio', '>=', today.toDate()),
+                where('dataInicio', '<', tomorrow.toDate())
+            );
             const promises = [getDocs(qAulasHoje), getDoc(configDocRef)];
 
             if (userInfo?.role === 'coordenador') {
@@ -105,13 +131,21 @@ const PaginaInicial = ({ userInfo }) => {
             }
 
             const results = await Promise.all(promises);
-            setAulasHoje(results[0].size);
+            // Filtrar isRevisao no frontend (Firestore não permite 2 desigualdades em campos diferentes)
+            const aulasHojeDocs = results[0].docs.map(d => ({ id: d.id, ...d.data() }));
+            setAulasHoje(aulasHojeDocs.filter(a => !a.isRevisao).length);
+            setRevisoesHoje(aulasHojeDocs.filter(a => a.isRevisao === true).length);
+            setAulasOficiaisHoje(aulasHojeDocs.filter(a => !a.isRevisao));
+            setRevisoesOficiaisHoje(aulasHojeDocs.filter(a => a.isRevisao === true));
+
             const configDoc = results[1];
             if (configDoc.exists()) setIsCalendarEnabled(configDoc.data().isCalendarEnabled || false);
 
             let idx = 2;
             if (userInfo?.role === 'coordenador') {
-                setTotalAulasNoCronograma(results[idx].size);
+                const todasAulasAno = results[idx].docs.map(d => d.data());
+                setTotalAulasNoCronograma(todasAulasAno.filter(a => !a.isRevisao).length);
+                setTotalRevisoesNoCronograma(todasAulasAno.filter(a => a.isRevisao === true).length);
                 setPropostasPendentes(results[idx + 1].size);
                 setTotalEventosNoCronograma(results[idx + 2].size);
                 setUltimosEventos(results[idx + 3].docs.map(doc => ({ id: doc.id, ...doc.data() })));
@@ -146,6 +180,39 @@ const PaginaInicial = ({ userInfo }) => {
 
     const handleTabChange = (event, newValue) => {
         setTabValue(newValue);
+    };
+
+    // Salvar labsFavoritos no localStorage sempre que mudar
+    const toggleLabFavorito = (labName) => {
+        const next = labsFavoritos.includes(labName)
+            ? labsFavoritos.filter(l => l !== labName)
+            : [...labsFavoritos, labName];
+        setLabsFavoritos(next);
+        if (storageKey) {
+            try { localStorage.setItem(storageKey, JSON.stringify(next)); } catch {}
+        }
+    };
+
+    const selecionarTodosTipo = (tipo) => {
+        const labsDoTipo = LISTA_LABORATORIOS.filter(l => l.tipo === tipo).map(l => l.name);
+        const todosSelecionados = labsDoTipo.every(n => labsFavoritos.includes(n));
+        let next;
+        if (todosSelecionados) {
+            next = labsFavoritos.filter(n => !labsDoTipo.includes(n));
+        } else {
+            next = [...new Set([...labsFavoritos, ...labsDoTipo])];
+        }
+        setLabsFavoritos(next);
+        if (storageKey) {
+            try { localStorage.setItem(storageKey, JSON.stringify(next)); } catch {}
+        }
+    };
+
+    const limparFavoritos = () => {
+        setLabsFavoritos([]);
+        if (storageKey) {
+            try { localStorage.removeItem(storageKey); } catch {}
+        }
     };
 
     if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}><CircularProgress /></Box>;
@@ -205,177 +272,344 @@ const PaginaInicial = ({ userInfo }) => {
 
             {/* 2. KPIs (Indicadores) - Visual Compacto em Grid */}
             <Grid container spacing={2} sx={{ mb: 3 }}>
-                <Grid item xs={6} sm={6} md={3}>
-                    <MiniStatCard 
-                        icon={<Clock size={24} />} 
-                        value={aulasHoje} 
-                        label="Aulas Hoje" 
-                        color={theme.palette.info.main}
-                        onClick={() => navigate('/calendario', { state: { initialDate: dayjs().toISOString() } })}
-                    />
-                </Grid>
-
                 {userInfo?.role === 'coordenador' ? (
                     <>
-                        <Grid item xs={6} sm={6} md={3}>
-                            <MiniStatCard 
-                                icon={<FileText size={24} />} 
-                                value={propostasPendentes} 
-                                label="Pendentes" 
-                                color={theme.palette.warning.main}
-                                onClick={() => navigate('/gerenciar-aprovacoes')}
+                        <Grid item xs={6} sm={3}>
+                            <MiniStatCard
+                                icon={<Clock size={22} />}
+                                value={aulasHoje}
+                                label="🎓 Aulas Hoje"
+                                color={theme.palette.info.main}
+                                onClick={() => navigate('/calendario', { state: { initialDate: dayjs().toISOString() } })}
                             />
                         </Grid>
-                        <Grid item xs={6} sm={6} md={3}>
-                            <MiniStatCard 
-                                icon={<CalendarCheck size={24} />} 
-                                value={totalAulasNoCronograma} 
-                                label={`Aulas ${currentYear}`} 
+                        <Grid item xs={6} sm={3}>
+                            <MiniStatCard
+                                icon={<BookOpen size={22} />}
+                                value={revisoesHoje}
+                                label="📖 Revisões Hoje"
+                                color={theme.palette.secondary.main}
+                                onClick={() => navigate('/calendario', { state: { initialDate: dayjs().toISOString() } })}
+                            />
+                        </Grid>
+                        <Grid item xs={6} sm={3}>
+                            <MiniStatCard
+                                icon={<CalendarCheck size={22} />}
+                                value={totalAulasNoCronograma}
+                                label={`🎓 Aulas ${currentYear}`}
                                 color={theme.palette.success.main}
                                 onClick={() => navigate('/analise-aulas')}
                             />
                         </Grid>
-                        <Grid item xs={6} sm={6} md={3}>
-                            <MiniStatCard 
-                                icon={<CalendarOff size={24} />} 
-                                value={totalEventosNoCronograma} 
-                                label={`Eventos ${currentYear}`} 
-                                color={theme.palette.secondary.main}
+                        <Grid item xs={6} sm={3}>
+                            <MiniStatCard
+                                icon={<CalendarCheck size={22} />}
+                                value={totalRevisoesNoCronograma}
+                                label={`📖 Revisões ${currentYear}`}
+                                color={theme.palette.warning.main}
+                                onClick={() => navigate('/analise-aulas')}
+                            />
+                        </Grid>
+                        <Grid item xs={6} sm={3}>
+                            <MiniStatCard
+                                icon={<FileText size={22} />}
+                                value={propostasPendentes}
+                                label="Pendentes"
+                                color={theme.palette.error.main}
+                                onClick={() => navigate('/gerenciar-aprovacoes')}
+                            />
+                        </Grid>
+                        <Grid item xs={6} sm={3}>
+                            <MiniStatCard
+                                icon={<CalendarOff size={22} />}
+                                value={totalEventosNoCronograma}
+                                label={`Eventos ${currentYear}`}
+                                color={theme.palette.primary.main}
                                 onClick={() => navigate('/analise-eventos')}
                             />
                         </Grid>
                     </>
                 ) : userInfo?.role === 'tecnico' ? (
                     <>
-                        <Grid item xs={6} sm={6} md={3}>
-                            <MiniStatCard 
-                                icon={<UserCheck size={24} />} 
-                                value={minhasPropostasCount} 
-                                label="Minhas Propostas" 
-                                color={theme.palette.primary.main}
-                                onClick={() => navigate('/minhas-propostas')}
+                        {/* Cronograma oficial — hoje */}
+                        <Grid item xs={6} sm={3}>
+                            <MiniStatCard
+                                icon={<Clock size={22} />}
+                                value={aulasOficiaisHoje.length}
+                                label="🎓 Aulas Hoje"
+                                color={theme.palette.info.main}
+                                onClick={() => navigate('/calendario', { state: { initialDate: dayjs().toISOString() } })}
                             />
                         </Grid>
-                        <Grid item xs={6} sm={6} md={3}>
-                            <MiniStatCard 
-                                icon={<BookOpen size={24} />} 
-                                value={revisoesTecnicoHoje.length} 
-                                label="Revisões Hoje" 
+                        <Grid item xs={6} sm={3}>
+                            <MiniStatCard
+                                icon={<BookOpen size={22} />}
+                                value={revisoesOficiaisHoje.length}
+                                label="📋 Revisões Cronograma"
+                                color={theme.palette.warning.main}
+                                onClick={() => navigate('/calendario', { state: { initialDate: dayjs().toISOString() } })}
+                            />
+                        </Grid>
+                        {/* Calendário privado do técnico */}
+                        <Grid item xs={6} sm={3}>
+                            <MiniStatCard
+                                icon={<CalendarCheck size={22} />}
+                                value={revisoesTecnicoHoje.length}
+                                label="📖 Agenda Técnico Hoje"
                                 color={theme.palette.secondary.main}
                                 onClick={() => navigate('/revisoes')}
                             />
                         </Grid>
+                        <Grid item xs={6} sm={3}>
+                            <MiniStatCard
+                                icon={<UserCheck size={22} />}
+                                value={minhasPropostasCount}
+                                label="Minhas Propostas"
+                                color={theme.palette.primary.main}
+                                onClick={() => navigate('/minhas-propostas')}
+                            />
+                        </Grid>
                     </>
-                ) : null}
+                ) : (
+                    <Grid item xs={6} sm={3}>
+                        <MiniStatCard
+                            icon={<Clock size={22} />}
+                            value={aulasHoje}
+                            label="Aulas Hoje"
+                            color={theme.palette.info.main}
+                        />
+                    </Grid>
+                )}
             </Grid>
 
-            {/* 3. REVISÕES DO DIA (Só Técnico, só quando houver) */}
-            {userInfo?.role === 'tecnico' && revisoesTecnicoHoje.length > 0 && (
-                <Paper elevation={2} sx={{
-                    mb: 3, overflow: 'hidden',
-                    border: '1px solid', borderColor: 'secondary.light'
-                }}>
-                    <Box sx={{
-                        px: 2, py: 1.5,
-                        bgcolor: 'secondary.main', color: 'white',
-                        display: 'flex', alignItems: 'center', justifyContent: 'space-between'
-                    }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <BookOpen size={18} />
-                            <Typography variant="subtitle2" fontWeight="bold">
-                                Revisões agendadas para hoje
-                            </Typography>
-                            <Chip
-                                label={revisoesTecnicoHoje.length}
-                                size="small"
-                                sx={{ bgcolor: 'rgba(255,255,255,0.25)', color: 'white', fontWeight: 'bold', height: 20, fontSize: '0.7rem' }}
-                            />
-                        </Box>
-                        <Button
-                            size="small"
-                            sx={{ color: 'white', borderColor: 'rgba(255,255,255,0.5)', fontSize: '0.7rem' }}
-                            variant="outlined"
-                            onClick={() => navigate('/revisoes')}
-                        >
-                            Ver calendário
-                        </Button>
-                    </Box>
-                    <List dense disablePadding>
-                        {revisoesTecnicoHoje.map((rev, i) => {
-                            const TIPOS_ICONE = {
-                                revisao_conteudo:  '📖',
-                                revisao_pre_prova: '📝',
-                                aula_reforco:      '💡',
-                                pratica_extra:     '🔬',
-                                monitoria:         '🎓',
-                                outro:             '📌',
-                            };
-                            const STATUS_COR = {
-                                planejada:  'default',
-                                confirmada: 'info',
-                                realizada:  'success',
-                                cancelada:  'error',
-                            };
-                            const STATUS_LABEL = {
-                                planejada:  'Planejada',
-                                confirmada: 'Confirmada',
-                                realizada:  'Realizada',
-                                cancelada:  'Cancelada',
-                            };
-                            const BLOCOS_LABEL = {
-                                '07:00-09:10': '07:00 - 09:10',
-                                '09:30-12:00': '09:30 - 12:00',
-                                '13:00-15:10': '13:00 - 15:10',
-                                '15:30-18:00': '15:30 - 18:00',
-                                '18:30-20:10': '18:30 - 20:10',
-                                '20:30-22:00': '20:30 - 22:00',
-                            };
-                            const icone = TIPOS_ICONE[rev.tipo] || '📌';
-                            const horario = BLOCOS_LABEL[rev.horarioSlot] || rev.horarioSlot || 'Horário não definido';
-                            return (
-                                <React.Fragment key={rev.id}>
-                                    {i > 0 && <Divider />}
-                                    <ListItem sx={{ py: 1.2, px: 2 }}>
-                                        <ListItemText
-                                            primary={
-                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8 }}>
-                                                    <Typography variant="body2">{icone}</Typography>
-                                                    <Typography variant="body2" fontWeight="medium">{rev.titulo}</Typography>
-                                                </Box>
-                                            }
-                                            secondary={
-                                                <Box sx={{ display: 'flex', gap: 1, mt: 0.3, flexWrap: 'wrap', alignItems: 'center' }}>
-                                                    <Typography variant="caption" color="text.secondary">
-                                                        🕐 {horario}
-                                                    </Typography>
-                                                    {rev.laboratorio && (
-                                                        <Typography variant="caption" color="text.secondary">
-                                                            🏛️ {rev.laboratorio}
-                                                        </Typography>
-                                                    )}
-                                                    {rev.professor && (
-                                                        <Typography variant="caption" color="text.secondary">
-                                                            👨‍🏫 {rev.professor}
-                                                        </Typography>
-                                                    )}
-                                                </Box>
-                                            }
-                                        />
+            {/* 3. PAINEL DO DIA — só técnico */}
+            {userInfo?.role === 'tecnico' && (
+                <Grid container spacing={2} sx={{ mb: 3 }}>
+                    {/* Coluna esquerda: Cronograma Oficial */}
+                    <Grid item xs={12} md={6}>
+                        <Paper elevation={2} sx={{ overflow: 'hidden', height: '100%' }}>
+                            <Box sx={{
+                                px: 2, py: 1.5,
+                                bgcolor: 'info.main', color: 'white',
+                                display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+                            }}>
+                                <Box display="flex" alignItems="center" gap={1}>
+                                    <Clock size={16} />
+                                    <Typography variant="subtitle2" fontWeight="bold">Cronograma Oficial — Hoje</Typography>
+                                    {labsFavoritos.length > 0 && (
                                         <Chip
-                                            label={STATUS_LABEL[rev.status] || rev.status}
-                                            color={STATUS_COR[rev.status] || 'default'}
+                                            label={`${labsFavoritos.length} lab${labsFavoritos.length > 1 ? 's' : ''}`}
                                             size="small"
-                                            sx={{ ml: 1, flexShrink: 0 }}
+                                            sx={{ bgcolor: 'rgba(255,255,255,0.25)', color: 'white', height: 18, fontSize: '0.65rem', fontWeight: 'bold' }}
                                         />
-                                    </ListItem>
-                                </React.Fragment>
-                            );
-                        })}
-                    </List>
-                </Paper>
+                                    )}
+                                </Box>
+                                <Box display="flex" gap={0.5}>
+                                    <Tooltip title="Filtrar laboratórios">
+                                        <IconButton size="small" onClick={() => setIsLabFilterOpen(true)}
+                                            sx={{ color: 'white', bgcolor: labsFavoritos.length > 0 ? 'rgba(255,255,255,0.2)' : 'transparent', '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' } }}>
+                                            <FilterListIcon fontSize="small" />
+                                        </IconButton>
+                                    </Tooltip>
+                                    <Button size="small" variant="outlined"
+                                        sx={{ color: 'white', borderColor: 'rgba(255,255,255,0.5)', fontSize: '0.7rem' }}
+                                        onClick={() => navigate('/calendario', { state: { initialDate: dayjs().toISOString() } })}>
+                                        Ver calendário
+                                    </Button>
+                                </Box>
+                            </Box>
+
+                            {/* Aulas normais */}
+                            {(() => {
+                                const aulasVisiveis = labsFavoritos.length > 0
+                                    ? aulasOficiaisHoje.filter(a => labsFavoritos.includes(a.laboratorioSelecionado))
+                                    : aulasOficiaisHoje;
+                                if (aulasVisiveis.length === 0) return null;
+                                return (
+                                <>
+                                    <Box sx={{ px: 2, pt: 1.5, pb: 0.5, display: 'flex', alignItems: 'center', gap: 0.8 }}>
+                                        <Typography variant="caption" fontWeight="bold" color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                                            🎓 Aulas ({aulasVisiveis.length}{labsFavoritos.length > 0 && aulasVisiveis.length < aulasOficiaisHoje.length ? ` de ${aulasOficiaisHoje.length}` : ''})
+                                        </Typography>
+                                    </Box>
+                                    <List dense disablePadding>
+                                        {aulasVisiveis.map((aula, i) => {
+                                            const dataInicio = aula.dataInicio?.toDate ? aula.dataInicio.toDate() : new Date(aula.dataInicio);
+                                            const dataFim = aula.dataFim?.toDate ? aula.dataFim.toDate() : null;
+                                            const horario = dataFim
+                                                ? `${dayjs(dataInicio).format('HH:mm')} - ${dayjs(dataFim).format('HH:mm')}`
+                                                : dayjs(dataInicio).format('HH:mm');
+                                            return (
+                                                <React.Fragment key={aula.id}>
+                                                    {i > 0 && <Divider />}
+                                                    <ListItem sx={{ py: 1, px: 2 }}>
+                                                        <ListItemText
+                                                            primary={<Typography variant="body2" fontWeight="medium">{aula.assunto || 'Sem título'}</Typography>}
+                                                            secondary={
+                                                                <Box sx={{ display: 'flex', gap: 1, mt: 0.2, flexWrap: 'wrap' }}>
+                                                                    <Typography variant="caption" color="text.secondary">🕐 {horario}</Typography>
+                                                                    {aula.laboratorioSelecionado && <Typography variant="caption" color="text.secondary">🏛️ {aula.laboratorioSelecionado}</Typography>}
+                                                                    {aula.professorNome && <Typography variant="caption" color="text.secondary">👨‍🏫 {aula.professorNome}</Typography>}
+                                                                </Box>
+                                                            }
+                                                        />
+                                                    </ListItem>
+                                                </React.Fragment>
+                                            );
+                                        })}
+                                    </List>
+                                </>
+                                );
+                            })()}
+
+                            {/* Revisões do cronograma oficial */}
+                            {(() => {
+                                const revisVisiveis = labsFavoritos.length > 0
+                                    ? revisoesOficiaisHoje.filter(a => labsFavoritos.includes(a.laboratorioSelecionado))
+                                    : revisoesOficiaisHoje;
+                                if (revisVisiveis.length === 0) return null;
+                                return (
+                                <>
+                                    <Divider />
+                                    <Box sx={{ px: 2, pt: 1.5, pb: 0.5 }}>
+                                        <Typography variant="caption" fontWeight="bold" color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                                            📋 Revisões no Cronograma ({revisVisiveis.length}{labsFavoritos.length > 0 && revisVisiveis.length < revisoesOficiaisHoje.length ? ` de ${revisoesOficiaisHoje.length}` : ''})
+                                        </Typography>
+                                    </Box>
+                                    <List dense disablePadding>
+                                        {revisVisiveis.map((aula, i) => {
+                                            const dataInicio = aula.dataInicio?.toDate ? aula.dataInicio.toDate() : new Date(aula.dataInicio);
+                                            const dataFim = aula.dataFim?.toDate ? aula.dataFim.toDate() : null;
+                                            const horario = dataFim
+                                                ? `${dayjs(dataInicio).format('HH:mm')} - ${dayjs(dataFim).format('HH:mm')}`
+                                                : dayjs(dataInicio).format('HH:mm');
+                                            return (
+                                                <React.Fragment key={aula.id}>
+                                                    {i > 0 && <Divider />}
+                                                    <ListItem sx={{ py: 1, px: 2 }}>
+                                                        <ListItemText
+                                                            primary={
+                                                                <Box display="flex" alignItems="center" gap={0.8}>
+                                                                    <Typography variant="body2" fontWeight="medium">{aula.assunto || 'Sem título'}</Typography>
+                                                                    {aula.tipoRevisaoLabel && <Chip label={aula.tipoRevisaoLabel} size="small" color="secondary" sx={{ height: 18, fontSize: '0.62rem' }} />}
+                                                                </Box>
+                                                            }
+                                                            secondary={
+                                                                <Box sx={{ display: 'flex', gap: 1, mt: 0.2, flexWrap: 'wrap' }}>
+                                                                    <Typography variant="caption" color="text.secondary">🕐 {horario}</Typography>
+                                                                    {aula.laboratorioSelecionado && <Typography variant="caption" color="text.secondary">🏛️ {aula.laboratorioSelecionado}</Typography>}
+                                                                    {aula.professorRevisao && <Typography variant="caption" color="text.secondary">👨‍🏫 {aula.professorRevisao}</Typography>}
+                                                                </Box>
+                                                            }
+                                                        />
+                                                    </ListItem>
+                                                </React.Fragment>
+                                            );
+                                        })}
+                                    </List>
+                                </>
+                                );
+                            })()}
+
+                            {(() => {
+                                const aulasVis = labsFavoritos.length > 0 ? aulasOficiaisHoje.filter(a => labsFavoritos.includes(a.laboratorioSelecionado)) : aulasOficiaisHoje;
+                                const revisVis = labsFavoritos.length > 0 ? revisoesOficiaisHoje.filter(a => labsFavoritos.includes(a.laboratorioSelecionado)) : revisoesOficiaisHoje;
+                                if (aulasVis.length > 0 || revisVis.length > 0) return null;
+                                return (
+                                <Box sx={{ px: 2, py: 3, textAlign: 'center' }}>
+                                    <Typography variant="body2" color="text.secondary">
+                                        {labsFavoritos.length > 0 ? 'Nenhuma atividade nos seus laboratórios favoritos hoje.' : 'Nenhuma atividade no cronograma hoje.'}
+                                    </Typography>
+                                    {labsFavoritos.length > 0 && (
+                                        <Button size="small" sx={{ mt: 0.5 }} startIcon={<FilterListIcon />} onClick={() => setIsLabFilterOpen(true)}>
+                                            Alterar filtros
+                                        </Button>
+                                    )}
+                                </Box>
+                                );
+                            })()}
+                        </Paper>
+                    </Grid>
+
+                    {/* Coluna direita: Agenda Privada do Técnico */}
+                    <Grid item xs={12} md={6}>
+                        <Paper elevation={2} sx={{ overflow: 'hidden', height: '100%', border: '1px solid', borderColor: 'secondary.light' }}>
+                            <Box sx={{
+                                px: 2, py: 1.5,
+                                bgcolor: 'secondary.main', color: 'white',
+                                display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+                            }}>
+                                <Box display="flex" alignItems="center" gap={1}>
+                                    <BookOpen size={16} />
+                                    <Typography variant="subtitle2" fontWeight="bold">Agenda do Técnico — Hoje</Typography>
+                                    {revisoesTecnicoHoje.length > 0 && (
+                                        <Chip label={revisoesTecnicoHoje.length} size="small"
+                                            sx={{ bgcolor: 'rgba(255,255,255,0.25)', color: 'white', fontWeight: 'bold', height: 20, fontSize: '0.7rem' }} />
+                                    )}
+                                </Box>
+                                <Button size="small" variant="outlined"
+                                    sx={{ color: 'white', borderColor: 'rgba(255,255,255,0.5)', fontSize: '0.7rem' }}
+                                    onClick={() => navigate('/revisoes')}>
+                                    Ver agenda
+                                </Button>
+                            </Box>
+
+                            {revisoesTecnicoHoje.length > 0 ? (
+                                <List dense disablePadding>
+                                    {revisoesTecnicoHoje.map((rev, i) => {
+                                        const TIPOS_ICONE = {
+                                            revisao_conteudo: '📖', revisao_pre_prova: '📝',
+                                            aula_reforco: '💡', pratica_extra: '🔬',
+                                            monitoria: '🎓', outro: '📌',
+                                        };
+                                        const STATUS_COR = { planejada: 'default', confirmada: 'info', realizada: 'success', cancelada: 'error' };
+                                        const STATUS_LABEL = { planejada: 'Planejada', confirmada: 'Confirmada', realizada: 'Realizada', cancelada: 'Cancelada' };
+                                        const BLOCOS_LABEL = {
+                                            '07:00-09:10': '07:00–09:10', '09:30-12:00': '09:30–12:00',
+                                            '13:00-15:10': '13:00–15:10', '15:30-18:00': '15:30–18:00',
+                                            '18:30-20:10': '18:30–20:10', '20:30-22:00': '20:30–22:00',
+                                        };
+                                        const icone = TIPOS_ICONE[rev.tipo] || '📌';
+                                        const horario = BLOCOS_LABEL[rev.horarioSlot] || rev.horarioSlot || 'Horário não definido';
+                                        return (
+                                            <React.Fragment key={rev.id}>
+                                                {i > 0 && <Divider />}
+                                                <ListItem sx={{ py: 1.2, px: 2 }}>
+                                                    <ListItemText
+                                                        primary={
+                                                            <Box display="flex" alignItems="center" gap={0.8}>
+                                                                <Typography variant="body2">{icone}</Typography>
+                                                                <Typography variant="body2" fontWeight="medium">{rev.titulo}</Typography>
+                                                            </Box>
+                                                        }
+                                                        secondary={
+                                                            <Box sx={{ display: 'flex', gap: 1, mt: 0.3, flexWrap: 'wrap', alignItems: 'center' }}>
+                                                                <Typography variant="caption" color="text.secondary">🕐 {horario}</Typography>
+                                                                {rev.laboratorio && <Typography variant="caption" color="text.secondary">🏛️ {rev.laboratorio}</Typography>}
+                                                                {rev.professor && <Typography variant="caption" color="text.secondary">👨‍🏫 {rev.professor}</Typography>}
+                                                            </Box>
+                                                        }
+                                                    />
+                                                    <Chip label={STATUS_LABEL[rev.status] || rev.status}
+                                                        color={STATUS_COR[rev.status] || 'default'}
+                                                        size="small" sx={{ ml: 1, flexShrink: 0 }} />
+                                                </ListItem>
+                                            </React.Fragment>
+                                        );
+                                    })}
+                                </List>
+                            ) : (
+                                <Box sx={{ px: 2, py: 3, textAlign: 'center' }}>
+                                    <Typography variant="body2" color="text.secondary">Nenhuma revisão na sua agenda hoje.</Typography>
+                                    <Button size="small" sx={{ mt: 1 }} onClick={() => navigate('/revisoes')}>Abrir agenda</Button>
+                                </Box>
+                            )}
+                        </Paper>
+                    </Grid>
+                </Grid>
             )}
 
-            {/* 4. ASSISTENTE IA (Opcional/Compacto) */}
+                        {/* 4. ASSISTENTE IA (Opcional/Compacto) */}
             {canUseAI && (
                 <Accordion sx={{ mb: 3, bgcolor: 'background.paper', boxShadow: 1, '&:before': { display: 'none' } }}>
                     <AccordionSummary expandIcon={<ExpandMoreIcon />}>
@@ -507,6 +741,107 @@ const PaginaInicial = ({ userInfo }) => {
                         <CloseIcon />
                     </IconButton>
                 </DialogContent>
+            </Dialog>
+
+            {/* Modal: Filtro de Laboratórios Favoritos (Técnico) */}
+            <Dialog open={isLabFilterOpen} onClose={() => setIsLabFilterOpen(false)} maxWidth="sm" fullWidth>
+                <DialogTitle sx={{ pb: 1 }}>
+                    <Box display="flex" alignItems="center" justifyContent="space-between">
+                        <Box display="flex" alignItems="center" gap={1}>
+                            <FilterListIcon color="info" />
+                            <Typography variant="h6" fontWeight="bold">Meus Laboratórios</Typography>
+                        </Box>
+                        <IconButton onClick={() => setIsLabFilterOpen(false)} size="small"><CloseIcon /></IconButton>
+                    </Box>
+                    <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+                        Selecione os laboratórios que deseja monitorar no "Cronograma Oficial — Hoje".
+                        Nenhum selecionado = mostrar todos.
+                    </Typography>
+                </DialogTitle>
+                <DialogContent dividers sx={{ maxHeight: 480, overflowY: 'auto' }}>
+                    {TIPOS_LABORATORIO.map(tipo => {
+                        const labsDoTipo = LISTA_LABORATORIOS.filter(l => l.tipo === tipo.id);
+                        const selecionadosCount = labsDoTipo.filter(l => labsFavoritos.includes(l.name)).length;
+                        const todosSel = selecionadosCount === labsDoTipo.length;
+                        const algumSel = selecionadosCount > 0 && !todosSel;
+                        return (
+                            <Box key={tipo.id} sx={{ mb: 2 }}>
+                                {/* Cabeçalho do tipo — clique seleciona/deseleciona todos do tipo */}
+                                <Box
+                                    display="flex" alignItems="center" gap={1}
+                                    sx={{
+                                        cursor: 'pointer', py: 0.8, px: 1, borderRadius: 1,
+                                        bgcolor: todosSel ? 'info.main' + '18' : algumSel ? 'warning.main' + '12' : 'action.hover',
+                                        mb: 0.8,
+                                        '&:hover': { bgcolor: 'info.main' + '22' }
+                                    }}
+                                    onClick={() => selecionarTodosTipo(tipo.id)}
+                                >
+                                    <Checkbox
+                                        checked={todosSel}
+                                        indeterminate={algumSel}
+                                        size="small"
+                                        color="info"
+                                        sx={{ p: 0 }}
+                                        onClick={e => e.stopPropagation()}
+                                        onChange={() => selecionarTodosTipo(tipo.id)}
+                                    />
+                                    <Typography variant="subtitle2" fontWeight="bold" color={todosSel ? 'info.main' : 'text.primary'}>
+                                        {tipo.name}
+                                    </Typography>
+                                    <Typography variant="caption" color="text.secondary" sx={{ ml: 'auto' }}>
+                                        {selecionadosCount}/{labsDoTipo.length}
+                                    </Typography>
+                                </Box>
+                                {/* Labs individuais */}
+                                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.8, pl: 1 }}>
+                                    {labsDoTipo.map(lab => {
+                                        const sel = labsFavoritos.includes(lab.name);
+                                        return (
+                                            <Chip
+                                                key={lab.id}
+                                                label={lab.name}
+                                                size="small"
+                                                color={sel ? 'info' : 'default'}
+                                                variant={sel ? 'filled' : 'outlined'}
+                                                onClick={() => toggleLabFavorito(lab.name)}
+                                                sx={{
+                                                    cursor: 'pointer',
+                                                    fontWeight: sel ? 'bold' : 'normal',
+                                                    transition: 'all 0.15s',
+                                                    '&:hover': { transform: 'scale(1.05)' }
+                                                }}
+                                            />
+                                        );
+                                    })}
+                                </Box>
+                            </Box>
+                        );
+                    })}
+                </DialogContent>
+                <DialogActions sx={{ px: 3, py: 1.5, justifyContent: 'space-between' }}>
+                    <Box display="flex" alignItems="center" gap={1}>
+                        {labsFavoritos.length > 0 ? (
+                            <Typography variant="caption" color="info.main" fontWeight="bold">
+                                {labsFavoritos.length} laboratório{labsFavoritos.length > 1 ? 's' : ''} selecionado{labsFavoritos.length > 1 ? 's' : ''}
+                            </Typography>
+                        ) : (
+                            <Typography variant="caption" color="text.secondary">
+                                Nenhum selecionado — mostrando todos
+                            </Typography>
+                        )}
+                    </Box>
+                    <Box display="flex" gap={1}>
+                        {labsFavoritos.length > 0 && (
+                            <Button size="small" onClick={limparFavoritos} color="inherit">
+                                Limpar tudo
+                            </Button>
+                        )}
+                        <Button size="small" variant="contained" color="info" onClick={() => setIsLabFilterOpen(false)}>
+                            Aplicar
+                        </Button>
+                    </Box>
+                </DialogActions>
             </Dialog>
 
         </Container>

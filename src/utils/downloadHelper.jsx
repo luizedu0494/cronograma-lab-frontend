@@ -3,7 +3,10 @@
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import dayjs from 'dayjs';
-import { LISTA_CURSOS } from '../constants/cursos'; // Ajuste o caminho se for diferente
+import 'dayjs/locale/pt-br';
+import { LISTA_CURSOS } from '../constants/cursos';
+
+dayjs.locale('pt-br');
 
 // --- Constantes de Estilização ---
 const CURSO_COLORS = {
@@ -35,12 +38,14 @@ export const gerarRelatorioExcel = async (aulasDoMes, nomeArquivo) => {
         { header: 'Data', key: 'data', width: 12 },
         { header: 'Dia', key: 'diaSemana', width: 14 },
         { header: 'Horário', key: 'horario', width: 15 },
+        { header: 'Tipo', key: 'tipo', width: 18 },
         { header: 'Curso(s)', key: 'cursos', width: 35 },
         { header: 'Assunto/Atividade', key: 'assunto', width: 45 },
         { header: 'Professor', key: 'professor', width: 30 },
         { header: 'Técnico(s)', key: 'tecnicos', width: 30 },
     ];
 
+    // Aulas já vêm ordenadas por lab + data do caller
     const aulasPorLaboratorio = aulasDoMes.reduce((acc, aula) => {
         const lab = aula.laboratorioSelecionado || 'Não especificado';
         if (!acc[lab]) acc[lab] = [];
@@ -48,7 +53,10 @@ export const gerarRelatorioExcel = async (aulasDoMes, nomeArquivo) => {
         return acc;
     }, {});
 
-    for (const labNome in aulasPorLaboratorio) {
+    // Percorrer labs em ordem alfabética
+    const labsOrdenados = Object.keys(aulasPorLaboratorio).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+
+    for (const labNome of labsOrdenados) {
         const labHeaderRow = worksheet.addRow([labNome]);
         worksheet.mergeCells(labHeaderRow.number, 1, labHeaderRow.number, worksheet.columns.length);
         const labHeaderCell = labHeaderRow.getCell(1);
@@ -66,22 +74,33 @@ export const gerarRelatorioExcel = async (aulasDoMes, nomeArquivo) => {
         });
 
         aulasPorLaboratorio[labNome].forEach(aula => {
+            const dataInicio = dayjs(aula.dataInicio.toDate()).locale('pt-br');
+            const tipoLabel = aula.isRevisao
+                ? (aula.tipoRevisaoLabel || 'Revisão/Reforço')
+                : (aula.tipoAtividade || 'Aula');
+
             const row = worksheet.addRow({
-                data: dayjs(aula.dataInicio.toDate()).format('DD/MM/YYYY'),
-                diaSemana: dayjs(aula.dataInicio.toDate()).format('dddd'),
-                horario: `${dayjs(aula.dataInicio.toDate()).format('HH:mm')} - ${dayjs(aula.dataFim.toDate()).format('HH:mm')}`,
+                data: dataInicio.format('DD/MM/YYYY'),
+                diaSemana: dataInicio.format('dddd'),
+                horario: `${dataInicio.format('HH:mm')} - ${dayjs(aula.dataFim.toDate()).format('HH:mm')}`,
+                tipo: tipoLabel,
                 cursos: (aula.cursos || []).map(c => LISTA_CURSOS.find(lc => lc.value === c)?.label || c).join(', '),
                 assunto: aula.assunto,
-                professor: aula.professorNome,
+                professor: aula.isRevisao ? (aula.professorRevisao || aula.professorNome || '') : (aula.professorNome || ''),
                 tecnicos: (aula.tecnicosInfo || []).map(t => t.name).join(', ')
             });
 
             row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
                 cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
                 cell.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
-                if (worksheet.columns[colNumber - 1].key === 'cursos') {
+                const colKey = worksheet.columns[colNumber - 1]?.key;
+                if (colKey === 'cursos') {
                     const primeiroCurso = (aula.cursos || [])[0];
                     cell.font = { color: { argb: CURSO_COLORS[primeiroCurso] || CURSO_COLORS.default }, bold: true };
+                }
+                // Destacar revisões com fundo levemente diferente
+                if (aula.isRevisao) {
+                    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3E5F5' } }; // roxo claro
                 }
             });
         });

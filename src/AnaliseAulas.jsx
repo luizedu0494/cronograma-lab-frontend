@@ -65,6 +65,7 @@ function AnaliseAulas() {
     const [cursosFiltro, setCursosFiltro] = useState([]);
     const [laboratoriosFiltro, setLaboratoriosFiltro] = useState([]);
     const [anoFiltro, setAnoFiltro] = useState(dayjs().year());
+    const [tipoConteudo, setTipoConteudo] = useState('todos'); // 'todos' | 'aula' | 'revisao'
     const [anosDisponiveis, setAnosDisponiveis] = useState([]);
 
     const chartRefs = {
@@ -109,7 +110,11 @@ function AnaliseAulas() {
             }
 
             setPropostas(listaCompleta); // Todas as propostas
-            setAulas(listaCompleta.filter(a => a.status === 'aprovada')); // Só aprovadas
+            // Filtro de tipo: aula normal, revisão, ou todos
+            let aulasAprovadas = listaCompleta.filter(a => a.status === 'aprovada');
+            if (tipoConteudo === 'aula') aulasAprovadas = aulasAprovadas.filter(a => !a.isRevisao);
+            if (tipoConteudo === 'revisao') aulasAprovadas = aulasAprovadas.filter(a => a.isRevisao === true);
+            setAulas(aulasAprovadas);
 
         } catch (err) {
             console.error("Erro ao buscar aulas para análise:", err);
@@ -117,7 +122,7 @@ function AnaliseAulas() {
         } finally {
             setLoading(false);
         }
-    }, [laboratoriosFiltro, cursosFiltro, anoFiltro]);
+    }, [laboratoriosFiltro, cursosFiltro, anoFiltro, tipoConteudo]);
 
     // Efeito para popular os anos disponíveis (exemplo: 2023, 2024, 2025)
     useEffect(() => {
@@ -361,8 +366,18 @@ function AnaliseAulas() {
                     <Grid item xs={12} sm={4}>
                         <FormControl sx={{ minWidth: 140 }} size="small">
                             <InputLabel shrink>Ano</InputLabel>
-                            <Select value={anoFiltro} onChange={(e) => setAnoFiltro(e.target.value)} label="Ano">
+                            <Select value={anoFiltro} onChange={(e) => setAnoFiltro(e.target.value)} input={<OutlinedInput notched label="Ano" />}>
                                 {anosDisponiveis.map(ano => <MenuItem key={ano} value={ano}>{ano}</MenuItem>)}
+                            </Select>
+                        </FormControl>
+                    </Grid>
+                    <Grid item xs={12} sm={4}>
+                        <FormControl sx={{ minWidth: 160 }} size="small">
+                            <InputLabel shrink>Tipo de Conteúdo</InputLabel>
+                            <Select value={tipoConteudo} onChange={(e) => setTipoConteudo(e.target.value)} input={<OutlinedInput notched label="Tipo de Conteúdo" />}>
+                                <MenuItem value="todos">📅 Todos</MenuItem>
+                                <MenuItem value="aula">🎓 Somente Aulas</MenuItem>
+                                <MenuItem value="revisao">📖 Somente Revisões</MenuItem>
                             </Select>
                         </FormControl>
                     </Grid>

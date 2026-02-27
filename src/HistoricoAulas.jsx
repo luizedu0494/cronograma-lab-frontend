@@ -4,7 +4,7 @@ import { collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
 import {
     Container, Paper, Typography, Box, CircularProgress, Alert,
     Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-    TablePagination, TextField, Grid, Chip, Button, Select, MenuItem, FormControl, InputLabel
+    TablePagination, TextField, Grid, Chip, Button, Select, MenuItem, FormControl, InputLabel, OutlinedInput
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import { History, Search, RefreshCw, Filter, X } from 'lucide-react';
@@ -29,6 +29,7 @@ const HistoricoAulas = () => {
     const [filtroCurso, setFiltroCurso] = useState('');
     const [filtroAno, setFiltroAno] = useState('');
     const [filtroStatus, setFiltroStatus] = useState('');
+    const [filtroTipo, setFiltroTipo] = useState(''); // '' | 'aula' | 'revisao'
     const [filtroDataInicio, setFiltroDataInicio] = useState('');
     const [filtroDataFim, setFiltroDataFim] = useState('');
     const MAX_RESULTS = 30; // Limite de resultados para o histórico
@@ -160,6 +161,12 @@ const HistoricoAulas = () => {
             resultado = resultado.filter(log => log.aula?.status === filtroStatus);
         }
 
+        if (filtroTipo === 'revisao') {
+            resultado = resultado.filter(log => log.aula?.isRevisao === true);
+        } else if (filtroTipo === 'aula') {
+            resultado = resultado.filter(log => !log.aula?.isRevisao && log.type !== 'evento');
+        }
+
         if (filtroDataInicio) {
             const dataInicio = dayjs(filtroDataInicio).startOf('day');
             resultado = resultado.filter(log => {
@@ -180,7 +187,7 @@ const HistoricoAulas = () => {
 
         setLogsFiltered(resultado);
         setPage(0); 
-    }, [filtroNome, filtroCurso, filtroAno, filtroStatus, filtroDataInicio, filtroDataFim, logs]);
+    }, [filtroNome, filtroCurso, filtroAno, filtroStatus, filtroTipo, filtroDataInicio, filtroDataFim, logs]);
 
     const handleChangePage = (event, newPage) => {
         setPage(newPage);
@@ -196,6 +203,7 @@ const HistoricoAulas = () => {
         setFiltroCurso('');
         setFiltroAno('');
         setFiltroStatus('');
+        setFiltroTipo('');
         setFiltroDataInicio('');
         setFiltroDataFim('');
     };
@@ -335,12 +343,29 @@ const HistoricoAulas = () => {
                                 value={filtroStatus}
                                 onChange={(e) => setFiltroStatus(e.target.value)}
                                 label="Status"
+                                input={<OutlinedInput notched label="Status" />}
                             >
                                 <MenuItem value="">Todos</MenuItem>
                                 <MenuItem value="aprovada">Aprovada</MenuItem>
                                 <MenuItem value="pendente">Pendente</MenuItem>
                                 <MenuItem value="evento">Evento</MenuItem>
                                 <MenuItem value="rejeitada">Rejeitada</MenuItem>
+                            </Select>
+                        </FormControl>
+                    </Grid>
+
+                    <Grid item xs={12} sm={6} md={3}>
+                        <FormControl sx={{ minWidth: 150 }} size="small" variant="outlined">
+                            <InputLabel shrink>Tipo de Conteúdo</InputLabel>
+                            <Select
+                                value={filtroTipo}
+                                onChange={(e) => setFiltroTipo(e.target.value)}
+                                label="Tipo de Conteúdo"
+                                input={<OutlinedInput notched label="Tipo de Conteúdo" />}
+                            >
+                                <MenuItem value="">Todos</MenuItem>
+                                <MenuItem value="aula">🎓 Aula Normal</MenuItem>
+                                <MenuItem value="revisao">📖 Revisão/Reforço</MenuItem>
                             </Select>
                         </FormControl>
                     </Grid>
@@ -402,6 +427,7 @@ const HistoricoAulas = () => {
                                 <TableCell>Tipo</TableCell>
                                 <TableCell>Assunto/Disciplina</TableCell>
                                 <TableCell>Curso/Tipo</TableCell>
+                                <TableCell>Revisão?</TableCell>
                                 <TableCell>Ano</TableCell>
                                 <TableCell>Laboratório</TableCell>
                                 <TableCell>Status</TableCell>
@@ -422,6 +448,12 @@ const HistoricoAulas = () => {
                                         </TableCell>
                                         <TableCell component="th" scope="row">{log.aula?.assunto || 'Sem Nome'}</TableCell>
                                         <TableCell>{Array.isArray(log.aula?.cursos) ? log.aula.cursos.join(', ') : (log.aula?.curso || 'N/A')}</TableCell>
+                                        <TableCell>
+                                            {log.aula?.isRevisao
+                                                ? <Chip label={log.aula.tipoRevisaoLabel || 'Revisão'} size="small" color="secondary" icon={<span>📖</span>} />
+                                                : log.type !== 'evento' ? <Chip label="Aula" size="small" color="primary" icon={<span>🎓</span>} /> : null
+                                            }
+                                        </TableCell>
                                         <TableCell>
                                             {log.aula?.dataInicio 
                                                 ? dayjs(log.aula.dataInicio.toDate ? log.aula.dataInicio.toDate() : log.aula.dataInicio).year() 
@@ -446,7 +478,7 @@ const HistoricoAulas = () => {
                                 ))
                             ) : (
                                 <TableRow>
-                                    <TableCell colSpan={8} align="center">
+                                    <TableCell colSpan={9} align="center">
                                         <Typography variant="body2" sx={{ p: 3 }}>
                                             Nenhuma atividade encontrada.
                                         </Typography>
