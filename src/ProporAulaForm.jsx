@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import {
     Container, Typography, TextField, Button, Grid, MenuItem, FormControl, InputLabel,
     Select, Box, Paper, Snackbar, Alert, CircularProgress, OutlinedInput, Chip, IconButton, Tooltip,
-    List, ListItem, ListItemText, FormHelperText, Autocomplete, Dialog, DialogTitle, DialogContent, DialogActions
+    List, ListItem, ListItemText, FormHelperText, Autocomplete, Dialog, DialogTitle, DialogContent,
+    DialogActions, ToggleButton, ToggleButtonGroup, Collapse
 } from '@mui/material';
-import { ArrowBack, Delete as DeleteIcon, Add as AddIcon, Lock as LockIcon } from '@mui/icons-material';
+import { ArrowBack, Delete as DeleteIcon, Add as AddIcon, Lock as LockIcon, MenuBook as MenuBookIcon } from '@mui/icons-material';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider } from '@mui/x-date-pickers';
 import { DatePicker } from '@mui/x-date-pickers';
@@ -32,12 +33,27 @@ const BLOCOS_HORARIO = [
     { "value": "20:30-22:00", "label": "20:30 - 22:00", "turno": "Noturno" },
 ];
 
+const TIPOS_REVISAO = [
+    { value: 'revisao_conteudo',  label: 'Revisão de Conteúdo',  icon: '📖' },
+    { value: 'revisao_pre_prova', label: 'Revisão Pré-Prova',    icon: '📝' },
+    { value: 'aula_reforco',      label: 'Aula de Reforço',      icon: '💡' },
+    { value: 'pratica_extra',     label: 'Prática Extra',        icon: '🔬' },
+    { value: 'monitoria',         label: 'Monitoria',            icon: '🎓' },
+    { value: 'outro',             label: 'Outro',                icon: '📌' },
+];
+
 const TELEGRAM_CHAT_ID = import.meta.env.VITE_TELEGRAM_CHAT_ID;
 
 function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCancel, isModal, formTitle, aulaId: propAulaId }) {
+    // 'aula' | 'revisao' — escolha antes de preencher o resto
+    const [tipoEntrada, setTipoEntrada] = useState('aula');
+
     const [formData, setFormData] = useState({
         assunto: '', observacoes: '', tipoAtividade: '', cursos: [], liga: '',
         dataInicio: initialDate ? dayjs(initialDate) : null, horarioSlotString: [], dynamicLabs: [{ tipo: '', laboratorios: [] }],
+        // Campos exclusivos de revisão
+        tipoRevisao: 'revisao_conteudo',
+        professorRevisao: '',
     });
     const [errors, setErrors] = useState({});
     const [loadingSubmit, setLoadingSubmit] = useState(false);
@@ -64,6 +80,7 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
 
     const [secao1Completa, setSecao1Completa] = useState(false);
     const [secao2Completa, setSecao2Completa] = useState(false);
+    const [refreshDisp, setRefreshDisp] = useState(0); // incrementar força re-verificação
 
     const navigate = useNavigate();
     const location = useLocation();
@@ -89,9 +106,25 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
                 horario: aula.horarioSlotString,
                 laboratorio: aula.laboratorioSelecionado,
                 cursos: aula.cursos,
-                observacoes: aula.observacoes
+                observacoes: aula.observacoes,
+                propostoPorNome: aula.propostoPorNome || '',
+                isRevisao: aula.isRevisao || false,
+                tipoRevisaoLabel: aula.tipoRevisaoLabel || '',
             };
-            await notificadorTelegram.enviarNotificacao(TELEGRAM_CHAT_ID, dadosNotificacao, tipoAcao);
+
+            let tipoFinal;
+            if (tipoAcao === 'adicionar') {
+                // Técnico propondo (pendente) → tópico Pendentes
+                // Coordenador adicionando diretamente → tópico do laboratório
+                tipoFinal = (!isCoordenador) ? 'pendente' : 'adicionar';
+            } else if (tipoAcao === 'editar') {
+                // Edição sempre vai para o tópico do laboratório (coordenador ou técnico editando aprovada)
+                tipoFinal = 'editar';
+            } else {
+                tipoFinal = tipoAcao;
+            }
+
+            await notificadorTelegram.enviarNotificacao(TELEGRAM_CHAT_ID, dadosNotificacao, tipoFinal);
         }
     };
 
@@ -227,7 +260,7 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
             }
         };
         verificarDisponibilidadeHorarios();
-    }, [formData.dataInicio, formData.dynamicLabs, secao2Completa, aulaId]);
+    }, [formData.dataInicio, formData.dynamicLabs, secao2Completa, aulaId, refreshDisp]);
 
     useEffect(() => {
         const loadAulaData = async () => {
@@ -239,6 +272,7 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
                     if (docSnap.exists()) {
                         const data = docSnap.data();
                         const labObj = LISTA_LABORATORIOS.find(l => l.name === data.laboratorioSelecionado);
+                        if (data.isRevisao) setTipoEntrada('revisao');
                         setFormData({
                             assunto: data.assunto || '',
                             observacoes: data.observacoes || '',
@@ -247,7 +281,9 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
                             liga: data.liga || '',
                             dataInicio: dayjs(data.dataInicio.toDate()),
                             horarioSlotString: Array.isArray(data.horarioSlotString) ? data.horarioSlotString : [data.horarioSlotString],
-                            dynamicLabs: [{ tipo: labObj ? labObj.tipo : '', laboratorios: [data.laboratorioSelecionado] }]
+                            dynamicLabs: [{ tipo: labObj ? labObj.tipo : '', laboratorios: [data.laboratorioSelecionado] }],
+                            tipoRevisao: data.tipoRevisao || 'revisao_conteudo',
+                            professorRevisao: data.professorRevisao || '',
                         });
                     }
                 } catch (error) {
@@ -326,7 +362,14 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
                             propostoPorUid: currentUser.uid,
                             propostoPorNome: userInfo?.name || currentUser.displayName || currentUser.email,
                             status: isCoordenador ? 'aprovada' : 'pendente',
-                            createdAt: serverTimestamp()
+                            createdAt: serverTimestamp(),
+                            // Campos de revisão
+                            isRevisao: tipoEntrada === 'revisao',
+                            tipoRevisao: tipoEntrada === 'revisao' ? formData.tipoRevisao : null,
+                            tipoRevisaoLabel: tipoEntrada === 'revisao'
+                                ? (TIPOS_REVISAO.find(t => t.value === formData.tipoRevisao)?.label || '')
+                                : null,
+                            professorRevisao: tipoEntrada === 'revisao' ? (formData.professorRevisao || '') : null,
                         });
                     }
                 }
@@ -420,8 +463,13 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
 
     const handleKeepData = (keep) => {
         setOpenKeepDataDialog(false);
-        if (!keep) navigate('/calendario');
-        else setFormData(prev => ({ ...prev, horarioSlotString: [] }));
+        if (!keep) {
+            navigate('/calendario');
+        } else {
+            // Limpa horário e força re-verificação de disponibilidade para a mesma data/lab
+            setFormData(prev => ({ ...prev, horarioSlotString: [] }));
+            setRefreshDisp(v => v + 1);
+        }
     };
 
     const handleCloseSnackbar = () => setOpenSnackbar(false);
@@ -429,14 +477,44 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
     return (
         <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="pt-br">
             <Container maxWidth="md">
-                <Typography variant="h4" component="h1" gutterBottom align="center" sx={{ mb: 4, color: '#3f51b5', fontWeight: 'bold', mt: isModal ? 0 : 4 }}>
-                    {formTitle || (isEditMode ? "Editar Aula" : "Propor Nova Aula")}
+                <Typography variant="h4" component="h1" gutterBottom align="center" sx={{ mb: 3, color: '#3f51b5', fontWeight: 'bold', mt: isModal ? 0 : 4 }}>
+                    {formTitle || (isEditMode
+                        ? (tipoEntrada === 'revisao' ? 'Editar Revisão' : 'Editar Aula')
+                        : 'Propor Nova Aula'
+                    )}
                 </Typography>
+
+                {/* ── Seletor de tipo: Aula Normal / Revisão — visível tanto na criação quanto na edição ── */}
+                <Box sx={{ display: 'flex', justifyContent: 'center', mb: 3 }}>
+                    <ToggleButtonGroup
+                        value={tipoEntrada}
+                        exclusive
+                        onChange={(_, v) => { if (v) setTipoEntrada(v); }}
+                        size="large"
+                    >
+                        <ToggleButton value="aula" sx={{ px: 4, gap: 1 }}>
+                            📅 Aula Normal
+                        </ToggleButton>
+                        <ToggleButton value="revisao" sx={{ px: 4, gap: 1 }}>
+                            <MenuBookIcon fontSize="small" /> Revisão / Reforço
+                        </ToggleButton>
+                    </ToggleButtonGroup>
+                </Box>
+
+                {/* Banner explicativo quando for revisão */}
+                {tipoEntrada === 'revisao' && (
+                    <Alert severity="info" icon={<MenuBookIcon />} sx={{ mb: 3 }}>
+                        <strong>Modo Revisão</strong> — Esta proposta será identificada como revisão/reforço.
+                        {!isCoordenador && !isEditMode && ' Após enviar, o coordenador será notificado no Telegram.'}
+                        {isEditMode && ' Alterações nesta revisão serão notificadas no Telegram.'}
+                    </Alert>
+                )}
+
                 <form onSubmit={(e) => { e.preventDefault(); prepareAndConfirm(); }}>
                     <Grid container spacing={3} justifyContent="center">
                         <Grid item xs={12} md={6}>
                             <Paper elevation={3} sx={{ p: 3, borderLeft: '5px solid #3f51b5', height: '100%' }}>
-                                <Typography variant="h6" gutterBottom>1. Detalhes da Atividade</Typography>
+                                <Typography variant="h6" gutterBottom>1. Detalhes da {tipoEntrada === 'revisao' ? 'Revisão' : 'Atividade'}</Typography>
                                 <TextField fullWidth label="Assunto da Aula *" name="assunto" value={formData.assunto} onChange={handleChange} error={!!errors.assunto} helperText={errors.assunto} sx={{ mb: 2 }} />
                                 
                                 <Autocomplete
@@ -473,6 +551,37 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
                                 />
 
                                 <TextField fullWidth label="Observações" name="observacoes" value={formData.observacoes} onChange={handleChange} multiline rows={3} />
+
+                                {/* Campos extras — só aparecem quando for revisão */}
+                                <Collapse in={tipoEntrada === 'revisao'}>
+                                    <Box sx={{ mt: 2, pt: 2, borderTop: '1px dashed', borderColor: 'divider' }}>
+                                        <Typography variant="caption" color="primary" fontWeight="bold" display="block" sx={{ mb: 1.5 }}>
+                                            📖 Classificação da Revisão
+                                        </Typography>
+                                        <FormControl fullWidth sx={{ mb: 2 }}>
+                                            <InputLabel>Tipo de Revisão</InputLabel>
+                                            <Select
+                                                value={formData.tipoRevisao}
+                                                onChange={(e) => setFormData(p => ({ ...p, tipoRevisao: e.target.value }))}
+                                                label="Tipo de Revisão"
+                                            >
+                                                {TIPOS_REVISAO.map(t => (
+                                                    <MenuItem key={t.value} value={t.value}>
+                                                        {t.icon} {t.label}
+                                                    </MenuItem>
+                                                ))}
+                                            </Select>
+                                        </FormControl>
+                                        <TextField
+                                            fullWidth
+                                            label="Professor responsável (opcional)"
+                                            value={formData.professorRevisao}
+                                            onChange={(e) => setFormData(p => ({ ...p, professorRevisao: e.target.value }))}
+                                            placeholder="Nome do professor que vai conduzir"
+                                            size="small"
+                                        />
+                                    </Box>
+                                </Collapse>
                             </Paper>
                         </Grid>
                         <Grid item xs={12} md={6}>

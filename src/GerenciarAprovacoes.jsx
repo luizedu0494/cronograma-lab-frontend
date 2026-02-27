@@ -21,6 +21,9 @@ import {
 import dayjs from 'dayjs';
 import 'dayjs/locale/pt-br';
 import { LISTA_CURSOS } from './constants/cursos';
+import { notificadorTelegram } from './ia-estruturada/NotificadorTelegram';
+
+const TELEGRAM_CHAT_ID = import.meta.env.VITE_TELEGRAM_CHAT_ID;
 
 dayjs.locale('pt-br');
 
@@ -190,7 +193,31 @@ function GerenciarAprovacoes() {
         setProcessando(aula.id);
         try {
             await updateDoc(doc(db, 'aulas', aula.id), { status: acao });
-            // onSnapshot já vai remover da lista de pendentes automaticamente
+
+            // Notificação Telegram
+            if (TELEGRAM_CHAT_ID) {
+                const dataObj = aula.dataInicio?.toDate ? dayjs(aula.dataInicio.toDate()) : dayjs(aula.dataInicio);
+                const dadosNotif = {
+                    assunto:        aula.assunto,
+                    data:           dataObj.isValid() ? dataObj.format('DD/MM/YYYY') : 'N/A',
+                    dataISO:        dataObj.isValid() ? dataObj.format('YYYY-MM-DD') : null,
+                    horario:        aula.horarioSlotString,
+                    laboratorio:    aula.laboratorioSelecionado,
+                    cursos:         aula.cursos,
+                    observacoes:    aula.observacoes,
+                    propostoPorNome: aula.propostoPorNome || aula.professorNome || '',
+                    isRevisao:      aula.isRevisao || false,
+                    tipoRevisaoLabel: aula.tipoRevisaoLabel || '',
+                };
+                // Aprovada → tópico do laboratório (tipo 'aprovada' ou 'adicionar' para manter compat)
+                // Rejeitada → tópico de rejeições
+                await notificadorTelegram.enviarNotificacao(
+                    TELEGRAM_CHAT_ID,
+                    dadosNotif,
+                    acao === 'aprovada' ? 'aprovada' : 'rejeitada'
+                );
+            }
+
             setSnackbar({
                 open: true,
                 severity: 'success',
@@ -198,7 +225,6 @@ function GerenciarAprovacoes() {
                     ? `✅ Aula "${aula.assunto}" aprovada com sucesso!`
                     : `❌ Aula "${aula.assunto}" rejeitada.`
             });
-            // Se estiver na aba pendente e a lista ficar vazia, mostra mensagem amigável
         } catch (err) {
             console.error(err);
             setSnackbar({ open: true, severity: 'error', message: 'Erro ao atualizar. Tente novamente.' });

@@ -76,7 +76,11 @@ const AulaCard = ({ aula, onEdit, onDelete, isCoordenador, isSelectionMode, isSe
         else setExpanded(!expanded);
     };
 
-    const corBorda = CURSO_COLORS[aula.cursos?.[0]] || CURSO_COLORS.default;
+    const corBorda = aula.isRevisao
+        ? '#9c27b0'  // roxo para revisões
+        : (CURSO_COLORS[aula.cursos?.[0]] || CURSO_COLORS.default);
+
+    const tipoRevisaoLabel = aula.tipoRevisaoLabel || 'Revisão';
 
     return (
         <>
@@ -87,7 +91,11 @@ const AulaCard = ({ aula, onEdit, onDelete, isCoordenador, isSelectionMode, isSe
                     borderLeft: `4px solid ${corBorda}`,
                     transition: 'all 0.2s',
                     transform: isSelected ? 'scale(0.98)' : 'scale(1)',
-                    bgcolor: isSelected ? (theme.palette.mode === 'dark' ? 'rgba(25, 118, 210, 0.2)' : 'rgba(25, 118, 210, 0.08)') : 'background.paper',
+                    bgcolor: isSelected
+                        ? (theme.palette.mode === 'dark' ? 'rgba(25, 118, 210, 0.2)' : 'rgba(25, 118, 210, 0.08)')
+                        : aula.isRevisao
+                            ? (theme.palette.mode === 'dark' ? 'rgba(156, 39, 176, 0.07)' : 'rgba(156, 39, 176, 0.04)')
+                            : 'background.paper',
                     border: isSelected ? '1px solid #1976d2' : undefined,
                     color: 'text.primary'
                 }}
@@ -109,6 +117,18 @@ const AulaCard = ({ aula, onEdit, onDelete, isCoordenador, isSelectionMode, isSe
                 )}
 
                 <Box onClick={handleCardClick} sx={{ p: 1.5, pl: isSelectionMode ? 5 : 1.5, cursor: 'pointer' }}>
+                    {/* Badge de revisão — aparece acima do título */}
+                    {aula.isRevisao && (
+                        <Chip
+                            label={`📖 ${tipoRevisaoLabel}`}
+                            size="small"
+                            sx={{
+                                mb: 0.5, height: 18, fontSize: '0.6rem',
+                                bgcolor: 'rgba(156,39,176,0.15)', color: '#9c27b0',
+                                fontWeight: 'bold'
+                            }}
+                        />
+                    )}
                     <Typography variant="subtitle2" fontWeight="bold" sx={{ color: 'text.primary', pr: isCoordenador ? 3 : 0 }}>{aula.title || 'Sem Título'}</Typography>
                     <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 0.5 }}>{horarioFormatado}</Typography>
                     {/* Expand inline — só desktop */}
@@ -117,6 +137,9 @@ const AulaCard = ({ aula, onEdit, onDelete, isCoordenador, isSelectionMode, isSe
                             <Divider sx={{ my: 1 }} />
                             <Typography variant="body2" sx={{ color: 'text.primary' }}><strong>Lab:</strong> {aula.laboratorio || 'N/A'}</Typography>
                             <Typography variant="body2" sx={{ color: 'text.primary' }}><strong>Cursos:</strong> {cursosNomes}</Typography>
+                            {aula.isRevisao && aula.professorRevisao && (
+                                <Typography variant="body2" sx={{ color: 'text.primary' }}><strong>Professor:</strong> {aula.professorRevisao}</Typography>
+                            )}
                         </Collapse>
                     )}
                 </Box>
@@ -140,9 +163,18 @@ const AulaCard = ({ aula, onEdit, onDelete, isCoordenador, isSelectionMode, isSe
                 <Box sx={{ px: 2, mb: 2 }}>
                     <Box sx={{ p: 1.5, borderRadius: 2, borderLeft: `5px solid ${corBorda}`, bgcolor: `${corBorda}18` }}>
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                            <Typography variant="h6" fontWeight="bold" sx={{ flex: 1, pr: 1 }}>
-                                {aula.title || 'Sem Título'}
-                            </Typography>
+                            <Box sx={{ flex: 1, pr: 1 }}>
+                                {aula.isRevisao && (
+                                    <Chip
+                                        label={`📖 ${tipoRevisaoLabel}`}
+                                        size="small"
+                                        sx={{ mb: 0.5, bgcolor: 'rgba(156,39,176,0.15)', color: '#9c27b0', fontWeight: 'bold', fontSize: '0.65rem' }}
+                                    />
+                                )}
+                                <Typography variant="h6" fontWeight="bold">
+                                    {aula.title || 'Sem Título'}
+                                </Typography>
+                            </Box>
                             <IconButton size="small" onClick={() => setDrawerOpen(false)}>
                                 <CloseIcon fontSize="small" />
                             </IconButton>
@@ -158,6 +190,15 @@ const AulaCard = ({ aula, onEdit, onDelete, isCoordenador, isSelectionMode, isSe
                             <Typography variant="body2" fontWeight="medium">{horarioFormatado}</Typography>
                         </Box>
                     </Box>
+                    {aula.isRevisao && aula.professorRevisao && (
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <SchoolIcon fontSize="small" sx={{ color: '#9c27b0' }} />
+                            <Box>
+                                <Typography variant="caption" color="text.secondary">Professor responsável</Typography>
+                                <Typography variant="body2" fontWeight="medium">{aula.professorRevisao}</Typography>
+                            </Box>
+                        </Box>
+                    )}
                     {aula.laboratorio && (
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                             <Typography sx={{ fontSize: 18 }}>🏛️</Typography>
@@ -352,7 +393,7 @@ function CalendarioCronograma({ userInfo }) {
     
     const [filtros, setFiltros] = useState(() => {
         const saved = localStorage.getItem(STORAGE_KEY_FILTROS);
-        return saved ? JSON.parse(saved) : { laboratorio: [], cursos: [], assunto: '', turno: [], status: ['aprovada'] };
+        return saved ? JSON.parse(saved) : { laboratorio: [], cursos: [], assunto: '', turno: [], status: ['aprovada'], tipoConteudo: 'todos' };
     });
     
     const [filtrosVisiveis, setFiltrosVisiveis] = useState(() => {
@@ -394,7 +435,7 @@ function CalendarioCronograma({ userInfo }) {
     }, [filtros]);
 
     const limparFiltros = () => {
-        setFiltros({ laboratorio: [], cursos: [], assunto: '', turno: [], status: ['aprovada'] });
+        setFiltros({ laboratorio: [], cursos: [], assunto: '', turno: [], status: ['aprovada'], tipoConteudo: 'todos' });
     };
 
     const fetchDados = useCallback(async () => {
@@ -441,7 +482,13 @@ function CalendarioCronograma({ userInfo }) {
                 const turnoItem = hora < 12 ? 'Manhã' : hora < 18 ? 'Tarde' : 'Noite';
                 matchTurno = filtros.turno.includes(turnoItem);
             }
-            return matchLab && matchCurso && matchAssunto && matchTurno;
+            // Filtro de tipo: aulas normais vs revisões
+            let matchTipo = true;
+            if (!isEvento && filtros.tipoConteudo && filtros.tipoConteudo !== 'todos') {
+                if (filtros.tipoConteudo === 'revisao') matchTipo = !!item.isRevisao;
+                if (filtros.tipoConteudo === 'aula')    matchTipo = !item.isRevisao;
+            }
+            return matchLab && matchCurso && matchAssunto && matchTurno && matchTipo;
         };
         setAulasFiltradas(aulas.filter(a => filtrar(a)));
         setEventosFiltrados(eventos.filter(e => filtrar(e, true)));
@@ -599,6 +646,20 @@ function CalendarioCronograma({ userInfo }) {
                                         </Select>
                                     </FormControl>
                                 </Grid>
+                                <Grid item xs={12} md={2}>
+                                    <FormControl fullWidth size="small">
+                                        <InputLabel>Tipo</InputLabel>
+                                        <Select
+                                            value={filtros.tipoConteudo || 'todos'}
+                                            onChange={(e) => setFiltros({...filtros, tipoConteudo: e.target.value})}
+                                            label="Tipo"
+                                        >
+                                            <MenuItem value="todos">📅 Todos</MenuItem>
+                                            <MenuItem value="aula">🎓 Só Aulas</MenuItem>
+                                            <MenuItem value="revisao">📖 Só Revisões</MenuItem>
+                                        </Select>
+                                    </FormControl>
+                                </Grid>
                                 <Grid item xs={12} md={1}>
                                     <Button fullWidth variant="outlined" color="inherit" onClick={limparFiltros} startIcon={<ClearAllIcon />}>Limpar</Button>
                                 </Grid>
@@ -611,7 +672,8 @@ function CalendarioCronograma({ userInfo }) {
                     <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}><CircularProgress /></Box>
                 ) : (() => {
                     const filtroAtivo = filtros.laboratorio.length > 0 || filtros.cursos.length > 0
-                        || filtros.turno.length > 0 || !!filtros.assunto;
+                        || filtros.turno.length > 0 || !!filtros.assunto
+                        || (filtros.tipoConteudo && filtros.tipoConteudo !== 'todos');
                     return (
                         <Grid container spacing={1.5}>
                             {daysToShow.map((day) => (
@@ -676,20 +738,24 @@ function CalendarioCronograma({ userInfo }) {
                 <DialogConfirmacao 
                     open={isDeleteModalOpen} 
                     onClose={() => setIsDeleteModalOpen(false)} 
-                    title="Excluir Aula" 
+                    title={aulaParaAcao?.isRevisao ? "Excluir Revisão" : "Excluir Aula"}
                     loading={actionLoading} 
                     onConfirm={async () => { 
                         setActionLoading(true); 
                         try {
                             await notificadorTelegram.enviarNotificacao(import.meta.env.VITE_TELEGRAM_CHAT_ID, { 
-                                assunto: aulaParaAcao.title, 
-                                laboratorio: aulaParaAcao.laboratorio, 
-                                data: dayjs(aulaParaAcao.start).format('DD/MM/YYYY') 
+                                assunto:          aulaParaAcao.title || aulaParaAcao.assunto,
+                                laboratorio:      aulaParaAcao.laboratorio || aulaParaAcao.laboratorioSelecionado,
+                                data:             dayjs(aulaParaAcao.start).format('DD/MM/YYYY'),
+                                horario:          aulaParaAcao.horarioSlotString || '',
+                                cursos:           aulaParaAcao.cursos || [],
+                                isRevisao:        aulaParaAcao.isRevisao || false,
+                                tipoRevisaoLabel: aulaParaAcao.tipoRevisaoLabel || '',
                             }, 'excluir');
                             await deleteDoc(doc(db, 'aulas', aulaParaAcao.id)); 
                             setIsDeleteModalOpen(false); 
                             fetchDados(); 
-                            setFeedback({ open: true, message: 'Aula excluída com sucesso!', severity: 'success' });
+                            setFeedback({ open: true, message: aulaParaAcao?.isRevisao ? 'Revisão excluída com sucesso!' : 'Aula excluída com sucesso!', severity: 'success' });
                         } catch(e) { console.error(e); } 
                         finally { setActionLoading(false); } 
                     }} 

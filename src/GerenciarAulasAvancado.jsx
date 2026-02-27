@@ -243,12 +243,33 @@ function GerenciarAulasAvancado({ userInfo }) {
                 <Paper elevation={3} sx={{ p: { xs: 2, md: 3 }, mb: 4 }}>
                     <Typography variant="h6" gutterBottom>Filtros Avançados</Typography>
                     <Grid container spacing={2} alignItems="center">
-                        <Grid item xs={12} sm={6} md={3}><DatePicker label="Data Início" value={filtros.dataInicio} onChange={handleDateChange('dataInicio')} slotProps={{ textField: { fullWidth: true, variant: 'outlined' } }} /></Grid>
-                        <Grid item xs={12} sm={6} md={3}><DatePicker label="Data Fim" value={filtros.dataFim} onChange={handleDateChange('dataFim')} slotProps={{ textField: { fullWidth: true, variant: 'outlined' } }} /></Grid>
-                        <Grid item xs={12} sm={6} md={3}><FormControl fullWidth><InputLabel>Status</InputLabel><Select value={filtros.status} label="Status" onChange={handleFiltroChange('status')}><MenuItem value=""><em>Todos</em></MenuItem>{STATUS_AULA.map(s => <MenuItem key={s} value={s}>{s}</MenuItem>)}</Select></FormControl></Grid>
-                        <Grid item xs={12} sm={6} md={3}><FormControl fullWidth><InputLabel>Laboratório(s)</InputLabel><Select multiple value={filtros.laboratorio} onChange={handleFiltroChange('laboratorio')} input={<OutlinedInput label="Laboratório(s)" />} renderValue={(selected) => <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>{selected.map((value) => <Chip key={value} label={value} size="small" />)}</Box>}>{LISTA_LABORATORIOS.map(l => <MenuItem key={l.id} value={l.name}>{l.name}</MenuItem>)}</Select></FormControl></Grid>
-                        <Grid item xs={12} sm={6} md={3}><TextField fullWidth label="Assunto" value={filtros.assunto} onChange={handleFiltroChange('assunto')} /></Grid>
-                        <Grid item xs={12} md={6} sx={{ display: 'flex', gap: 2, mt: 2 }}>
+                        <Grid item xs={12} sm={6} md={3}>
+                            <DatePicker label="Data Início" value={filtros.dataInicio} onChange={handleDateChange('dataInicio')} slotProps={{ textField: { fullWidth: true, size: 'small' } }} />
+                        </Grid>
+                        <Grid item xs={12} sm={6} md={3}>
+                            <DatePicker label="Data Fim" value={filtros.dataFim} onChange={handleDateChange('dataFim')} slotProps={{ textField: { fullWidth: true, size: 'small' } }} />
+                        </Grid>
+                        <Grid item xs={12} sm={6} md={3}>
+                            <FormControl fullWidth size="small">
+                                <InputLabel>Status</InputLabel>
+                                <Select value={filtros.status} label="Status" onChange={handleFiltroChange('status')}>
+                                    <MenuItem value=""><em>Todos</em></MenuItem>
+                                    {STATUS_AULA.map(s => <MenuItem key={s} value={s}>{s}</MenuItem>)}
+                                </Select>
+                            </FormControl>
+                        </Grid>
+                        <Grid item xs={12} sm={6} md={3}>
+                            <FormControl fullWidth size="small">
+                                <InputLabel>Laboratório(s)</InputLabel>
+                                <Select multiple value={filtros.laboratorio} onChange={handleFiltroChange('laboratorio')} input={<OutlinedInput label="Laboratório(s)" />} renderValue={(selected) => <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>{selected.map((value) => <Chip key={value} label={value} size="small" />)}</Box>}>
+                                    {LISTA_LABORATORIOS.map(l => <MenuItem key={l.id} value={l.name}>{l.name}</MenuItem>)}
+                                </Select>
+                            </FormControl>
+                        </Grid>
+                        <Grid item xs={12} sm={6} md={3}>
+                            <TextField fullWidth size="small" label="Assunto" value={filtros.assunto} onChange={handleFiltroChange('assunto')} />
+                        </Grid>
+                        <Grid item xs={12} md={6} sx={{ display: 'flex', gap: 2, mt: 1 }}>
                             <Button variant="contained" onClick={() => handleSearch('start')} disabled={loading} sx={{ flexGrow: 1 }}>{loading ? <CircularProgress size={24} /> : 'Buscar Aulas'}</Button>
                             <Tooltip title="Limpar todos os filtros"><IconButton onClick={handleClearFilters} disabled={loading}><ClearIcon /></IconButton></Tooltip>
                         </Grid>

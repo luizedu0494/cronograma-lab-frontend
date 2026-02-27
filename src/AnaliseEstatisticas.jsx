@@ -123,7 +123,7 @@ function AnaliseEstatisticas() {
             <Paper elevation={3} sx={{ p: 4, mt: 4 }}>
                 <Typography variant="h4" gutterBottom>Análise de Estatísticas Anuais</Typography>
 
-                <FormControl sx={{ minWidth: 120, mb: 3 }}>
+                <FormControl fullWidth size="small" sx={{ maxWidth: 200, mb: 3 }}>
                     <InputLabel id="select-year-label">Ano</InputLabel>
                     <Select
                         labelId="select-year-label"

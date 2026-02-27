@@ -154,18 +154,57 @@ function DownloadCronograma() {
         <Paper elevation={3} sx={{ p: { xs: 2, md: 4 } }}>
           <Typography variant="h5" component="h2" gutterBottom align="center">Download de Relatórios</Typography>
           <Typography variant="body1" align="center" sx={{ mb: 3 }}>Selecione o mês e aplique filtros para gerar um relatório em Excel.</Typography>
-          <Grid container spacing={2} alignItems="center" sx={{ mb: 3 }}>
-            <Grid item xs={12} sm={6}><DatePicker label="Selecione Mês e Ano" views={['month', 'year']} value={selectedDate} onChange={(newValue) => setSelectedDate(newValue)} slotProps={{ textField: { fullWidth: true, helperText: 'Ex: Junho 2025' } }}/></Grid>
-            <Grid item xs={12} sm={6}><FormControl fullWidth><InputLabel>Laboratório(s)</InputLabel><Select multiple value={laboratorioFiltro} onChange={(e) => setLaboratorioFiltro(e.target.value)} input={<OutlinedInput label="Laboratório(s)" />} renderValue={(selected) => (<Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>{selected.map((value) => (<Chip key={value} label={value} size="small" />))}</Box>)}>{LISTA_LABORATORIOS.map(l => <MenuItem key={l.id} value={l.name}>{l.name}</MenuItem>)}</Select></FormControl></Grid>
-            <Grid item xs={12} sm={6}><FormControl fullWidth><InputLabel>Horário(s)</InputLabel><Select multiple value={horarioFiltro} onChange={(e) => setHorarioFiltro(e.target.value)} input={<OutlinedInput label="Horário(s)" />} renderValue={(selected) => (<Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>{selected.map((value) => (<Chip key={value} label={value} size="small" />))}</Box>)}>{BLOCOS_HORARIO.map(bloco => (<MenuItem key={bloco.value} value={bloco.value}>{bloco.label}</MenuItem>))}</Select></FormControl></Grid>
-            <Grid item xs={12} sm={6}><TextField fullWidth label="Assunto da Aula" value={assuntoFiltro} onChange={(e) => setAssuntoFiltro(e.target.value)} /></Grid>
-            <Grid item xs={12} sm={6}><FormControl fullWidth><InputLabel>Curso(s)</InputLabel><Select multiple value={cursosFiltro} onChange={(e) => setCursosFiltro(e.target.value)} input={<OutlinedInput label="Curso(s)" />} renderValue={(selected) => (<Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>{selected.map((value) => (<Chip key={value} label={LISTA_CURSOS.find(c => c.value === value)?.label || value} size="small" />))}</Box>)}>{LISTA_CURSOS.map(c => <MenuItem key={c.value} value={c.value}>{c.label}</MenuItem>)}</Select></FormControl></Grid>
-            <Grid item xs={12} sm={6}><FormControl fullWidth><InputLabel>Liga</InputLabel><Select value={ligaFiltro} label="Liga" onChange={(e) => setLigaFiltro(e.target.value)}><MenuItem value=""><em>Todas</em></MenuItem>{LISTA_CURSOS.map(c => <MenuItem key={c.value} value={c.value}>{c.label}</MenuItem>)}</Select></FormControl></Grid>
-	            <Grid item xs={12} sx={{ display: 'flex', gap: 2, mt: 2 }}>
-	                <Button variant="contained" color="primary" onClick={() => handleDownload('excel')} disabled={loading || !selectedDate} startIcon={loading ? <CircularProgress size={24} color="inherit" /> : <FileDownloadIcon />} sx={{ flexGrow: 1 }}>{loading ? "Gerando Relatório..." : "Baixar Relatório Excel"}</Button>
-	                <Button variant="contained" color="secondary" onClick={() => handleDownload('ics')} disabled={loading || !selectedDate} startIcon={loading ? <CircularProgress size={24} color="inherit" /> : <FileDownloadIcon />} sx={{ flexGrow: 1 }}>{loading ? "Gerando Calendário..." : "Baixar Calendário (.ics)"}</Button>
-	                <Button variant="outlined" onClick={handleClearFilters} disabled={loading} startIcon={<ClearIcon />}>Limpar</Button>
-	            </Grid>
+          <Grid container spacing={2} alignItems="flex-start" sx={{ mb: 3 }}>
+            <Grid item xs={12} sm={6} md={4}>
+              <DatePicker
+                label="Selecione Mês e Ano"
+                views={['month', 'year']}
+                value={selectedDate}
+                onChange={(newValue) => setSelectedDate(newValue)}
+                slotProps={{ textField: { fullWidth: true, helperText: 'Ex: Junho 2025' } }}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6} md={4}>
+              <FormControl fullWidth>
+                <InputLabel>Laboratório(s)</InputLabel>
+                <Select multiple value={laboratorioFiltro} onChange={(e) => setLaboratorioFiltro(e.target.value)} input={<OutlinedInput label="Laboratório(s)" />} renderValue={(selected) => (<Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>{selected.map((value) => (<Chip key={value} label={value} size="small" />))}</Box>)}>
+                  {LISTA_LABORATORIOS.map(l => <MenuItem key={l.id} value={l.name}>{l.name}</MenuItem>)}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} sm={6} md={4}>
+              <FormControl fullWidth>
+                <InputLabel>Horário(s)</InputLabel>
+                <Select multiple value={horarioFiltro} onChange={(e) => setHorarioFiltro(e.target.value)} input={<OutlinedInput label="Horário(s)" />} renderValue={(selected) => (<Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>{selected.map((value) => (<Chip key={value} label={value} size="small" />))}</Box>)}>
+                  {BLOCOS_HORARIO.map(bloco => (<MenuItem key={bloco.value} value={bloco.value}>{bloco.label}</MenuItem>))}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} sm={6} md={4}>
+              <TextField fullWidth label="Assunto da Aula" value={assuntoFiltro} onChange={(e) => setAssuntoFiltro(e.target.value)} />
+            </Grid>
+            <Grid item xs={12} sm={6} md={4}>
+              <FormControl fullWidth>
+                <InputLabel>Curso(s)</InputLabel>
+                <Select multiple value={cursosFiltro} onChange={(e) => setCursosFiltro(e.target.value)} input={<OutlinedInput label="Curso(s)" />} renderValue={(selected) => (<Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>{selected.map((value) => (<Chip key={value} label={LISTA_CURSOS.find(c => c.value === value)?.label || value} size="small" />))}</Box>)}>
+                  {LISTA_CURSOS.map(c => <MenuItem key={c.value} value={c.value}>{c.label}</MenuItem>)}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} sm={6} md={4}>
+              <FormControl fullWidth>
+                <InputLabel>Liga</InputLabel>
+                <Select value={ligaFiltro} label="Liga" onChange={(e) => setLigaFiltro(e.target.value)}>
+                  <MenuItem value=""><em>Todas</em></MenuItem>
+                  {LISTA_CURSOS.map(c => <MenuItem key={c.value} value={c.value}>{c.label}</MenuItem>)}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} sx={{ display: 'flex', gap: 2, mt: 1 }}>
+              <Button variant="contained" color="primary" onClick={() => handleDownload('excel')} disabled={loading || !selectedDate} startIcon={loading ? <CircularProgress size={24} color="inherit" /> : <FileDownloadIcon />} sx={{ flexGrow: 1 }}>{loading ? "Gerando Relatório..." : "Baixar Relatório Excel"}</Button>
+              <Button variant="contained" color="secondary" onClick={() => handleDownload('ics')} disabled={loading || !selectedDate} startIcon={loading ? <CircularProgress size={24} color="inherit" /> : <FileDownloadIcon />} sx={{ flexGrow: 1 }}>{loading ? "Gerando Calendário..." : "Baixar Calendário (.ics)"}</Button>
+              <Button variant="outlined" onClick={handleClearFilters} disabled={loading} startIcon={<ClearIcon />}>Limpar</Button>
+            </Grid>
           </Grid>
           <Snackbar open={feedback.open} autoHideDuration={6000} onClose={handleCloseSnackbar} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>{feedback.open && (<Alert onClose={handleCloseSnackbar} severity={feedback.severity} sx={{ width: '100%' }}>{feedback.message}</Alert>)}</Snackbar>
         </Paper>

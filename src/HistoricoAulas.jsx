@@ -285,7 +285,7 @@ const HistoricoAulas = () => {
                 <Grid container spacing={2}>
                     <Grid item xs={12} sm={6} md={3}>
                         <TextField
-                            fullWidth
+                            fullWidth size="small"
                             label="Nome/Assunto"
                             variant="outlined"
                             value={filtroNome}
@@ -297,7 +297,7 @@ const HistoricoAulas = () => {
                     </Grid>
 
                     <Grid item xs={12} sm={6} md={2}>
-                        <FormControl fullWidth variant="outlined">
+                        <FormControl fullWidth size="small" variant="outlined">
                             <InputLabel>Curso/Tipo</InputLabel>
                             <Select
                                 value={filtroCurso}
@@ -313,7 +313,7 @@ const HistoricoAulas = () => {
                     </Grid>
 
                     <Grid item xs={12} sm={6} md={2}>
-                        <FormControl fullWidth variant="outlined">
+                        <FormControl fullWidth size="small" variant="outlined">
                             <InputLabel>Ano</InputLabel>
                             <Select
                                 value={filtroAno}
@@ -329,7 +329,7 @@ const HistoricoAulas = () => {
                     </Grid>
 
                     <Grid item xs={12} sm={6} md={2}>
-                        <FormControl fullWidth variant="outlined">
+                        <FormControl fullWidth size="small" variant="outlined">
                             <InputLabel>Status</InputLabel>
                             <Select
                                 value={filtroStatus}
@@ -347,7 +347,7 @@ const HistoricoAulas = () => {
 
                     <Grid item xs={12} sm={6} md={2}>
                         <TextField
-                            fullWidth
+                            fullWidth size="small"
                             label="Data Início"
                             type="date"
                             variant="outlined"
@@ -359,7 +359,7 @@ const HistoricoAulas = () => {
 
                     <Grid item xs={12} sm={6} md={2}>
                         <TextField
-                            fullWidth
+                            fullWidth size="small"
                             label="Data Fim"
                             type="date"
                             variant="outlined"

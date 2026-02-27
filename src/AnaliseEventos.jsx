@@ -162,7 +162,7 @@ function AnaliseEventos() {
             <Paper sx={{ p: 3, mb: 4, borderRadius: 2 }}>
                 <Grid container spacing={3} alignItems="center">
                     <Grid item xs={12} md={3}>
-                        <FormControl fullWidth>
+                        <FormControl fullWidth size="small">
                             <InputLabel>Ano de Referência</InputLabel>
                             <Select value={anoFiltro} label="Ano de Referência" onChange={(e) => setAnoFiltro(e.target.value)}>
                                 {anosDisponiveis.map(year => <MenuItem key={year} value={year}>{year}</MenuItem>)}
@@ -170,7 +170,7 @@ function AnaliseEventos() {
                         </FormControl>
                     </Grid>
                     <Grid item xs={12} md={9}>
-                        <FormControl fullWidth>
+                        <FormControl fullWidth size="small">
                             <InputLabel>Filtrar por Laboratórios</InputLabel>
                             <Select
                                 multiple
