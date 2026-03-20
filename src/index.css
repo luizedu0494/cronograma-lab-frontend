@@ -1,5 +1,4 @@
-/* Importando fonte Inter do Google Fonts */
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap");
+/* Fonte carregada via index.html — Sora (identidade CESMAC) */
 
 /* Reset e configurações globais */
 * {
@@ -9,7 +8,7 @@
 body {
   margin: 0;
   /* A fonte agora é definida no theme.jsx, mas mantemos o fallback */
-  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
+  font-family: "Sora", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
     "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
     sans-serif;
   -webkit-font-smoothing: antialiased;

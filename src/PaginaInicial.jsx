@@ -10,6 +10,7 @@ import {
     Accordion, AccordionSummary, AccordionDetails, Tab, Tabs
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
+import { useMediaQuery } from '@mui/material';
 import { 
     Close as CloseIcon, ExpandMore as ExpandMoreIcon, 
     CalendarMonth as CalendarIcon,
@@ -59,8 +60,28 @@ const PaginaInicial = ({ userInfo }) => {
     // Estados de UI
     const [isCalendarEnabled, setIsCalendarEnabled] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [showWelcomeAlert, setShowWelcomeAlert] = useState(true);
-    const [tabValue, setTabValue] = useState(0); // Controle das Abas (0 = Aulas, 1 = Eventos)
+    const [tabValue, setTabValue] = useState(0);
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
+    // ── Onboarding do técnico ──────────────────────────────────────────────────
+    // Aparece apenas na primeira vez em cada dispositivo/navegador.
+    // Salvo em localStorage por uid — cada navegador tem sua própria configuração,
+    // sem conflito entre técnicos que compartilham dispositivos diferentes.
+    const onboardingKey = userInfo?.uid ? `onboardingConcluido_${userInfo.uid}` : null;
+    const labHintKey    = userInfo?.uid ? `labHintVisto_${userInfo.uid}` : null;
+
+    const [onboardingStep, setOnboardingStep] = useState(() => {
+        if (userInfo?.role !== 'tecnico' || !onboardingKey) return null;
+        try {
+            return localStorage.getItem(onboardingKey) === 'true' ? null : 'welcome';
+        } catch { return null; }
+    });
+
+    const [labsRascunho, setLabsRascunho] = useState([]);
+    const [showLabHint, setShowLabHint] = useState(() => {
+        if (!labHintKey) return false;
+        try { return localStorage.getItem(labHintKey) !== 'true'; } catch { return false; }
+    });
 
     // Filtro de laboratórios favoritos do técnico (salvo no localStorage por usuário)
     const storageKey = userInfo?.uid ? `labsFavoritos_${userInfo.uid}` : null;
@@ -224,6 +245,354 @@ const PaginaInicial = ({ userInfo }) => {
         }
     };
 
+    // ── Funções de onboarding ─────────────────────────────────────────────────
+    const concluirOnboarding = (labsSelecionados) => {
+        // Salva labs escolhidos (pode ser vazio = mostrar todos)
+        setLabsFavoritos(labsSelecionados);
+        if (storageKey) {
+            try {
+                if (labsSelecionados.length > 0) {
+                    localStorage.setItem(storageKey, JSON.stringify(labsSelecionados));
+                } else {
+                    localStorage.removeItem(storageKey);
+                }
+            } catch {}
+        }
+        // Marca onboarding como concluído neste dispositivo
+        if (onboardingKey) {
+            try { localStorage.setItem(onboardingKey, 'true'); } catch {}
+        }
+        setOnboardingStep(null);
+        // Mostra hint uma única vez após o onboarding
+        if (labsSelecionados.length > 0) {
+            setShowLabHint(true);
+        }
+    };
+
+    const pularOnboarding = () => {
+        if (onboardingKey) {
+            try { localStorage.setItem(onboardingKey, 'true'); } catch {}
+        }
+        setOnboardingStep(null);
+    };
+
+    const dispensarLabHint = () => {
+        setShowLabHint(false);
+        if (labHintKey) {
+            try { localStorage.setItem(labHintKey, 'true'); } catch {}
+        }
+    };
+
+    // ── Componente de onboarding (renderizado inline para acessar estados) ────
+    const OnboardingTecnico = () => {
+        const nome = userInfo?.name?.split(' ')[0] || 'Técnico';
+
+        // Passo 1 — Boas-vindas
+        if (onboardingStep === 'welcome') return (
+            <Box sx={{ maxWidth: 520, mx: 'auto', mt: isMobile ? 2 : 4, px: isMobile ? 0 : 2 }}>
+                <Paper elevation={3} sx={{ overflow: 'hidden', borderRadius: 3 }}>
+                    {/* Header azul */}
+                    <Box sx={{ bgcolor: 'info.main', px: 3, pt: 3, pb: 2.5 }}>
+                        <Chip
+                            label="Primeiro acesso neste dispositivo"
+                            size="small"
+                            sx={{ bgcolor: 'rgba(255,255,255,0.18)', color: 'white', mb: 1.5, fontSize: '0.7rem' }}
+                        />
+                        <Typography variant={isMobile ? 'h6' : 'h5'} fontWeight="bold" color="white">
+                            Olá, {nome}! Bem-vindo ao CronoLab.
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.82)', mt: 0.5, lineHeight: 1.5 }}>
+                            Vamos configurar seu painel em 2 passos rápidos para que você veja só o que importa para o seu dia.
+                        </Typography>
+                    </Box>
+
+                    {/* Features */}
+                    <Box sx={{ px: 3, py: 2.5 }}>
+                        {[
+                            {
+                                bg: 'info.main', icon: '📅',
+                                title: 'Cronograma filtrado para você',
+                                desc: 'Escolha seus laboratórios e veja só as aulas que são do seu setor — sem informação desnecessária.',
+                            },
+                            {
+                                bg: 'secondary.main', icon: '📖',
+                                title: 'Agenda privada do técnico',
+                                desc: 'Registre suas revisões pessoais separadas do cronograma oficial.',
+                            },
+                            {
+                                bg: 'warning.main', icon: '🔔',
+                                title: 'Avisos e propostas em destaque',
+                                desc: 'Comunicados da coordenação sempre visíveis na página inicial.',
+                            },
+                        ].map((f, i) => (
+                            <Box key={i} display="flex" alignItems="flex-start" gap={1.5} mb={i < 2 ? 2 : 0}>
+                                <Box sx={{
+                                    width: 38, height: 38, borderRadius: 2, flexShrink: 0,
+                                    bgcolor: `${f.bg}18`, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    fontSize: '1.1rem',
+                                }}>
+                                    {f.icon}
+                                </Box>
+                                <Box>
+                                    <Typography variant="body2" fontWeight="600">{f.title}</Typography>
+                                    <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.4 }}>{f.desc}</Typography>
+                                </Box>
+                            </Box>
+                        ))}
+
+                        <Button
+                            fullWidth variant="contained" color="info"
+                            size="large"
+                            sx={{ mt: 3, py: isMobile ? 1.5 : 1.2, borderRadius: 2, fontWeight: 'bold', fontSize: isMobile ? '1rem' : '0.9rem' }}
+                            onClick={() => { setLabsRascunho([]); setOnboardingStep('labs'); }}
+                        >
+                            Configurar meus laboratórios →
+                        </Button>
+                        <Button
+                            fullWidth variant="text" color="inherit"
+                            sx={{ mt: 1, py: isMobile ? 1.2 : 1, color: 'text.secondary', fontSize: '0.85rem' }}
+                            onClick={pularOnboarding}
+                        >
+                            Pular — ver tudo por enquanto
+                        </Button>
+                    </Box>
+                </Paper>
+            </Box>
+        );
+
+        // Passo 2 — Escolha de laboratórios
+        if (onboardingStep === 'labs') return (
+            <Box sx={{ maxWidth: 620, mx: 'auto', mt: isMobile ? 1 : 4, px: isMobile ? 0 : 2 }}>
+                <Paper elevation={3} sx={{ borderRadius: 3, overflow: 'hidden' }}>
+                    {/* Progresso */}
+                    <Box sx={{ px: 3, pt: 2.5, pb: 1.5, borderBottom: 1, borderColor: 'divider' }}>
+                        <Box display="flex" alignItems="center" gap={1} mb={1.5}>
+                            {['Boas-vindas', 'Meus laboratórios', 'Confirmar'].map((label, i) => (
+                                <React.Fragment key={i}>
+                                    <Box display="flex" alignItems="center" gap={0.5}>
+                                        <Box sx={{
+                                            width: 22, height: 22, borderRadius: '50%',
+                                            bgcolor: i === 0 ? 'success.main' : i === 1 ? 'info.main' : 'action.disabledBackground',
+                                            color: i < 2 ? 'white' : 'text.disabled',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            fontSize: '0.65rem', fontWeight: 'bold', flexShrink: 0,
+                                        }}>
+                                            {i === 0 ? '✓' : i + 1}
+                                        </Box>
+                                        {!isMobile && (
+                                            <Typography variant="caption"
+                                                sx={{ color: i === 0 ? 'success.main' : i === 1 ? 'info.main' : 'text.disabled', fontWeight: i === 1 ? 600 : 400 }}>
+                                                {label}
+                                            </Typography>
+                                        )}
+                                    </Box>
+                                    {i < 2 && <Box sx={{ flex: 1, height: '1px', bgcolor: 'divider' }} />}
+                                </React.Fragment>
+                            ))}
+                        </Box>
+                        <Typography variant={isMobile ? 'subtitle1' : 'h6'} fontWeight="bold">
+                            Quais laboratórios são os seus?
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.5 }}>
+                            Selecione os labs que você monitora. O cronograma vai filtrar automaticamente todo dia. Pode alterar quando quiser.
+                        </Typography>
+                    </Box>
+
+                    {/* Lista de labs agrupados */}
+                    <Box sx={{ px: 2, py: 1.5, maxHeight: isMobile ? '52vh' : 400, overflowY: 'auto' }}>
+                        {TIPOS_LABORATORIO.map(tipo => {
+                            const labsDoTipo = LISTA_LABORATORIOS.filter(l => l.tipo === tipo.id);
+                            const todosSelTipo = labsDoTipo.every(l => labsRascunho.includes(l.name));
+                            const algumSelTipo = labsDoTipo.some(l => labsRascunho.includes(l.name)) && !todosSelTipo;
+                            return (
+                                <Box key={tipo.id} sx={{ mb: 2 }}>
+                                    <Box
+                                        display="flex" alignItems="center" justifyContent="space-between"
+                                        sx={{
+                                            px: 1.5, py: 1, borderRadius: 1.5, mb: 1, cursor: 'pointer',
+                                            bgcolor: todosSelTipo ? 'info.main' + '18' : algumSelTipo ? 'warning.main' + '10' : 'action.hover',
+                                        }}
+                                        onClick={() => {
+                                            const nomes = labsDoTipo.map(l => l.name);
+                                            setLabsRascunho(prev =>
+                                                todosSelTipo
+                                                    ? prev.filter(n => !nomes.includes(n))
+                                                    : [...new Set([...prev, ...nomes])]
+                                            );
+                                        }}
+                                    >
+                                        <Box display="flex" alignItems="center" gap={1}>
+                                            <Checkbox
+                                                checked={todosSelTipo}
+                                                indeterminate={algumSelTipo}
+                                                size="small" color="info"
+                                                sx={{ p: 0 }}
+                                                onClick={e => e.stopPropagation()}
+                                                onChange={() => {}}
+                                            />
+                                            <Typography variant="body2" fontWeight="600"
+                                                color={todosSelTipo ? 'info.main' : 'text.primary'}>
+                                                {tipo.name}
+                                            </Typography>
+                                        </Box>
+                                        <Typography variant="caption" color="text.secondary">
+                                            {labsDoTipo.filter(l => labsRascunho.includes(l.name)).length}/{labsDoTipo.length}
+                                        </Typography>
+                                    </Box>
+                                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.8, pl: 1 }}>
+                                        {labsDoTipo.map(lab => {
+                                            const sel = labsRascunho.includes(lab.name);
+                                            return (
+                                                <Chip
+                                                    key={lab.id}
+                                                    label={lab.name}
+                                                    size={isMobile ? 'medium' : 'small'}
+                                                    color={sel ? 'info' : 'default'}
+                                                    variant={sel ? 'filled' : 'outlined'}
+                                                    onClick={() => setLabsRascunho(prev =>
+                                                        sel ? prev.filter(n => n !== lab.name) : [...prev, lab.name]
+                                                    )}
+                                                    sx={{
+                                                        cursor: 'pointer',
+                                                        fontWeight: sel ? 'bold' : 'normal',
+                                                        minHeight: isMobile ? 36 : 'auto',
+                                                    }}
+                                                />
+                                            );
+                                        })}
+                                    </Box>
+                                </Box>
+                            );
+                        })}
+                    </Box>
+
+                    {/* Footer */}
+                    <Box sx={{
+                        px: 3, py: 2, borderTop: 1, borderColor: 'divider',
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        flexWrap: 'wrap', gap: 1,
+                    }}>
+                        <Typography variant="caption" color={labsRascunho.length > 0 ? 'info.main' : 'text.secondary'} fontWeight={labsRascunho.length > 0 ? 'bold' : 'normal'}>
+                            {labsRascunho.length > 0
+                                ? `${labsRascunho.length} laboratório${labsRascunho.length > 1 ? 's' : ''} selecionado${labsRascunho.length > 1 ? 's' : ''}`
+                                : 'Nenhum selecionado — mostrará todos'
+                            }
+                        </Typography>
+                        <Box display="flex" gap={1}>
+                            <Button size={isMobile ? 'medium' : 'small'} onClick={() => setOnboardingStep('welcome')} color="inherit">
+                                Voltar
+                            </Button>
+                            <Button
+                                size={isMobile ? 'medium' : 'small'}
+                                variant="contained" color="info"
+                                sx={{ minWidth: isMobile ? 120 : 'auto' }}
+                                onClick={() => setOnboardingStep('confirm')}
+                            >
+                                Continuar →
+                            </Button>
+                        </Box>
+                    </Box>
+                </Paper>
+            </Box>
+        );
+
+        // Passo 3 — Confirmação
+        if (onboardingStep === 'confirm') return (
+            <Box sx={{ maxWidth: 520, mx: 'auto', mt: isMobile ? 1 : 4, px: isMobile ? 0 : 2 }}>
+                <Paper elevation={3} sx={{ borderRadius: 3, overflow: 'hidden' }}>
+                    {/* Progresso */}
+                    <Box sx={{ px: 3, pt: 2.5, pb: 1.5, borderBottom: 1, borderColor: 'divider' }}>
+                        <Box display="flex" alignItems="center" gap={1} mb={1.5}>
+                            {['Boas-vindas', 'Meus laboratórios', 'Confirmar'].map((label, i) => (
+                                <React.Fragment key={i}>
+                                    <Box display="flex" alignItems="center" gap={0.5}>
+                                        <Box sx={{
+                                            width: 22, height: 22, borderRadius: '50%',
+                                            bgcolor: i < 2 ? 'success.main' : 'info.main',
+                                            color: 'white',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            fontSize: '0.65rem', fontWeight: 'bold', flexShrink: 0,
+                                        }}>
+                                            {i < 2 ? '✓' : '3'}
+                                        </Box>
+                                        {!isMobile && (
+                                            <Typography variant="caption"
+                                                sx={{ color: i < 2 ? 'success.main' : 'info.main', fontWeight: i === 2 ? 600 : 400 }}>
+                                                {label}
+                                            </Typography>
+                                        )}
+                                    </Box>
+                                    {i < 2 && <Box sx={{ flex: 1, height: '1px', bgcolor: 'success.main', opacity: 0.4 }} />}
+                                </React.Fragment>
+                            ))}
+                        </Box>
+                        <Typography variant={isMobile ? 'subtitle1' : 'h6'} fontWeight="bold">
+                            {labsRascunho.length > 0 ? `Tudo certo, ${nome}!` : 'Sem filtro — mostrando tudo'}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.5 }}>
+                            {labsRascunho.length > 0
+                                ? `Seu painel vai mostrar o cronograma filtrado por ${labsRascunho.length} laboratório${labsRascunho.length > 1 ? 's' : ''} toda vez que você entrar neste dispositivo.`
+                                : 'O cronograma vai mostrar todas as atividades do dia. Você pode filtrar depois pelo ícone de funil no painel.'
+                            }
+                        </Typography>
+                    </Box>
+
+                    {/* Labs confirmados como chips removíveis */}
+                    <Box sx={{ px: 3, py: 2 }}>
+                        {labsRascunho.length > 0 ? (
+                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.8 }}>
+                                {labsRascunho.map(lab => (
+                                    <Chip
+                                        key={lab}
+                                        label={lab}
+                                        size={isMobile ? 'medium' : 'small'}
+                                        color="info"
+                                        onDelete={() => setLabsRascunho(prev => prev.filter(l => l !== lab))}
+                                        sx={{ fontWeight: 500 }}
+                                    />
+                                ))}
+                            </Box>
+                        ) : (
+                            <Box sx={{ py: 1, px: 1.5, borderRadius: 2, bgcolor: 'action.hover' }}>
+                                <Typography variant="body2" color="text.secondary">
+                                    Nenhum laboratório selecionado — o painel mostrará todas as atividades.
+                                </Typography>
+                            </Box>
+                        )}
+                    </Box>
+
+                    {/* Footer */}
+                    <Box sx={{
+                        px: 3, pb: 3, pt: 1,
+                        display: 'flex', flexDirection: isMobile ? 'column' : 'row',
+                        alignItems: isMobile ? 'stretch' : 'center',
+                        justifyContent: 'space-between', gap: 1.5,
+                    }}>
+                        <Button
+                            size={isMobile ? 'large' : 'medium'}
+                            onClick={() => setOnboardingStep('labs')}
+                            color="inherit"
+                            fullWidth={isMobile}
+                        >
+                            ← Alterar seleção
+                        </Button>
+                        <Button
+                            size={isMobile ? 'large' : 'medium'}
+                            variant="contained" color="info"
+                            fullWidth={isMobile}
+                            sx={{ fontWeight: 'bold', py: isMobile ? 1.5 : 1 }}
+                            onClick={() => concluirOnboarding(labsRascunho)}
+                        >
+                            Ir para o meu painel →
+                        </Button>
+                    </Box>
+                </Paper>
+            </Box>
+        );
+
+        return null;
+    };
+
     if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}><CircularProgress /></Box>;
     if (error) return <Box sx={{ mt: 4 }}><Alert severity="error">{error}</Alert></Box>;
 
@@ -262,6 +631,15 @@ const PaginaInicial = ({ userInfo }) => {
 
     return (
         <Container maxWidth="lg" sx={{ mt: 2, mb: 4 }}>
+
+            {/* ── ONBOARDING DO TÉCNICO (apenas primeira vez neste dispositivo) ── */}
+            {userInfo?.role === 'tecnico' && onboardingStep !== null && (
+                <OnboardingTecnico />
+            )}
+
+            {/* ── CONTEÚDO NORMAL (oculto durante onboarding do técnico) ── */}
+            {(userInfo?.role !== 'tecnico' || onboardingStep === null) && (<>
+
             {/* 1. TOPO: Boas-vindas e Avisos Rápidos */}
             <Box display="flex" justifyContent="space-between" alignItems="center" mb={2} flexWrap="wrap" gap={1}>
                 <Typography variant="h6" fontWeight="bold">
@@ -618,7 +996,22 @@ const PaginaInicial = ({ userInfo }) => {
                 </Grid>
             )}
 
-                        {/* 4. ASSISTENTE IA (Opcional/Compacto) */}
+            {/* HINT PÓS-ONBOARDING — aparece uma única vez após configurar os labs */}
+            {userInfo?.role === 'tecnico' && showLabHint && labsFavoritos.length > 0 && (
+                <Alert
+                    severity="info"
+                    sx={{ mb: 3, borderRadius: 2 }}
+                    action={
+                        <Button color="inherit" size="small" onClick={dispensarLabHint}>
+                            Entendi
+                        </Button>
+                    }
+                >
+                    <strong>Cronograma filtrado!</strong> Seu painel está mostrando só os {labsFavoritos.length} laboratório{labsFavoritos.length > 1 ? 's' : ''} que você escolheu. Para alterar, toque no ícone de funil no painel acima.
+                </Alert>
+            )}
+
+            {/* 4. ASSISTENTE IA (Opcional/Compacto) */}
             {canUseAI && (
                 <Accordion sx={{ mb: 3, bgcolor: 'background.paper', boxShadow: 1, '&:before': { display: 'none' } }}>
                     <AccordionSummary expandIcon={<ExpandMoreIcon />}>
@@ -852,6 +1245,8 @@ const PaginaInicial = ({ userInfo }) => {
                     </Box>
                 </DialogActions>
             </Dialog>
+
+            </>)} {/* fim do bloco condicional — conteúdo normal */}
 
         </Container>
     );
