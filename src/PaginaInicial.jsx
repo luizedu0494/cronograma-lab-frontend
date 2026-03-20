@@ -427,8 +427,14 @@ const PaginaInicial = ({ userInfo }) => {
                                                 indeterminate={algumSelTipo}
                                                 size="small" color="info"
                                                 sx={{ p: 0 }}
-                                                onClick={e => e.stopPropagation()}
-                                                onChange={() => {}}
+                                                onChange={() => {
+                                                    const nomes = labsDoTipo.map(l => l.name);
+                                                    setLabsRascunho(prev =>
+                                                        todosSelTipo
+                                                            ? prev.filter(n => !nomes.includes(n))
+                                                            : [...new Set([...prev, ...nomes])]
+                                                    );
+                                                }}
                                             />
                                             <Typography variant="body2" fontWeight="600"
                                                 color={todosSelTipo ? 'info.main' : 'text.primary'}>
@@ -1185,7 +1191,6 @@ const PaginaInicial = ({ userInfo }) => {
                                         size="small"
                                         color="info"
                                         sx={{ p: 0 }}
-                                        onClick={e => e.stopPropagation()}
                                         onChange={() => selecionarTodosTipo(tipo.id)}
                                     />
                                     <Typography variant="subtitle2" fontWeight="bold" color={todosSel ? 'info.main' : 'text.primary'}>

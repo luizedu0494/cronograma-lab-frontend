@@ -143,8 +143,10 @@ function GerenciarUsuarios( ) {
             <Dialog open={openDeleteDialog} onClose={() => setOpenDeleteDialog(false)}>
                 <DialogTitle>Confirmar Exclusão</DialogTitle>
                 <DialogContent>
-                    <Typography>Tem certeza que deseja excluir o usuário "{userToDelete?.name}"?</Typography>
-                    <Typography color="error" sx={{ mt: 2 }}>Esta ação é irreversível e irá apagar o usuário do sistema de autenticação e do banco de dados.</Typography>
+                    <Typography>Tem certeza que deseja remover o usuário "{userToDelete?.name}" do sistema?</Typography>
+                    <Typography color="text.secondary" variant="body2" sx={{ mt: 2 }}>
+                        O acesso do usuário será revogado imediatamente. Caso ele tente fazer login novamente, precisará de uma nova aprovação da coordenação.
+                    </Typography>
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={() => setOpenDeleteDialog(false)}>Cancelar</Button>

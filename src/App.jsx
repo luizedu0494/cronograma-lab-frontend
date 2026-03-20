@@ -16,7 +16,7 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import 'dayjs/locale/pt-br';
 import AccountCircle from '@mui/icons-material/AccountCircle';
 import {
-    Menu as MenuIcon, Sun, Moon, LogOut, User, HelpCircle, UserCheck, Users, Group, CalendarOff, Settings, Bell, ListTodo, Calendar, LayoutDashboard, ThumbsUp, PlusCircle, Download, BarChart, Bug, History, Bot, Upload, FlaskConical
+    Menu as MenuIcon, Sun, Moon, LogOut, User, HelpCircle, UserCheck, Users, CalendarOff, Settings, Bell, ListTodo, Calendar, LayoutDashboard, ThumbsUp, PlusCircle, Download, BarChart, Bug, History, Bot, FlaskConical
 } from 'lucide-react';
 
 // --- LAZY LOADING ---
@@ -32,8 +32,6 @@ const GerenciarAvisos = lazy(() => import('./GerenciarAvisos'));
 const AjudaFAQ = lazy(() => import('./AjudaFAQ'));
 const ConfiguracoesPerfil = lazy(() => import('./ConfiguracoesPerfil'));
 const PaginaInicial = lazy(() => import('./PaginaInicial'));
-const ListagemMensalAulas = lazy(() => import('./ListagemMensalAulas'));
-const GerenciarGrupos = lazy(() => import('./GerenciarGrupos'));
 const GerenciarPeriodos = lazy(() => import('./GerenciarPeriodos'));
 const DownloadCronograma = lazy(() => import('./DownloadCronograma'));
 const AnaliseAulas = lazy(() => import('./AnaliseAulas'));
@@ -41,7 +39,6 @@ const AnaliseEventos = lazy(() => import('./AnaliseEventos'));
 const VerificarIntegridadeDados = lazy(() => import('./VerificarIntegridadeDados'));
 const HistoricoAulas = lazy(() => import('./HistoricoAulas'));
 const AssistenteIA = lazy(() => import('./AssistenteIA'));
-const ImportarAgendamento = lazy(() => import('./ImportarAgendamento'));
 const CalendarioRevisoesTecnico = lazy(() => import('./CalendarioRevisoesTecnico'));
 
 const LoadingFallback = () => (<Box display="flex" justifyContent="center" alignItems="center" height="80vh"><CircularProgress /></Box>);
@@ -136,23 +133,19 @@ function App() {
     const navMenuItems = [
         <MenuItem key="painel" component={Link} to="/" onClick={handleMenuClose}><LayoutDashboard size={18} style={menuIconStyle}/> Painel</MenuItem>,
         <MenuItem key="cal" component={Link} to="/calendario" onClick={handleMenuClose}><Calendar size={18} style={menuIconStyle}/> Calendário</MenuItem>,
-        !approvalPending ? <MenuItem key="list" component={Link} to="/listagem-mensal" onClick={handleMenuClose}><ListTodo size={18} style={menuIconStyle}/> Listagem Mensal</MenuItem> : null,
         !approvalPending ? <MenuItem key="historico" component={Link} to="/historico-aulas" onClick={handleMenuClose}><History size={18} style={menuIconStyle}/> Histórico</MenuItem> : null,
         !approvalPending ? <MenuItem key="avisos" component={Link} to="/avisos" onClick={handleMenuClose}><Bell size={18} style={menuIconStyle}/> Avisos</MenuItem> : null,
         <Divider key="div1" sx={{ my: 0.5 }} />,
         ...(role === 'coordenador' && !approvalPending ? [
             <MenuItem key="agend" component={Link} to="/propor-aula" onClick={handleMenuClose}><PlusCircle size={18} style={menuIconStyle}/> Agendar Aula</MenuItem>,
-<MenuItem key="agend-evento" component={Link} to="/propor-evento" onClick={handleMenuClose}><PlusCircle size={18} style={menuIconStyle}/> Agendar Evento</MenuItem>,
-            <MenuItem key="importar" component={Link} to="/importar-agendamento" onClick={handleMenuClose}><Upload size={18} style={menuIconStyle}/> Importar do Arquivo</MenuItem>,
+            <MenuItem key="agend-evento" component={Link} to="/propor-evento" onClick={handleMenuClose}><PlusCircle size={18} style={menuIconStyle}/> Agendar Evento</MenuItem>,
             <MenuItem key="gerenciar-menu" onClick={handleCoordenadorMenuOpen}><ListTodo size={18} style={menuIconStyle}/> Gerenciar</MenuItem>,
             <MenuItem key="users" component={Link} to="/gerenciar-usuarios" onClick={handleMenuClose}><Users size={18} style={menuIconStyle}/> Usuários</MenuItem>,
-            <MenuItem key="grupos" component={Link} to="/gerenciar-grupos" onClick={handleMenuClose}><Group size={18} style={menuIconStyle}/> Grupos</MenuItem>,
             <MenuItem key="periodos" component={Link} to="/gerenciar-periodos" onClick={handleMenuClose}><CalendarOff size={18} style={menuIconStyle}/> Eventos</MenuItem>,
             <MenuItem key="gerenciar-avisos" component={Link} to="/gerenciar-avisos" onClick={handleMenuClose}><Settings size={18} style={menuIconStyle}/> Gerenciar Avisos</MenuItem>,
         ] : []),
         ...(role === 'tecnico' && !approvalPending ? [
             <MenuItem key="aula" component={Link} to="/propor-aula" onClick={handleMenuClose}><PlusCircle size={18} style={menuIconStyle}/> Propor Aula</MenuItem>,
-            <MenuItem key="importar-tec" component={Link} to="/importar-agendamento" onClick={handleMenuClose}><Upload size={18} style={menuIconStyle}/> Importar do Arquivo</MenuItem>,
             <MenuItem key="design" component={Link} to="/minhas-designacoes" onClick={handleMenuClose}><UserCheck size={18} style={menuIconStyle}/> Designações</MenuItem>,
             <MenuItem key="prop" component={Link} to="/minhas-propostas" onClick={handleMenuClose}><ListTodo size={18} style={menuIconStyle}/> Minhas Propostas</MenuItem>,
             <MenuItem key="revisoes" component={Link} to="/revisoes" onClick={handleMenuClose}><FlaskConical size={18} style={menuIconStyle}/> Revisões</MenuItem>,
@@ -199,7 +192,6 @@ function App() {
                                 <Route element={<MainLayout />}>
                                     <Route path="/" element={<PaginaInicial userInfo={userProfileData}/>} />
                                     <Route path="/calendario" element={<CalendarioCronograma userInfo={userProfileData} />} />
-                                    <Route path="/listagem-mensal" element={<ListagemMensalAulas userInfo={userProfileData} />} />
                                     <Route path="/historico-aulas" element={<HistoricoAulas />} />
                                     <Route path="/propor-aula" element={<ProporAulaForm userInfo={userProfileData} currentUser={user} />} />
                                     <Route path="/propor-evento" element={<ProporEventoForm userInfo={userProfileData} currentUser={user} />} />
@@ -212,16 +204,12 @@ function App() {
                                         <Route path="/gerenciar-aprovacoes" element={<GerenciarAprovacoes />} />
                                         <Route path="/gerenciar-usuarios" element={<GerenciarUsuarios />} />
                                         <Route path="/gerenciar-avisos" element={<GerenciarAvisos />} />
-                                        <Route path="/gerenciar-grupos" element={<GerenciarGrupos />} />
                                         <Route path="/gerenciar-periodos" element={<GerenciarPeriodos />} />
-                                    
                                         <Route path="/analise-aulas" element={<AnaliseAulas />} />
                                         <Route path="/analise-eventos" element={<AnaliseEventos />} />
                                         <Route path="/verificar-integridade" element={<VerificarIntegridadeDados />} />
                                     </>)}
-                                    {/* Rota aberta para ambos */}
                                     <Route path="/assistente-ia" element={<AssistenteIA userInfo={userProfileData} currentUser={user} mode={darkMode ? 'dark' : 'light'} />} />
-                                    {isCoordenadorOrTecnico && (<Route path="/importar-agendamento" element={<ImportarAgendamento userInfo={userProfileData} currentUser={user} />} />)}
                                     {isCoordenadorOrTecnico && (<Route path="/download-cronograma" element={<DownloadCronograma />} />)}
                                     <Route path="*" element={<Navigate to="/" />} />
                                 </Route>
