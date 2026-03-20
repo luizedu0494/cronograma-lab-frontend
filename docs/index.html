@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CronoLab — Cronograma de Laboratórios · CESMAC</title>
+  <meta name="description" content="Sistema de gestão de cronogramas e agendamentos para os laboratórios do Centro Universitário CESMAC, Maceió — AL."/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --blue:      #1E7EC8;
+      --blue-dark: #0D5A9A;
+      --blue-light:#4AADE8;
+      --gold:      #F5C518;
+      --gold-dark: #D4940A;
+      --navy:      #0B0F18;
+      --navy-2:    #131826;
+      --navy-3:    #1C2235;
+      --txt:       #E8EDF5;
+      --txt2:      #8898B8;
+      --txt3:      #485880;
+      --border:    rgba(74,173,232,0.12);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Sora', sans-serif;
+      background: var(--navy);
+      color: var(--txt);
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    /* ── Navbar ── */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 32px; height: 56px;
+      background: rgba(11,15,24,0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 0.5px solid var(--border);
+    }
+    .nav-brand { display: flex; align-items: center; gap: 10px; }
+    .nav-logo {
+      width: 32px; height: 32px; border-radius: 7px;
+      background: var(--blue);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .nav-logo svg { width: 18px; height: 18px; }
+    .nav-name { font-size: 15px; font-weight: 600; letter-spacing: -0.3px; }
+    .nav-sub  { font-size: 10px; color: var(--txt3); letter-spacing: 0.4px; text-transform: uppercase; }
+    .nav-cta {
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 8px 18px; border-radius: 8px;
+      background: var(--blue); color: white;
+      font-family: 'Sora', sans-serif; font-size: 13px; font-weight: 500;
+      text-decoration: none;
+      transition: background 0.2s, transform 0.15s;
+    }
+    .nav-cta:hover { background: var(--blue-dark); transform: translateY(-1px); }
+
+    /* ── Hero ── */
+    .hero {
+      min-height: 100vh;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 100px 24px 60px;
+      text-align: center;
+      position: relative; overflow: hidden;
+    }
+    .hero-glow {
+      position: absolute; top: -200px; left: 50%; transform: translateX(-50%);
+      width: 800px; height: 600px; border-radius: 50%;
+      background: radial-gradient(ellipse, rgba(30,126,200,0.18) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 5px 14px; border-radius: 99px; margin-bottom: 24px;
+      background: rgba(30,126,200,0.12);
+      border: 0.5px solid rgba(74,173,232,0.3);
+      font-size: 12px; font-weight: 500; color: var(--blue-light);
+      letter-spacing: 0.3px;
+      animation: fadeUp 0.6s ease both;
+    }
+    .hero-badge span { width: 6px; height: 6px; border-radius: 50%; background: var(--blue-light); }
+    .hero-title {
+      font-size: clamp(2.4rem, 6vw, 4rem);
+      font-weight: 700; letter-spacing: -1.5px; line-height: 1.1;
+      margin-bottom: 8px;
+      animation: fadeUp 0.6s 0.1s ease both;
+    }
+    .hero-title em { font-style: normal; color: var(--blue-light); }
+    .hero-inst {
+      font-size: 14px; color: var(--txt3); letter-spacing: 0.5px;
+      text-transform: uppercase; margin-bottom: 20px;
+      animation: fadeUp 0.6s 0.15s ease both;
+    }
+    .hero-desc {
+      max-width: 540px; font-size: 16px; color: var(--txt2); line-height: 1.7;
+      margin-bottom: 36px;
+      animation: fadeUp 0.6s 0.2s ease both;
+    }
+    .hero-btns {
+      display: flex; gap: 12px; flex-wrap: wrap; justify-content: center;
+      animation: fadeUp 0.6s 0.25s ease both;
+    }
+    .btn-primary {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 13px 28px; border-radius: 10px;
+      background: var(--blue); color: white;
+      font-family: 'Sora', sans-serif; font-size: 14px; font-weight: 600;
+      text-decoration: none; border: none; cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-primary:hover { background: var(--blue-dark); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(30,126,200,0.35); }
+    .btn-secondary {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 13px 28px; border-radius: 10px;
+      background: transparent; color: var(--txt2);
+      font-family: 'Sora', sans-serif; font-size: 14px; font-weight: 500;
+      text-decoration: none;
+      border: 0.5px solid rgba(255,255,255,0.12);
+      transition: all 0.2s;
+    }
+    .btn-secondary:hover { border-color: var(--blue-light); color: var(--txt); transform: translateY(-2px); }
+
+    /* ── Stats strip ── */
+    .stats {
+      display: flex; justify-content: center; gap: 0; flex-wrap: wrap;
+      border-top: 0.5px solid var(--border);
+      border-bottom: 0.5px solid var(--border);
+      background: var(--navy-2);
+      animation: fadeUp 0.6s 0.3s ease both;
+    }
+    .stat {
+      flex: 1; min-width: 140px; max-width: 200px;
+      padding: 22px 20px; text-align: center;
+      border-right: 0.5px solid var(--border);
+    }
+    .stat:last-child { border-right: none; }
+    .stat-n { font-size: 26px; font-weight: 700; color: var(--blue-light); letter-spacing: -1px; }
+    .stat-l { font-size: 11px; color: var(--txt3); margin-top: 3px; letter-spacing: 0.3px; }
+
+    /* ── Section ── */
+    section { padding: 80px 24px; max-width: 1000px; margin: 0 auto; }
+    .sec-label {
+      font-size: 11px; font-weight: 500; letter-spacing: 1.5px;
+      text-transform: uppercase; color: var(--blue-light);
+      margin-bottom: 10px;
+    }
+    .sec-title {
+      font-size: clamp(1.6rem, 3vw, 2.2rem); font-weight: 700;
+      letter-spacing: -0.8px; line-height: 1.2; margin-bottom: 14px;
+    }
+    .sec-desc { font-size: 15px; color: var(--txt2); max-width: 520px; line-height: 1.7; }
+
+    /* ── Perfis ── */
+    .perfis-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-top: 40px; }
+    .perfil-card {
+      background: var(--navy-2);
+      border: 0.5px solid var(--border);
+      border-radius: 14px; padding: 24px;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .perfil-card:hover { transform: translateY(-3px); box-shadow: 0 12px 32px rgba(0,0,0,0.4); }
+    .perfil-icon {
+      width: 42px; height: 42px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; margin-bottom: 14px;
+    }
+    .icon-coord  { background: rgba(30,126,200,0.15); }
+    .icon-tec    { background: rgba(74,173,232,0.12); }
+    .icon-aluno  { background: rgba(245,197,24,0.10); }
+    .perfil-name { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+    .perfil-desc { font-size: 13px; color: var(--txt2); line-height: 1.6; margin-bottom: 14px; }
+    .perfil-feats { list-style: none; display: flex; flex-direction: column; gap: 5px; }
+    .perfil-feats li { font-size: 12px; color: var(--txt3); display: flex; align-items: center; gap: 6px; }
+    .perfil-feats li::before { content: ''; width: 4px; height: 4px; border-radius: 50%; background: var(--blue-light); flex-shrink: 0; }
+
+    /* ── Demo GIFs ── */
+    .demos { margin-top: 40px; display: flex; flex-direction: column; gap: 60px; }
+    .demo-item { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; align-items: center; }
+    .demo-item.reverse { direction: rtl; }
+    .demo-item.reverse > * { direction: ltr; }
+    .demo-info {}
+    .demo-tag {
+      display: inline-block; padding: 3px 10px; border-radius: 4px; margin-bottom: 10px;
+      font-size: 11px; font-weight: 500; letter-spacing: 0.4px; text-transform: uppercase;
+    }
+    .tag-tec   { background: rgba(74,173,232,0.12); color: var(--blue-light); border: 0.5px solid rgba(74,173,232,0.25); }
+    .tag-coord { background: rgba(30,126,200,0.12); color: #93bcf8; border: 0.5px solid rgba(30,126,200,0.25); }
+    .tag-all   { background: rgba(245,197,24,0.10); color: #fcd98a; border: 0.5px solid rgba(245,197,24,0.22); }
+    .demo-title { font-size: 20px; font-weight: 600; letter-spacing: -0.4px; margin-bottom: 8px; }
+    .demo-desc  { font-size: 14px; color: var(--txt2); line-height: 1.7; }
+    .demo-img {
+      border-radius: 12px; overflow: hidden;
+      border: 0.5px solid var(--border);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    }
+    .demo-img img { width: 100%; display: block; }
+
+    /* ── Tech pills ── */
+    .tech-grid { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 32px; }
+    .tech-pill {
+      display: flex; align-items: center; gap: 7px;
+      padding: 8px 14px; border-radius: 8px;
+      background: var(--navy-2);
+      border: 0.5px solid var(--border);
+      font-size: 13px; color: var(--txt2);
+      transition: border-color 0.2s, color 0.2s;
+    }
+    .tech-pill:hover { border-color: var(--blue-light); color: var(--txt); }
+    .tech-pill .dot { width: 8px; height: 8px; border-radius: 50%; }
+
+    /* ── CTA final ── */
+    .cta-section {
+      max-width: 1000px; margin: 0 auto 80px;
+      padding: 56px 40px; border-radius: 20px;
+      background: linear-gradient(135deg, rgba(30,126,200,0.18) 0%, rgba(74,173,232,0.06) 100%);
+      border: 0.5px solid rgba(74,173,232,0.2);
+      text-align: center;
+    }
+    .cta-section h2 { font-size: clamp(1.5rem, 3vw, 2rem); font-weight: 700; letter-spacing: -0.5px; margin-bottom: 10px; }
+    .cta-section p  { font-size: 15px; color: var(--txt2); margin-bottom: 28px; }
+
+    /* ── Footer ── */
+    footer {
+      border-top: 0.5px solid var(--border);
+      padding: 28px 32px;
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 12px;
+      font-size: 12px; color: var(--txt3);
+    }
+    footer a { color: var(--blue-light); text-decoration: none; }
+    footer a:hover { color: var(--txt); }
+
+    /* ── Animations ── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .reveal { opacity: 0; transform: translateY(24px); transition: opacity 0.6s ease, transform 0.6s ease; }
+    .reveal.visible { opacity: 1; transform: none; }
+
+    /* ── Responsive ── */
+    @media (max-width: 680px) {
+      nav { padding: 0 16px; }
+      .demo-item, .demo-item.reverse { grid-template-columns: 1fr; direction: ltr; }
+      .demo-item.reverse .demo-img { order: -1; }
+      .stat { min-width: 100px; padding: 16px 12px; }
+      .cta-section { padding: 36px 20px; }
+      footer { justify-content: center; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Navbar -->
+<nav>
+  <div class="nav-brand">
+    <div class="nav-logo">
+      <svg viewBox="0 0 18 18" fill="none">
+        <rect x="2" y="10" width="3" height="6" rx="1" fill="white" opacity="0.6"/>
+        <rect x="7.5" y="6" width="3" height="10" rx="1" fill="white"/>
+        <rect x="13" y="3" width="3" height="13" rx="1" fill="white" opacity="0.45"/>
+      </svg>
+    </div>
+    <div>
+      <div class="nav-name">CronoLab</div>
+      <div class="nav-sub">CESMAC · Maceió</div>
+    </div>
+  </div>
+  <a class="nav-cta" href="https://cronolab-novo.web.app" target="_blank">
+    Acessar o sistema
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 7h8M7 3l4 4-4 4" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </a>
+</nav>
+
+<!-- Hero -->
+<div class="hero">
+  <div class="hero-glow"></div>
+  <div class="hero-badge"><span></span> Sistema em produção · CESMAC 2026</div>
+  <h1 class="hero-title">Cronograma de<br><em>Laboratórios</em></h1>
+  <div class="hero-inst">Centro Universitário CESMAC · Maceió — AL</div>
+  <p class="hero-desc">
+    Plataforma web para gestão de agendamentos, análise de ocupação e comunicação entre coordenadores, técnicos e alunos dos laboratórios do CESMAC.
+  </p>
+  <div class="hero-btns">
+    <a class="btn-primary" href="https://cronolab-novo.web.app" target="_blank">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="white" stroke-width="1.5"/><path d="M5.5 8h5M8 5.5l2.5 2.5-2.5 2.5" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Acessar o sistema
+    </a>
+    <a class="btn-secondary" href="https://github.com/luizedu0494/cronograma-lab-frontend" target="_blank">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1.5a6.5 6.5 0 00-2.054 12.666c.325.06.444-.141.444-.313v-1.098c-1.806.392-2.188-.872-2.188-.872-.295-.75-.72-.95-.72-.95-.588-.402.045-.394.045-.394.65.046 .992.668.992.668.578.99 1.516.704 1.886.538.058-.418.226-.704.411-.866-1.44-.164-2.954-.72-2.954-3.203 0-.707.252-1.285.668-1.738-.067-.165-.29-.823.063-1.716 0 0 .545-.174 1.784.665A6.205 6.205 0 018 5.88c.551.003 1.106.074 1.624.218 1.238-.839 1.782-.665 1.782-.665.354.893.131 1.551.064 1.716.416.453.667 1.031.667 1.738 0 2.49-1.517 3.037-2.961 3.197.233.2.44.596.44 1.201v1.781c0 .174.118.376.447.312A6.5 6.5 0 008 1.5z" fill="currentColor"/></svg>
+      Ver código no GitHub
+    </a>
+  </div>
+</div>
+
+<!-- Stats -->
+<div class="stats reveal">
+  <div class="stat"><div class="stat-n">31</div><div class="stat-l">Laboratórios</div></div>
+  <div class="stat"><div class="stat-n">3</div><div class="stat-l">Perfis de acesso</div></div>
+  <div class="stat"><div class="stat-n">3K+</div><div class="stat-l">Aulas cadastradas</div></div>
+  <div class="stat"><div class="stat-n">R$0</div><div class="stat-l">Custo de infra</div></div>
+  <div class="stat"><div class="stat-n">100%</div><div class="stat-l">Plano gratuito Firebase</div></div>
+</div>
+
+<!-- Perfis -->
+<section class="reveal">
+  <div class="sec-label">Perfis de acesso</div>
+  <h2 class="sec-title">Uma plataforma,<br>três experiências</h2>
+  <p class="sec-desc">Cada perfil vê exatamente o que precisa — sem informação desnecessária.</p>
+  <div class="perfis-grid">
+    <div class="perfil-card">
+      <div class="perfil-icon icon-coord">👨‍💼</div>
+      <div class="perfil-name">Coordenador</div>
+      <div class="perfil-desc">Visão estratégica completa do cronograma e gestão de toda a equipe.</div>
+      <ul class="perfil-feats">
+        <li>Aprovar e rejeitar propostas de aula</li>
+        <li>Dashboard com gráficos de ocupação</li>
+        <li>Gerenciar usuários, avisos e eventos</li>
+        <li>Análise de dados por laboratório e curso</li>
+        <li>Exportar relatórios em Excel e .ics</li>
+      </ul>
+    </div>
+    <div class="perfil-card">
+      <div class="perfil-icon icon-tec">🔬</div>
+      <div class="perfil-name">Técnico</div>
+      <div class="perfil-desc">Painel diário filtrado pelos seus laboratórios + agenda privada.</div>
+      <ul class="perfil-feats">
+        <li>Onboarding guiado na primeira visita</li>
+        <li>Cronograma filtrado por laboratórios favoritos</li>
+        <li>Agenda privada de revisões e preparações</li>
+        <li>Propor aulas e acompanhar aprovações</li>
+        <li>Configuração salva por dispositivo</li>
+      </ul>
+    </div>
+    <div class="perfil-card">
+      <div class="perfil-icon icon-aluno">👨‍🎓</div>
+      <div class="perfil-name">Aluno</div>
+      <div class="perfil-desc">Acesso somente leitura ao cronograma aprovado.</div>
+      <ul class="perfil-feats">
+        <li>Visualizar calendário semanal</li>
+        <li>Histórico de aulas</li>
+        <li>Mural de avisos da coordenação</li>
+        <li>Baixar cronograma em Excel ou .ics</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- Demos -->
+<section class="reveal">
+  <div class="sec-label">Demonstrações</div>
+  <h2 class="sec-title">Veja em ação</h2>
+  <p class="sec-desc">Principais funcionalidades do sistema gravadas em uso real.</p>
+
+  <div class="demos">
+
+    <div class="demo-item reveal">
+      <div class="demo-info">
+        <div class="demo-tag tag-tec">Técnico</div>
+        <div class="demo-title">Onboarding guiado</div>
+        <div class="demo-desc">Na primeira vez que o técnico acessa o sistema em um dispositivo, um fluxo de 3 passos guia a seleção dos laboratórios que ele monitora. O painel passa a mostrar só o que importa para o dia dele — automaticamente.</div>
+      </div>
+      <div class="demo-img">
+        <img src="./tecnico-onboarding.gif" alt="Onboarding do técnico" loading="lazy"/>
+      </div>
+    </div>
+
+    <div class="demo-item reverse reveal">
+      <div class="demo-info">
+        <div class="demo-tag tag-tec">Técnico</div>
+        <div class="demo-title">Cronograma filtrado</div>
+        <div class="demo-desc">O cronograma diário mostra só as aulas dos laboratórios selecionados. O técnico pode alterar o filtro a qualquer momento pelo ícone de funil — a seleção fica salva no navegador sem custo de banco de dados.</div>
+      </div>
+      <div class="demo-img">
+        <img src="./tecnico-cronograma.gif" alt="Cronograma do técnico" loading="lazy"/>
+      </div>
+    </div>
+
+    <div class="demo-item reveal">
+      <div class="demo-info">
+        <div class="demo-tag tag-coord">Coordenador</div>
+        <div class="demo-title">Painel de análise</div>
+        <div class="demo-desc">Dashboard com gráficos de ocupação por laboratório, distribuição por curso, volume mensal e taxa de aprovação de propostas. Filtros por ano, laboratório e tipo de conteúdo.</div>
+      </div>
+      <div class="demo-img">
+        <img src="./coord-analise-aulas.gif" alt="Análise de aulas" loading="lazy"/>
+      </div>
+    </div>
+
+    <div class="demo-item reverse reveal">
+      <div class="demo-info">
+        <div class="demo-tag tag-coord">Coordenador</div>
+        <div class="demo-title">Aprovar propostas</div>
+        <div class="demo-desc">Propostas de aula dos técnicos chegam com todos os detalhes para o coordenador analisar, aprovar ou rejeitar. Um badge na navbar indica quantas estão aguardando.</div>
+      </div>
+      <div class="demo-img">
+        <img src="./coord-aprovacoes.gif" alt="Aprovar propostas" loading="lazy"/>
+      </div>
+    </div>
+
+    <div class="demo-item reveal">
+      <div class="demo-info">
+        <div class="demo-tag tag-all">Compartilhado</div>
+        <div class="demo-title">Assistente IA</div>
+        <div class="demo-desc">Consultas em linguagem natural sobre o cronograma — "quantas aulas de anatomia em março?" ou "quais laboratórios têm mais ocupação?" — sem API externa, processado localmente com Groq.</div>
+      </div>
+      <div class="demo-img">
+        <img src="./assistente-ia.gif" alt="Assistente IA" loading="lazy"/>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- Tecnologias -->
+<section class="reveal">
+  <div class="sec-label">Stack</div>
+  <h2 class="sec-title">Tecnologias utilizadas</h2>
+  <p class="sec-desc">Construído com ferramentas modernas, rodando 100% no plano gratuito do Firebase.</p>
+  <div class="tech-grid">
+    <div class="tech-pill"><span class="dot" style="background:#61DAFB"></span>React 19</div>
+    <div class="tech-pill"><span class="dot" style="background:#646CFF"></span>Vite 7</div>
+    <div class="tech-pill"><span class="dot" style="background:#1E7EC8"></span>Material-UI v7</div>
+    <div class="tech-pill"><span class="dot" style="background:#FFCA28"></span>Firebase Firestore</div>
+    <div class="tech-pill"><span class="dot" style="background:#FFCA28"></span>Firebase Auth</div>
+    <div class="tech-pill"><span class="dot" style="background:#FFCA28"></span>Firebase Hosting</div>
+    <div class="tech-pill"><span class="dot" style="background:#F5C518"></span>Groq API (Llama 3.3)</div>
+    <div class="tech-pill"><span class="dot" style="background:#26A5E4"></span>Telegram Bot API</div>
+    <div class="tech-pill"><span class="dot" style="background:#FF6384"></span>Chart.js</div>
+    <div class="tech-pill"><span class="dot" style="background:#88D8B0"></span>Framer Motion</div>
+    <div class="tech-pill"><span class="dot" style="background:#F5C518"></span>Day.js</div>
+    <div class="tech-pill"><span class="dot" style="background:#aaa"></span>JavaScript (ES2023)</div>
+  </div>
+</section>
+
+<!-- CTA -->
+<div class="cta-section reveal">
+  <h2>Pronto para conhecer o sistema?</h2>
+  <p>Acesse o CronoLab em produção ou explore o código no GitHub.</p>
+  <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+    <a class="btn-primary" href="https://cronolab-novo.web.app" target="_blank">
+      Acessar o sistema →
+    </a>
+    <a class="btn-secondary" href="https://github.com/luizedu0494/cronograma-lab-frontend" target="_blank">
+      Ver no GitHub
+    </a>
+  </div>
+</div>
+
+<!-- Footer -->
+<footer>
+  <div>
+    Desenvolvido por <a href="https://github.com/luizedu0494" target="_blank">Luiz Eduardo</a>
+    para o <strong style="color:var(--txt2)">Centro Universitário CESMAC</strong> · Maceió, AL
+  </div>
+  <div style="display:flex;gap:16px;">
+    <a href="https://cronolab-novo.web.app" target="_blank">Sistema</a>
+    <a href="https://github.com/luizedu0494/cronograma-lab-frontend" target="_blank">GitHub</a>
+  </div>
+</footer>
+
+<script>
+  const observer = new IntersectionObserver(
+    entries => entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); }),
+    { threshold: 0.1 }
+  );
+  document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+</script>
+
+</body>
+</html>
