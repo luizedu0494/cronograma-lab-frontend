@@ -1,3 +1,7 @@
+# CronoLab — Cronograma de Laboratórios
+
+> Sistema de gestão de cronogramas e agendamentos para os laboratórios do **Centro Universitário CESMAC**, Maceió — AL.
+
 ![Banner](./imgbanner.png)
 
 <p align="center">
@@ -7,29 +11,39 @@
 <p align="center">
   <a href="#sobre">Sobre</a> •
   <a href="#novidades-v2">Novidades v2</a> •
-  <a href="#screenshots">Screenshots</a> •
+  <a href="#demonstrações">Demonstrações</a> •
+  <a href="#perfis-de-acesso">Perfis</a> •
   <a href="#funcionalidades">Funcionalidades</a> •
-  <a href="#roadmap">Roadmap</a> •
   <a href="#tecnologias">Tecnologias</a> •
   <a href="#instalação">Instalação</a>
 </p>
 
 <p align="center">
-  <img alt="Firebase Hosting" src="https://img.shields.io/badge/Firebase-Hosting%20Spark-FFCA28?style=flat&logo=firebase&logoColor=black"/>
+  <img alt="Deploy" src="https://img.shields.io/badge/Deploy-Firebase%20Hosting-FFCA28?style=flat&logo=firebase&logoColor=black"/>
   <img alt="React" src="https://img.shields.io/badge/React-19-61DAFB?style=flat&logo=react&logoColor=black"/>
   <img alt="MUI" src="https://img.shields.io/badge/MUI-v7-1E7EC8?style=flat&logo=mui&logoColor=white"/>
   <img alt="Vite" src="https://img.shields.io/badge/Vite-7-646CFF?style=flat&logo=vite&logoColor=white"/>
+  <img alt="Firebase" src="https://img.shields.io/badge/Firestore-Spark%20%28gratuito%29-FF6F00?style=flat&logo=firebase&logoColor=white"/>
+</p>
+
+<p align="center">
+  <a href="https://cronolab-novo.web.app"><strong>🌐 Ver sistema online →</strong></a>
 </p>
 
 ---
 
 ## Sobre
 
-O **Cronograma Lab** nasceu de uma necessidade real do dia a dia de trabalho no **CESMAC**, com o objetivo de otimizar a rotina dos técnicos de laboratório e demais colaboradores. A ideia surgiu ao observar a necessidade de uma ferramenta dedicada para agilizar o agendamento de laboratórios, substituindo processos manuais e propensos a erros por uma solução centralizada, inteligente e eficiente.
+O **CronoLab** é um sistema web desenvolvido para resolver um problema real do dia a dia dos laboratórios do CESMAC: a gestão manual e descentralizada de agendamentos.
 
-O que começou como um simples sistema de agendamento evoluiu para uma plataforma robusta de **gestão acadêmica**. Hoje, o sistema não apenas organiza os horários, mas também fornece **insights valiosos** e mantém a equipe informada com **notificações via Telegram**.
+O sistema centraliza o cronograma de todos os laboratórios em uma única plataforma, com perfis distintos para coordenadores, técnicos e alunos. Substitui planilhas e processos manuais por um painel inteligente com verificação automática de conflitos, análise de ocupação e notificações em tempo real.
 
-O projeto roda inteiramente no **plano gratuito do Firebase (Spark)** — sem custo de infraestrutura.
+**Destaques:**
+- 🏫 Desenvolvido para uso real no CESMAC — não é um projeto de demonstração
+- ⚡ Roda 100% no plano gratuito do Firebase (Spark) — zero custo de infraestrutura
+- 📱 Responsivo para desktop e celular
+- 🌙 Dark mode com identidade visual da instituição
+- 🤖 Assistente IA para consultas em linguagem natural sobre o cronograma
 
 ---
 
@@ -357,18 +371,37 @@ Filtros dinâmicos, contador de pendências, agenda do técnico, dark mode.
 
 ## Tecnologias
 
-| Categoria | Tecnologias |
-| :--- | :--- |
-| **Frontend** | React 19, Vite 7, Material-UI v7 |
-| **Estilo** | Fonte Sora, tema customizado com cores CESMAC |
-| **Backend / DB** | Firebase Firestore, Auth, Hosting (plano Spark — gratuito) |
-| **Integrações** | Telegram Bot API |
-| **Visualização** | Chart.js, React-Chartjs-2 |
-| **Utilitários** | Day.js, @dnd-kit, File-saver, XLSX, Framer Motion |
+| Categoria | Tecnologia | Versão | Para que serve |
+| :--- | :--- | :--- | :--- |
+| **UI Framework** | React | 19 | Componentes e estado da interface |
+| **Build Tool** | Vite | 7 | Build e servidor de desenvolvimento |
+| **Componentes** | Material-UI (MUI) | 7 | Design system e componentes visuais |
+| **Roteamento** | React Router | 7 | Navegação entre páginas |
+| **Banco de Dados** | Firebase Firestore | 11 | Dados em tempo real, plano Spark |
+| **Autenticação** | Firebase Auth | 11 | Login com conta Google |
+| **Hospedagem** | Firebase Hosting | — | Deploy estático, plano Spark (gratuito) |
+| **Tipografia** | Sora (Google Fonts) | — | Fonte principal, identidade CESMAC |
+| **Gráficos** | Chart.js + React-Chartjs-2 | 4/5 | Dashboards de análise |
+| **Animações** | Framer Motion | 12 | Transições e animações de UI |
+| **Datas** | Day.js | 1.11 | Manipulação e formatação de datas |
+| **Drag & Drop** | @dnd-kit | 6/9/10 | Arrastar e reorganizar elementos |
+| **Exportação** | ExcelJS + File-saver | — | Download de relatórios Excel |
+| **IA** | Groq API (Llama 3.3) | — | Assistente de consultas em linguagem natural |
+| **Notificações** | Telegram Bot API | — | Alertas de agendamento |
+
+> **Por que não TypeScript?** O projeto foi iniciado em JavaScript para priorizar velocidade de entrega. A migração para TS é um item do roadmap futuro.
 
 ---
 
 ## Instalação
+
+### Pré-requisitos
+
+- [Node.js](https://nodejs.org/) 18 ou superior
+- [Firebase CLI](https://firebase.google.com/docs/cli) (apenas para deploy)
+- Conta Google com acesso ao projeto Firebase `cronolab-novo`
+
+### Passo a passo
 
 ```bash
 # 1. Clone o repositório
@@ -380,19 +413,45 @@ npm install
 
 # 3. Execute localmente
 npm run dev
+# Acesse: http://localhost:5173
 ```
 
 ### Variáveis de ambiente
 
-Crie um arquivo `.env` na raiz:
+Crie um arquivo `.env` na raiz (opcional — apenas para integrações externas):
 
 ```env
-# Telegram (opcional)
+# Assistente IA (Groq)
+VITE_GROQ_API_KEY=sua_chave_groq
+
+# Notificações Telegram (opcional)
 VITE_TELEGRAM_BOT_TOKEN=seu_token
 VITE_TELEGRAM_CHAT_ID=id_do_chat
 ```
 
-As configurações do Firebase já estão em `src/firebaseConfig.jsx`.
+> As configurações do Firebase já estão em `src/firebaseConfig.jsx` — não é necessário `.env` para rodar o sistema localmente.
+
+### Estrutura do projeto
+
+```
+cronograma-lab-frontend/
+├── docs/                    # GIFs de demonstração para o README
+├── public/                  # Assets estáticos
+├── src/
+│   ├── assets/              # Imagens e fontes
+│   ├── components/          # Componentes reutilizáveis
+│   ├── constants/           # Laboratórios e cursos cadastrados
+│   ├── hooks/               # Custom hooks
+│   ├── ia-estruturada/      # Motor do Assistente IA (sem API externa)
+│   ├── utils/               # Funções auxiliares
+│   ├── App.jsx              # Roteamento e layout principal
+│   ├── firebaseConfig.jsx   # Configuração do Firebase
+│   ├── theme.jsx            # Tema MUI com cores CESMAC
+│   └── [Telas].jsx          # Páginas da aplicação
+├── firestore.rules          # Regras de segurança do Firestore
+├── firebase.json            # Configuração do Firebase Hosting
+└── vite.config.jsx          # Configuração do Vite
+```
 
 ---
 
@@ -402,11 +461,35 @@ As configurações do Firebase já estão em `src/firebaseConfig.jsx`.
 # Build de produção
 npm run build
 
-# Preview isolado (sem afetar o site principal)
+# Preview isolado — não afeta o site principal
 firebase hosting:channel:deploy preview-teste --expires 7d
 
 # Deploy para produção
 firebase deploy --only hosting
+
+# Publicar regras do Firestore
+firebase deploy --only firestore:rules
+```
+
+---
+
+## Configuração do GitHub
+
+Para deixar o repositório mais profissional e fácil de encontrar, configure no GitHub:
+
+**Descrição (About)** — clique no ⚙️ ao lado de "About" no repositório e adicione:
+```
+Sistema web para gestão de cronogramas dos laboratórios do CESMAC · React 19 · Firebase · MUI
+```
+
+**Topics** — adicione as tags:
+```
+react  firebase  vite  material-ui  javascript  academic  scheduler  cesmac  laboratório  cronograma
+```
+
+**Website** — adicione o link do sistema:
+```
+https://cronolab-novo.web.app
 ```
 
 ---
