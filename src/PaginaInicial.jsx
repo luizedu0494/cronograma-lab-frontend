@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import dayjs from 'dayjs';
 import { db } from './firebaseConfig';
-import { collection, query, where, getDocs, doc, getDoc, setDoc, onSnapshot, orderBy, limit, Timestamp } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, getDoc, setDoc, orderBy, limit, Timestamp } from 'firebase/firestore';
 import {
     Container, Grid, Paper, Typography, Box, CircularProgress, Alert, Button,
     FormControlLabel, Switch, Dialog, DialogContent, DialogTitle, DialogActions,
@@ -75,18 +75,27 @@ const PaginaInicial = ({ userInfo }) => {
 
     const currentYear = dayjs().year();
 
-    // --- EFEITOS E BUSCA DE DADOS (Mantidos iguais à lógica anterior) ---
+    // Busca contagem de avisos não lidos com uma única query pontual (getDocs),
+    // sem listener em tempo real. Armazena os IDs lidos no localStorage para
+    // evitar releituras a cada visita — zero custo enquanto não há avisos novos.
     useEffect(() => {
         if (!userInfo?.uid) return;
-        const avisosRef = collection(db, 'avisos');
-        const unsubscribe = onSnapshot(avisosRef, async (avisosSnapshot) => {
-            const todosAvisosIds = avisosSnapshot.docs.map(doc => doc.id);
-            if (todosAvisosIds.length === 0) { setAvisosNaoLidos(0); return; }
-            const leituraPromises = todosAvisosIds.map(avisoId => getDoc(doc(db, 'avisos', avisoId, 'leituras', userInfo.uid)));
-            const leituraDocs = await Promise.all(leituraPromises);
-            setAvisosNaoLidos(leituraDocs.filter(snap => !snap.exists()).length);
-        });
-        return () => unsubscribe();
+
+        const storageKeyLidas = `avisosLidos_${userInfo.uid}`;
+        const lidas = JSON.parse(localStorage.getItem(storageKeyLidas) || '[]');
+
+        const contarAvisosNaoLidos = async () => {
+            try {
+                const snap = await getDocs(collection(db, 'avisos'));
+                const todosIds = snap.docs.map(d => d.id);
+                const naoLidos = todosIds.filter(id => !lidas.includes(id));
+                setAvisosNaoLidos(naoLidos.length);
+            } catch (err) {
+                console.error('Erro ao contar avisos:', err);
+            }
+        };
+
+        contarAvisosNaoLidos();
     }, [userInfo]);
 
     const fetchData = useCallback(async () => {

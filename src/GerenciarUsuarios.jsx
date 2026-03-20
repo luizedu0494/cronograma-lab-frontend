@@ -10,7 +10,7 @@ import {
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
-import { getFunctions, httpsCallable } from 'firebase/functions';
+// firebase/functions removido — exclusão via deleteDoc direto (sem Cloud Function)
 import EmptyState from './components/EmptyState'; // Certifique-se que o caminho está correto
 import PeopleOutlineIcon from '@mui/icons-material/PeopleOutline';
 
@@ -54,10 +54,13 @@ function GerenciarUsuarios( ) {
                 await updateDoc(doc(db, 'users', userId), { role: payload.role });
                 successMessage = 'Cargo do usuário atualizado!';
             } else if (action === 'delete') {
-                const functions = getFunctions();
-                const deleteUserFunction = httpsCallable(functions, 'deleteUser' );
-                await deleteUserFunction({ userId });
-                successMessage = 'Usuário excluído com sucesso!';
+                // Exclui apenas o documento do Firestore.
+                // Nota: o registro no Firebase Auth permanece, mas sem documento no Firestore
+                // o usuário não terá acesso ao sistema. Para exclusão completa do Auth,
+                // é necessário o plano Blaze (Cloud Functions). Se o usuário tentar logar
+                // novamente, o fluxo de criação de perfil o colocará em estado pendente.
+                await deleteDoc(doc(db, 'users', userId));
+                successMessage = 'Usuário removido do sistema!';
             }
             setFeedback({ open: true, message: successMessage, severity: 'success' });
         } catch (err) {

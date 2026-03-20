@@ -1,5 +1,5 @@
-// src/PainelAvisos.js
-import React, { useState, useEffect } from 'react';
+// src/PainelAvisos.jsx
+import React, { useState, useEffect, useCallback } from 'react';
 import { db } from './firebaseConfig';
 import {
   collection, query, orderBy, onSnapshot, Timestamp,
@@ -64,18 +64,46 @@ function PainelAvisos() {
     if (!currentUser) return;
     const leituraDocRef = doc(db, 'avisos', avisoId, 'leituras', currentUser.uid);
     try {
-      // Esta função está perfeita e aciona a Cloud Function de decremento.
       await setDoc(leituraDocRef, {
         dataLeitura: serverTimestamp(),
         userName: currentUser.displayName || currentUser.email,
       });
+      // Atualiza o estado local imediatamente — sem precisar de listener extra
+      setAvisosState(prev => ({
+        ...prev,
+        [avisoId]: { ...prev[avisoId], lido: true },
+      }));
     } catch (err) {
-      console.error("Erro ao marcar aviso como lido:", err);
-      setError("Não foi possível marcar o aviso como lido.");
+      console.error('Erro ao marcar aviso como lido:', err);
+      setError('Não foi possível marcar o aviso como lido.');
     }
   };
 
-  // ===== LÓGICA DE BUSCA OTIMIZADA =====
+  // Busca pontual (getDocs) do status de leitura — apenas para IDs ainda não carregados.
+  // Substitui o padrão anterior de criar 1 onSnapshot por aviso dentro de outro onSnapshot,
+  // que jamais limpava os listeners internos e consumia leituras continuamente.
+  const fetchLeituras = useCallback(async (avisosIds) => {
+    if (!currentUser || avisosIds.length === 0) return;
+    try {
+      const leituraPromises = avisosIds.map(avisoId =>
+        getDocs(collection(db, 'avisos', avisoId, 'leituras')).then(snap => ({
+          avisoId,
+          lido: snap.docs.some(d => d.id === currentUser.uid),
+        }))
+      );
+      const resultados = await Promise.all(leituraPromises);
+      setAvisosState(prev => {
+        const next = { ...prev };
+        resultados.forEach(({ avisoId, lido }) => {
+          next[avisoId] = { ...next[avisoId], lido };
+        });
+        return next;
+      });
+    } catch (err) {
+      console.error('Erro ao buscar leituras:', err);
+    }
+  }, [currentUser]);
+
   useEffect(() => {
     if (!currentUser) {
       setLoading(false);
@@ -85,51 +113,36 @@ function PainelAvisos() {
     const avisosRef = collection(db, 'avisos');
     const q = query(avisosRef, orderBy('dataCriacao', 'desc'));
 
-    // O onSnapshot agora escuta a coleção de avisos E a subcoleção de leituras do usuário.
-    // Isso é muito mais eficiente do que fazer getDoc para cada aviso.
-    const unsubscribe = onSnapshot(q, async (avisosSnapshot) => {
-      const avisosData = avisosSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        dataCriacao: doc.data().dataCriacao instanceof Timestamp ? dayjs(doc.data().dataCriacao.toDate()) : null,
+    // Um único listener para a lista de avisos.
+    // Status de leitura buscado pontualmente (getDocs) — não com onSnapshot por documento.
+    const unsubscribe = onSnapshot(q, (avisosSnapshot) => {
+      const avisosData = avisosSnapshot.docs.map(d => ({
+        id: d.id,
+        ...d.data(),
+        dataCriacao: d.data().dataCriacao instanceof Timestamp
+          ? dayjs(d.data().dataCriacao.toDate())
+          : null,
       }));
-      
-      // Agora, buscamos TODAS as leituras do usuário de uma vez só.
-      // Isso é uma única consulta, não importa quantos avisos existam.
-      const leiturasQuery = query(collection(db, `users/${currentUser.uid}/leituras`)); // Supondo que você armazene as leituras aqui
-      // Se você não tiver essa coleção, podemos adaptar. Por enquanto, vamos manter a lógica de checagem, mas otimizada.
-      
-      // A lógica de onSnapshot na coleção principal de avisos (q) já garante a atualização em tempo real
-      // do mural de avisos.
-      
-      // Para o status de "lido", a lógica de onSnapshot na subcoleção 'leituras' de cada aviso
-      // é a melhor abordagem sem Cloud Functions, pois garante que o status de leitura
-      // seja atualizado em tempo real para o usuário.
-      
-      // Garante que o estado de leitura seja inicializado para novos avisos
-      avisosData.forEach(aviso => {
-        if (!avisosState[aviso.id]) {
-            const leituraDocRef = doc(db, 'avisos', aviso.id, 'leituras', currentUser.uid);
-            // Escuta em tempo real o documento de leitura do usuário para este aviso
-            onSnapshot(leituraDocRef, (leituraSnap) => {
-                setAvisosState(prev => ({
-                    ...prev,
-                    [aviso.id]: { ...prev[aviso.id], lido: leituraSnap.exists() }
-                }));
-            });
-        }
-      });
 
       setAvisos(avisosData);
       setLoading(false);
+
+      // Busca leituras apenas para avisos ainda não carregados no estado local
+      setAvisosState(prev => {
+        const novosIds = avisosData.map(a => a.id).filter(id => prev[id]?.lido === undefined);
+        if (novosIds.length > 0) fetchLeituras(novosIds);
+        return prev;
+      });
     }, (err) => {
-      console.error("Erro ao buscar avisos:", err);
-      setError("Falha ao carregar os avisos. Tente novamente mais tarde.");
+      console.error('Erro ao buscar avisos:', err);
+      setError('Falha ao carregar os avisos. Tente novamente mais tarde.');
       setLoading(false);
     });
 
     return () => unsubscribe();
-  }, [currentUser]);
+  // fetchLeituras é estável (useCallback com [currentUser])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser, fetchLeituras]);
 
 
   if (loading) {
