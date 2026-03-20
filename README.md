@@ -504,6 +504,16 @@ https://cronolab-novo.web.app
 
 ---
 
+## Licença
+
+Este projeto está licenciado sob a [MIT License](./LICENSE).
+
+Você pode usar, copiar, modificar, distribuir e sublicenciar este software livremente, inclusive para fins comerciais, desde que o aviso de copyright original seja mantido.
+
+> **Nota:** Este sistema foi desenvolvido para uso institucional no CESMAC. O código é aberto para fins de estudo e referência, mas o sistema em produção ([cronolab-novo.web.app](https://cronolab-novo.web.app)) é mantido exclusivamente pela equipe do projeto.
+
+---
+
 <div align="center">
   Desenvolvido por <strong>Luiz Eduardo</strong> para o CESMAC — Centro Universitário de Maceió
   <br/><br/>
