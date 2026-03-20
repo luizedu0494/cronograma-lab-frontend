@@ -107,10 +107,7 @@ Todas as preferências do técnico ficam salvas localmente por `uid`, sem custo 
 
 ### 🔐 Login
 
-<div align="center">
-  <img src="./src/assets/images/image1.png" alt="Tela de login" width="60%"/>
-  <br><em>Tela de login com autenticação Google</em>
-</div>
+![Login](./docs/login.gif)
 
 ---
 
@@ -119,6 +116,10 @@ Todas as preferências do técnico ficam salvas localmente por `uid`, sem custo 
 **Onboarding — configuração guiada na primeira visita**
 
 ![Onboarding do técnico](./docs/tecnico-onboarding.gif)
+
+**Cronograma — visão semanal pelo técnico**
+
+![Cronograma do técnico](./docs/tecnico-cronograma.gif)
 
 **Filtro de laboratórios — cronograma personalizado**
 
