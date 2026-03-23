@@ -329,6 +329,17 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
         if (formData.horarioSlotString.length === 0) newErrors.horarioSlotString = 'Selecione o horário';
         const labsValidos = formData.dynamicLabs.every(lab => lab.tipo && lab.laboratorios.length > 0);
         if (!labsValidos) newErrors.dynamicLabs = 'Preencha todos os campos de laboratório';
+
+        // Verifica se algum horário selecionado está ocupado
+        const horariosOcupados = formData.horarioSlotString.filter(slot => infoOcupacao.hasOwnProperty(slot));
+        if (horariosOcupados.length > 0) {
+            const detalhes = horariosOcupados.map(slot => {
+                const bloco = BLOCOS_HORARIO.find(b => b.value === slot);
+                return `${bloco?.label || slot} (ocupado por: ${infoOcupacao[slot]})`;
+            }).join('; ');
+            newErrors.horarioSlotString = `Horário(s) indisponível(is): ${detalhes}`;
+        }
+
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
@@ -558,8 +569,8 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
                                         <Typography variant="caption" color="primary" fontWeight="bold" display="block" sx={{ mb: 1.5 }}>
                                             📖 Classificação da Revisão
                                         </Typography>
-                                        <FormControl sx={{ minWidth: 120 }} sx={{ mb: 2 }}>
-                                            <InputLabel shrink>Tipo de Revisão</InputLabel>
+                                        <FormControl fullWidth sx={{ mb: 2 }}>
+                                            <InputLabel>Tipo de Revisão</InputLabel>
                                             <Select
                                                 value={formData.tipoRevisao}
                                                 onChange={(e) => setFormData(p => ({ ...p, tipoRevisao: e.target.value }))}
@@ -588,61 +599,91 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
                             <Paper elevation={3} sx={{ p: 3, borderLeft: '5px solid #f50057', height: '100%', opacity: (!secao1Completa && !isEditMode) ? 0.8 : 1 }}>
                                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                        <Typography variant="h6" gutterBottom sx={{ mb: 0 }}>2. Laboratório(s)</Typography>
+                                        <Typography variant="h6" gutterBottom sx={{ mb: 0 }}>2. Laboratório</Typography>
                                         {!secao1Completa && !isEditMode && <LockIcon color="warning" />}
                                     </Box>
-                                    <Tooltip title="Adicionar outro tipo de laboratório">
-                                        <IconButton onClick={handleAddLabField} color="primary" disabled={formData.dynamicLabs.length >= 5 || (!secao1Completa && !isEditMode)}>
-                                            <AddIcon />
-                                        </IconButton>
-                                    </Tooltip>
+                                    {!isEditMode && (
+                                        <Tooltip title="Adicionar outro tipo de laboratório">
+                                            <IconButton onClick={handleAddLabField} color="primary" disabled={formData.dynamicLabs.length >= 5 || !secao1Completa}>
+                                                <AddIcon />
+                                            </IconButton>
+                                        </Tooltip>
+                                    )}
                                 </Box>
                                 {!secao1Completa && !isEditMode && (
                                     <Alert severity="warning" sx={{ mb: 2, mt: 1 }}>
                                         <strong>Seção bloqueada!</strong> Complete a Seção 1 para desbloquear.
                                     </Alert>
                                 )}
-                                {formData.dynamicLabs.map((labSelection, index) => {
-                                    if (!labSelection) return null;
-                                    return (
-                                        <Grid container spacing={1} key={index} sx={{ mt: index > 0 ? 1 : 0, alignItems: 'center' }}>
-                                            <Grid item xs={5}>
-                                                <FormControl sx={{ minWidth: 120 }} size="small" disabled={!secao1Completa && !isEditMode}>
-                                                    <InputLabel shrink>Tipo *</InputLabel>
-                                                    <Select value={labSelection.tipo || ''} onChange={(e) => handleLabTipoChange(index, e.target.value)}>
-                                                        {TIPOS_LABORATORIO.map(t => <MenuItem key={t.id} value={t.id}>{t.name}</MenuItem>)}
-                                                    </Select>
-                                                </FormControl>
-                                            </Grid>
-                                            <Grid item xs={6}>
-                                                <FormControl sx={{ minWidth: 140 }} size="small" disabled={!labSelection.tipo || (!secao1Completa && !isEditMode)}>
-                                                    <InputLabel shrink>Lab(s) *</InputLabel>
-                                                    <Select
-                                                        multiple
-                                                        value={labSelection.laboratorios || []}
-                                                        onChange={(e) => handleLabSelectionChange(index, e.target.value)}
-                                                        renderValue={(selected) => (
-                                                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                                                                {selected.map((value) => (
-                                                                    <Chip key={value} label={value} size="small" />
-                                                                ))}
-                                                            </Box>
-                                                        )}
-                                                    >
-                                                        {LISTA_LABORATORIOS.filter(l => l.tipo === labSelection.tipo).map(l => (
-                                                            <MenuItem key={l.id} value={l.name}>{l.name}</MenuItem>
-                                                        ))}
-                                                    </Select>
-                                                </FormControl>
-                                            </Grid>
-                                            <Grid item xs={1}>
-                                                <IconButton size="small" onClick={() => handleRemoveLabField(index)} disabled={formData.dynamicLabs.length === 1 || (!secao1Completa && !isEditMode)}>
-                                                    <DeleteIcon fontSize="small" />
-                                                </IconButton>
-                                            </Grid>
+
+                                {isEditMode ? (
+                                    /* EDIÇÃO: select simples, 1 laboratório */
+                                    <Grid container spacing={1} sx={{ mt: 0.5 }}>
+                                        <Grid item xs={5}>
+                                            <FormControl fullWidth size="small">
+                                                <InputLabel>Tipo *</InputLabel>
+                                                <Select value={formData.dynamicLabs[0]?.tipo || ''} onChange={(e) => handleLabTipoChange(0, e.target.value)}>
+                                                    {TIPOS_LABORATORIO.map(t => <MenuItem key={t.id} value={t.id}>{t.name}</MenuItem>)}
+                                                </Select>
+                                            </FormControl>
                                         </Grid>
-                                    );
-                                })}
+                                        <Grid item xs={7}>
+                                            <FormControl fullWidth size="small" disabled={!formData.dynamicLabs[0]?.tipo}>
+                                                <InputLabel>Laboratório *</InputLabel>
+                                                <Select
+                                                    value={formData.dynamicLabs[0]?.laboratorios?.[0] || ''}
+                                                    onChange={(e) => handleLabSelectionChange(0, [e.target.value])}
+                                                    label="Laboratório *"
+                                                >
+                                                    {LISTA_LABORATORIOS.filter(l => l.tipo === formData.dynamicLabs[0]?.tipo).map(l => (
+                                                        <MenuItem key={l.id} value={l.name}>{l.name}</MenuItem>
+                                                    ))}
+                                                </Select>
+                                            </FormControl>
+                                        </Grid>
+                                    </Grid>
+                                ) : (
+                                    /* CRIAÇÃO: múltiplos laboratórios */
+                                    formData.dynamicLabs.map((labSelection, index) => {
+                                        if (!labSelection) return null;
+                                        return (
+                                            <Grid container spacing={1} key={index} sx={{ mt: index > 0 ? 1 : 0, alignItems: 'center' }}>
+                                                <Grid item xs={5}>
+                                                    <FormControl fullWidth size="small" disabled={!secao1Completa}>
+                                                        <InputLabel>Tipo *</InputLabel>
+                                                        <Select value={labSelection.tipo || ''} onChange={(e) => handleLabTipoChange(index, e.target.value)}>
+                                                            {TIPOS_LABORATORIO.map(t => <MenuItem key={t.id} value={t.id}>{t.name}</MenuItem>)}
+                                                        </Select>
+                                                    </FormControl>
+                                                </Grid>
+                                                <Grid item xs={6}>
+                                                    <FormControl fullWidth size="small" disabled={!labSelection.tipo || !secao1Completa}>
+                                                        <InputLabel>Lab(s) *</InputLabel>
+                                                        <Select
+                                                            multiple
+                                                            value={labSelection.laboratorios || []}
+                                                            onChange={(e) => handleLabSelectionChange(index, e.target.value)}
+                                                            renderValue={(selected) => (
+                                                                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                                                                    {selected.map((value) => <Chip key={value} label={value} size="small" />)}
+                                                                </Box>
+                                                            )}
+                                                        >
+                                                            {LISTA_LABORATORIOS.filter(l => l.tipo === labSelection.tipo).map(l => (
+                                                                <MenuItem key={l.id} value={l.name}>{l.name}</MenuItem>
+                                                            ))}
+                                                        </Select>
+                                                    </FormControl>
+                                                </Grid>
+                                                <Grid item xs={1}>
+                                                    <IconButton size="small" onClick={() => handleRemoveLabField(index)} disabled={formData.dynamicLabs.length === 1 || !secao1Completa}>
+                                                        <DeleteIcon fontSize="small" />
+                                                    </IconButton>
+                                                </Grid>
+                                            </Grid>
+                                        );
+                                    })
+                                )}
                             </Paper>
                         </Grid>
                         <Grid item xs={12}>
@@ -662,7 +703,12 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
                                             label="Data da Aula *"
                                             value={formData.dataInicio}
                                             onChange={(newValue) => {
-                                                setFormData(prev => ({ ...prev, dataInicio: newValue }));
+                                                // Ao trocar a data, limpa horários selecionados pois a disponibilidade muda
+                                                setFormData(prev => ({
+                                                    ...prev,
+                                                    dataInicio: newValue,
+                                                    horarioSlotString: []
+                                                }));
                                                 if (errors.dataInicio) setErrors(prev => ({ ...prev, dataInicio: null }));
                                             }}
                                             disabled={!secao2Completa && !isEditMode}
@@ -684,46 +730,67 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
                                         />
                                     </Grid>
                                     <Grid item xs={12} md={6}>
-                                        <FormControl sx={{ minWidth: 150 }} error={!!errors.horarioSlotString} disabled={!formData.dataInicio || (!secao2Completa && !isEditMode)}>
-                                            <InputLabel shrink>Horário(s) *</InputLabel>
-                                            <Select
-                                                multiple
-                                                name="horarioSlotString"
-                                                value={formData.horarioSlotString}
-                                                onChange={handleChange}
-                                                input={<OutlinedInput notched label="Horário(s) *" />}
-                                                renderValue={(selected) => (
-                                                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                                                        {selected.map((value) => (
-                                                            <Chip key={value} label={BLOCOS_HORARIO.find(b => b.value === value)?.label || value} size="small" />
-                                                        ))}
-                                                    </Box>
-                                                )}
-                                            >
-                                                {BLOCOS_HORARIO.map((bloco) => {
-                                                    // Verifica se está ocupado
-                                                    const isOccupied = infoOcupacao.hasOwnProperty(bloco.value);
-                                                    const aulaQueOcupa = infoOcupacao[bloco.value];
-                                                    
-                                                    return (
-                                                        <MenuItem 
-                                                            key={bloco.value} 
-                                                            value={bloco.value} 
-                                                            disabled={isOccupied}
-                                                            sx={isOccupied ? { opacity: 0.9 } : {}} // Mantém legível mesmo desabilitado
-                                                        >
-                                                            <Box>
-                                                                <Typography variant="body1">{bloco.label}</Typography>
-                                                                {isOccupied && (
-                                                                    <Typography variant="caption" color="error" display="block">
-                                                                        🚫 Ocupado: {aulaQueOcupa}
-                                                                    </Typography>
-                                                                )}
-                                                            </Box>
-                                                        </MenuItem>
-                                                    );
-                                                })}
-                                            </Select>
+                                        <FormControl fullWidth error={!!errors.horarioSlotString} disabled={!formData.dataInicio || (!secao2Completa && !isEditMode)}>
+                                            <InputLabel>{isEditMode ? 'Horário *' : 'Horário(s) *'}</InputLabel>
+                                            {isEditMode ? (
+                                                /* EDIÇÃO: select simples, 1 horário */
+                                                <Select
+                                                    name="horarioSlotString"
+                                                    value={formData.horarioSlotString[0] || ''}
+                                                    onChange={(e) => setFormData(prev => ({ ...prev, horarioSlotString: [e.target.value] }))}
+                                                    label="Horário *"
+                                                >
+                                                    {BLOCOS_HORARIO.map((bloco) => {
+                                                        const isOccupied = infoOcupacao.hasOwnProperty(bloco.value);
+                                                        const aulaQueOcupa = infoOcupacao[bloco.value];
+                                                        return (
+                                                            <MenuItem key={bloco.value} value={bloco.value} disabled={isOccupied} sx={isOccupied ? { opacity: 0.9 } : {}}>
+                                                                <Box>
+                                                                    <Typography variant="body1">{bloco.label}</Typography>
+                                                                    {isOccupied && (
+                                                                        <Typography variant="caption" color="error" display="block">
+                                                                            🚫 Ocupado: {aulaQueOcupa}
+                                                                        </Typography>
+                                                                    )}
+                                                                </Box>
+                                                            </MenuItem>
+                                                        );
+                                                    })}
+                                                </Select>
+                                            ) : (
+                                                /* CRIAÇÃO: select múltiplo */
+                                                <Select
+                                                    multiple
+                                                    name="horarioSlotString"
+                                                    value={formData.horarioSlotString}
+                                                    onChange={handleChange}
+                                                    input={<OutlinedInput label="Horário(s) *" />}
+                                                    renderValue={(selected) => (
+                                                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                                                            {selected.map((value) => (
+                                                                <Chip key={value} label={BLOCOS_HORARIO.find(b => b.value === value)?.label || value} size="small" />
+                                                            ))}
+                                                        </Box>
+                                                    )}
+                                                >
+                                                    {BLOCOS_HORARIO.map((bloco) => {
+                                                        const isOccupied = infoOcupacao.hasOwnProperty(bloco.value);
+                                                        const aulaQueOcupa = infoOcupacao[bloco.value];
+                                                        return (
+                                                            <MenuItem key={bloco.value} value={bloco.value} disabled={isOccupied} sx={isOccupied ? { opacity: 0.9 } : {}}>
+                                                                <Box>
+                                                                    <Typography variant="body1">{bloco.label}</Typography>
+                                                                    {isOccupied && (
+                                                                        <Typography variant="caption" color="error" display="block">
+                                                                            🚫 Ocupado: {aulaQueOcupa}
+                                                                        </Typography>
+                                                                    )}
+                                                                </Box>
+                                                            </MenuItem>
+                                                        );
+                                                    })}
+                                                </Select>
+                                            )}
                                             {errors.horarioSlotString && <FormHelperText>{errors.horarioSlotString}</FormHelperText>}
                                             {verificandoDisp && <CircularProgress size={20} sx={{ mt: 1 }} />}
                                         </FormControl>

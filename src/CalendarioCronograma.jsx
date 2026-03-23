@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { db } from './firebaseConfig';
-import { collection, query, where, getDocs, Timestamp, orderBy, doc, deleteDoc, addDoc, serverTimestamp, writeBatch } from 'firebase/firestore';
+import { collection, query, where, getDocs, Timestamp, orderBy, doc, deleteDoc, addDoc, serverTimestamp, writeBatch, updateDoc } from 'firebase/firestore';
 import {
     Container, Typography, Box, CircularProgress, Alert, Paper, Grid,
     Button, IconButton, Tooltip, Collapse, FormControl, InputLabel,
     Select, MenuItem, OutlinedInput, Chip, TextField, Divider, Snackbar, Menu,
-    Dialog, DialogTitle, DialogContent, InputAdornment, Checkbox, Fade, useTheme,
+    Dialog, DialogTitle, DialogContent, DialogActions, DialogContentText,
+    InputAdornment, Checkbox, Fade, useTheme,
     useMediaQuery, SwipeableDrawer, Badge
 } from '@mui/material';
 import {
@@ -31,6 +32,15 @@ import { LISTA_CURSOS } from './constants/cursos';
 import EventoCard from './components/EventoCard';
 import { useSearchParams } from 'react-router-dom';
 import { notificadorTelegram } from './ia-estruturada/NotificadorTelegram';
+
+const BLOCOS_HORARIO = [
+    { value: "07:00-09:10", label: "07:00 - 09:10" },
+    { value: "09:30-12:00", label: "09:30 - 12:00" },
+    { value: "13:00-15:10", label: "13:00 - 15:10" },
+    { value: "15:30-18:00", label: "15:30 - 18:00" },
+    { value: "18:30-20:10", label: "18:30 - 20:10" },
+    { value: "20:30-22:00", label: "20:30 - 22:00" },
+];
 
 dayjs.locale('pt-br');
 dayjs.extend(isBetween);
@@ -409,6 +419,13 @@ function CalendarioCronograma({ userInfo }) {
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [isEventModalOpen, setIsEventModalOpen] = useState(false);
     const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false);
+    const [isBulkEditModalOpen, setIsBulkEditModalOpen] = useState(false);
+    const [bulkEditFields, setBulkEditFields] = useState({
+        assunto: '', observacoes: '', cursos: [],
+        dataInicio: null, laboratorio: '', horario: ''
+    });
+    const [bulkEditLoading, setBulkEditLoading] = useState(false);
+    const [bulkEditConflitos, setBulkEditConflitos] = useState([]); // lista de conflitos encontrados
     
     const [aulaParaAcao, setAulaParaAcao] = useState(null);
     const [eventoParaAcao, setEventoParaAcao] = useState(null);
@@ -542,6 +559,117 @@ function CalendarioCronograma({ userInfo }) {
         }
     };
 
+    const handleBulkEdit = async () => {
+        setBulkEditLoading(true);
+        setBulkEditConflitos([]);
+        try {
+            const updates = {};
+            if (bulkEditFields.assunto.trim())     updates.assunto     = bulkEditFields.assunto.trim();
+            if (bulkEditFields.observacoes.trim()) updates.observacoes = bulkEditFields.observacoes.trim();
+            if (bulkEditFields.cursos.length > 0)  updates.cursos      = bulkEditFields.cursos;
+
+            const mudandoData      = !!bulkEditFields.dataInicio;
+            const mudandoLab       = !!bulkEditFields.laboratorio;
+            const mudandoHorario   = !!bulkEditFields.horario;
+            const mudandoAgendamento = mudandoData || mudandoLab || mudandoHorario;
+
+            if (Object.keys(updates).length === 0 && !mudandoAgendamento) {
+                setFeedback({ open: true, message: 'Preencha pelo menos um campo para editar.', severity: 'warning' });
+                setBulkEditLoading(false);
+                return;
+            }
+
+            if (mudandoAgendamento) {
+                // Busca dados atuais das aulas selecionadas
+                const aulasAtuais = [];
+                for (const id of selectedAulasIds) {
+                    const snap = await getDocs(query(collection(db, 'aulas'), where('__name__', '==', id)));
+                    snap.docs.forEach(d => aulasAtuais.push({ id: d.id, ...d.data() }));
+                }
+
+                // Verifica conflitos para cada aula
+                const conflitosEncontrados = [];
+                for (const aula of aulasAtuais) {
+                    const novaData = bulkEditFields.dataInicio
+                        ? dayjs(bulkEditFields.dataInicio).startOf('day')
+                        : dayjs(aula.dataInicio.toDate()).startOf('day');
+                    const novoLab  = bulkEditFields.laboratorio || aula.laboratorioSelecionado;
+                    const novoSlot = bulkEditFields.horario     || aula.horarioSlotString;
+
+                    const qConflito = query(
+                        collection(db, 'aulas'),
+                        where('laboratorioSelecionado', '==', novoLab),
+                        where('horarioSlotString',      '==', novoSlot),
+                        where('dataInicio', '>=', Timestamp.fromDate(novaData.toDate())),
+                        where('dataInicio', '<',  Timestamp.fromDate(novaData.add(1, 'day').toDate()))
+                    );
+                    const snap = await getDocs(qConflito);
+                    snap.docs.forEach(d => {
+                        if (d.id !== aula.id) {
+                            conflitosEncontrados.push({
+                                aulaEditada:  aula.assunto,
+                                aulaConflito: d.data().assunto,
+                                laboratorio:  novoLab,
+                                horario:      BLOCOS_HORARIO.find(b => b.value === novoSlot)?.label || novoSlot,
+                                data:         novaData.format('DD/MM/YYYY'),
+                            });
+                        }
+                    });
+                }
+
+                if (conflitosEncontrados.length > 0) {
+                    setBulkEditConflitos(conflitosEncontrados);
+                    setBulkEditLoading(false);
+                    return; // para aqui, exibe conflitos no modal
+                }
+
+                // Sem conflitos — salva cada aula individualmente
+                const batch = writeBatch(db);
+                for (const aula of aulasAtuais) {
+                    const novaData = bulkEditFields.dataInicio
+                        ? dayjs(bulkEditFields.dataInicio).startOf('day')
+                        : dayjs(aula.dataInicio.toDate()).startOf('day');
+                    const novoLab  = bulkEditFields.laboratorio || aula.laboratorioSelecionado;
+                    const novoSlot = bulkEditFields.horario     || aula.horarioSlotString;
+
+                    const [hInicio, hFim] = novoSlot.split('-');
+                    const [hI, mI] = hInicio.split(':').map(Number);
+                    const [hF, mF] = hFim.split(':').map(Number);
+
+                    const aulaUpdates = {
+                        ...updates,
+                        laboratorioSelecionado: novoLab,
+                        horarioSlotString:      novoSlot,
+                        dataInicio: Timestamp.fromDate(novaData.hour(hI).minute(mI).second(0).millisecond(0).toDate()),
+                        dataFim:    Timestamp.fromDate(novaData.hour(hF).minute(mF).second(0).millisecond(0).toDate()),
+                        updatedAt:  serverTimestamp(),
+                    };
+                    batch.update(doc(db, 'aulas', aula.id), aulaUpdates);
+                }
+                await batch.commit();
+            } else {
+                // Só campos textuais — batch simples
+                const batch = writeBatch(db);
+                updates.updatedAt = serverTimestamp();
+                selectedAulasIds.forEach(id => batch.update(doc(db, 'aulas', id), updates));
+                await batch.commit();
+            }
+
+            setFeedback({ open: true, message: `${selectedAulasIds.length} aula(s) atualizadas com sucesso!`, severity: 'success' });
+            setIsBulkEditModalOpen(false);
+            setBulkEditFields({ assunto: '', observacoes: '', cursos: [], dataInicio: null, laboratorio: '', horario: '' });
+            setBulkEditConflitos([]);
+            setIsSelectionMode(false);
+            setSelectedAulasIds([]);
+            fetchDados();
+        } catch (e) {
+            console.error(e);
+            setFeedback({ open: true, message: 'Erro ao editar aulas.', severity: 'error' });
+        } finally {
+            setBulkEditLoading(false);
+        }
+    };
+
     return (
         <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="pt-br">
             <Container maxWidth="xl" sx={{ mt: 4, mb: 4, color: 'text.primary' }}>
@@ -610,44 +738,63 @@ function CalendarioCronograma({ userInfo }) {
                     <Fade in={isSelectionMode}>
                         <Box sx={{ mt: 2, p: 1, bgcolor: theme.palette.mode === 'dark' ? 'rgba(144, 202, 249, 0.1)' : '#e3f2fd', borderRadius: 1, display: isSelectionMode ? 'flex' : 'none', alignItems: 'center', justifyContent: 'space-between', border: '1px solid', borderColor: 'primary.main' }}>
                             <Typography variant="body2" sx={{ ml: 1 }}>{selectedAulasIds.length} selecionadas</Typography>
-                            <Button size="small" variant="contained" color="error" startIcon={<DeleteIcon />} disabled={selectedAulasIds.length === 0} onClick={() => setIsBulkDeleteModalOpen(true)}>Excluir Selecionadas</Button>
+                            <Box sx={{ display: 'flex', gap: 1 }}>
+                                <Button size="small" variant="outlined" color="primary" startIcon={<EditIcon />} disabled={selectedAulasIds.length === 0} onClick={() => { setBulkEditFields({ assunto: '', observacoes: '', cursos: [] }); setIsBulkEditModalOpen(true); }}>Editar Selecionadas</Button>
+                                <Button size="small" variant="contained" color="error" startIcon={<DeleteIcon />} disabled={selectedAulasIds.length === 0} onClick={() => setIsBulkDeleteModalOpen(true)}>Excluir Selecionadas</Button>
+                            </Box>
                         </Box>
                     </Fade>
 
                     <Collapse in={filtrosVisiveis}>
                         <Box sx={{ mt: 2, pt: 2, borderTop: '1px solid', borderColor: 'divider' }}>
-                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5, alignItems: 'center' }}>
-                                <TextField size="small" label="Buscar Assunto" value={filtros.assunto} onChange={(e) => setFiltros({...filtros, assunto: e.target.value})} sx={{ minWidth: 180 }} InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> }} />
-                                <FormControl size="small" sx={{ minWidth: 160 }}>
-                                    <InputLabel shrink>Laboratórios</InputLabel>
-                                    <Select multiple value={filtros.laboratorio} onChange={(e) => setFiltros({...filtros, laboratorio: e.target.value})} input={<OutlinedInput notched label="Laboratórios" />} renderValue={(selected) => (<Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>{selected.map((value) => (<Chip key={value} label={value} size="small" />))}</Box>)}>
-                                        {LISTA_LABORATORIOS.map(l => <MenuItem key={l.id} value={l.name}>{l.name}</MenuItem>)}
-                                    </Select>
-                                </FormControl>
-                                <FormControl size="small" sx={{ minWidth: 140 }}>
-                                    <InputLabel shrink>Cursos</InputLabel>
-                                    <Select multiple value={filtros.cursos} onChange={(e) => setFiltros({...filtros, cursos: e.target.value})} input={<OutlinedInput notched label="Cursos" />} renderValue={(selected) => (<Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>{selected.map((value) => (<Chip key={value} label={value} size="small" />))}</Box>)}>
-                                        {LISTA_CURSOS.map(c => <MenuItem key={c.value} value={c.value}>{c.label}</MenuItem>)}
-                                    </Select>
-                                </FormControl>
-                                <FormControl size="small" sx={{ minWidth: 120 }}>
-                                    <InputLabel shrink>Turno</InputLabel>
-                                    <Select multiple value={filtros.turno} onChange={(e) => setFiltros({...filtros, turno: e.target.value})} input={<OutlinedInput notched label="Turno" />} renderValue={(selected) => (<Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>{selected.map((value) => (<Chip key={value} label={value} size="small" />))}</Box>)}>
-                                        <MenuItem value="Manhã">🌅 Manhã</MenuItem>
-                                        <MenuItem value="Tarde">☀️ Tarde</MenuItem>
-                                        <MenuItem value="Noite">🌙 Noite</MenuItem>
-                                    </Select>
-                                </FormControl>
-                                <FormControl size="small" sx={{ minWidth: 130 }}>
-                                    <InputLabel shrink>Tipo</InputLabel>
-                                    <Select value={filtros.tipoConteudo || 'todos'} onChange={(e) => setFiltros({...filtros, tipoConteudo: e.target.value})} input={<OutlinedInput notched label="Tipo" />}>
-                                        <MenuItem value="todos">📅 Todos</MenuItem>
-                                        <MenuItem value="aula">🎓 Só Aulas</MenuItem>
-                                        <MenuItem value="revisao">📖 Só Revisões</MenuItem>
-                                    </Select>
-                                </FormControl>
-                                <Button variant="outlined" color="inherit" onClick={limparFiltros} startIcon={<ClearAllIcon />}>Limpar</Button>
-                            </Box>
+                            <Grid container spacing={2}>
+                                <Grid item xs={12} md={3}>
+                                    <TextField fullWidth size="small" label="Buscar Assunto" value={filtros.assunto} onChange={(e) => setFiltros({...filtros, assunto: e.target.value})} InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> }} />
+                                </Grid>
+                                <Grid item xs={12} md={3}>
+                                    <FormControl fullWidth size="small">
+                                        <InputLabel>Laboratórios</InputLabel>
+                                        <Select multiple value={filtros.laboratorio} onChange={(e) => setFiltros({...filtros, laboratorio: e.target.value})} input={<OutlinedInput label="Laboratórios" />} renderValue={(selected) => <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>{selected.map(v => <Chip key={v} label={v} size="small" />)}</Box>}>
+                                            {LISTA_LABORATORIOS.map(l => <MenuItem key={l.id} value={l.name}>{l.name}</MenuItem>)}
+                                        </Select>
+                                    </FormControl>
+                                </Grid>
+                                <Grid item xs={12} md={3}>
+                                    <FormControl fullWidth size="small">
+                                        <InputLabel>Cursos</InputLabel>
+                                        <Select multiple value={filtros.cursos} onChange={(e) => setFiltros({...filtros, cursos: e.target.value})} input={<OutlinedInput label="Cursos" />} renderValue={(selected) => <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>{selected.map(v => <Chip key={v} label={LISTA_CURSOS.find(lc => lc.value === v)?.label || v} size="small" />)}</Box>}>
+                                            {LISTA_CURSOS.map(c => <MenuItem key={c.value} value={c.value}>{c.label}</MenuItem>)}
+                                        </Select>
+                                    </FormControl>
+                                </Grid>
+                                <Grid item xs={12} md={2}>
+                                    <FormControl fullWidth size="small">
+                                        <InputLabel>Turno</InputLabel>
+                                        <Select multiple value={filtros.turno} onChange={(e) => setFiltros({...filtros, turno: e.target.value})} input={<OutlinedInput label="Turno" />} renderValue={(selected) => <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>{selected.map(v => <Chip key={v} label={v} size="small" />)}</Box>}>
+                                            <MenuItem value="Manhã">🌅 Manhã</MenuItem>
+                                            <MenuItem value="Tarde">☀️ Tarde</MenuItem>
+                                            <MenuItem value="Noite">🌙 Noite</MenuItem>
+                                        </Select>
+                                    </FormControl>
+                                </Grid>
+                                <Grid item xs={12} md={2}>
+                                    <FormControl fullWidth size="small">
+                                        <InputLabel>Tipo</InputLabel>
+                                        <Select
+                                            value={filtros.tipoConteudo || 'todos'}
+                                            onChange={(e) => setFiltros({...filtros, tipoConteudo: e.target.value})}
+                                            label="Tipo"
+                                        >
+                                            <MenuItem value="todos">📅 Todos</MenuItem>
+                                            <MenuItem value="aula">🎓 Só Aulas</MenuItem>
+                                            <MenuItem value="revisao">📖 Só Revisões</MenuItem>
+                                        </Select>
+                                    </FormControl>
+                                </Grid>
+                                <Grid item xs={12} md={1}>
+                                    <Button fullWidth variant="outlined" color="inherit" onClick={limparFiltros} startIcon={<ClearAllIcon />}>Limpar</Button>
+                                </Grid>
+                            </Grid>
                         </Box>
                     </Collapse>
                 </Paper>
@@ -744,6 +891,110 @@ function CalendarioCronograma({ userInfo }) {
                         finally { setActionLoading(false); } 
                     }} 
                 />
+
+                {/* ── Modal Edição em Lote ── */}
+                <Dialog open={isBulkEditModalOpen} onClose={() => { setIsBulkEditModalOpen(false); setBulkEditConflitos([]); }} maxWidth="sm" fullWidth>
+                    <DialogTitle>
+                        Editar {selectedAulasIds.length} Aula(s) Selecionada(s)
+                    </DialogTitle>
+                    <DialogContent>
+                        <DialogContentText sx={{ mb: 2 }}>
+                            Preencha apenas os campos que deseja alterar. Campos em branco <strong>não serão modificados</strong>.
+                            Data, laboratório e horário serão aplicados iguais a todas as aulas — serão verificados conflitos antes de salvar.
+                        </DialogContentText>
+
+                        {/* Alerta de conflitos encontrados */}
+                        {bulkEditConflitos.length > 0 && (
+                            <Alert severity="error" sx={{ mb: 2 }}>
+                                <strong>Conflitos encontrados — não foi possível salvar:</strong>
+                                {bulkEditConflitos.map((c, i) => (
+                                    <Box key={i} sx={{ mt: 0.5, fontSize: '0.82rem' }}>
+                                        • <strong>"{c.aulaEditada}"</strong> → {c.laboratorio} em {c.data} às {c.horario} já está ocupado por <strong>"{c.aulaConflito}"</strong>
+                                    </Box>
+                                ))}
+                                <Box sx={{ mt: 1 }}>Corrija os campos e tente novamente.</Box>
+                            </Alert>
+                        )}
+
+                        <Grid container spacing={2}>
+                            {/* Campos de conteúdo */}
+                            <Grid item xs={12}>
+                                <Typography variant="caption" color="text.secondary" fontWeight="bold">CONTEÚDO</Typography>
+                            </Grid>
+                            <Grid item xs={12}>
+                                <TextField fullWidth size="small" label="Novo Assunto (opcional)"
+                                    value={bulkEditFields.assunto}
+                                    onChange={(e) => setBulkEditFields(p => ({ ...p, assunto: e.target.value }))}
+                                    placeholder="Deixe vazio para não alterar" />
+                            </Grid>
+                            <Grid item xs={12}>
+                                <TextField fullWidth size="small" label="Observações (opcional)" multiline rows={2}
+                                    value={bulkEditFields.observacoes}
+                                    onChange={(e) => setBulkEditFields(p => ({ ...p, observacoes: e.target.value }))}
+                                    placeholder="Deixe vazio para não alterar" />
+                            </Grid>
+                            <Grid item xs={12}>
+                                <FormControl fullWidth size="small">
+                                    <InputLabel>Cursos (opcional)</InputLabel>
+                                    <Select multiple value={bulkEditFields.cursos}
+                                        onChange={(e) => setBulkEditFields(p => ({ ...p, cursos: e.target.value }))}
+                                        input={<OutlinedInput label="Cursos (opcional)" />}
+                                        renderValue={(selected) => (
+                                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                                                {selected.map(v => <Chip key={v} label={LISTA_CURSOS.find(c => c.value === v)?.label || v} size="small" />)}
+                                            </Box>
+                                        )}>
+                                        {LISTA_CURSOS.map(c => <MenuItem key={c.value} value={c.value}>{c.label}</MenuItem>)}
+                                    </Select>
+                                </FormControl>
+                            </Grid>
+
+                            {/* Campos de agendamento */}
+                            <Grid item xs={12} sx={{ mt: 1 }}>
+                                <Divider />
+                                <Typography variant="caption" color="text.secondary" fontWeight="bold" sx={{ mt: 1, display: 'block' }}>
+                                    AGENDAMENTO — aplicado a todas as aulas selecionadas
+                                </Typography>
+                            </Grid>
+                            <Grid item xs={12}>
+                                <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="pt-br">
+                                    <DatePicker label="Nova Data (opcional)"
+                                        value={bulkEditFields.dataInicio}
+                                        onChange={(v) => setBulkEditFields(p => ({ ...p, dataInicio: v }))}
+                                        slotProps={{ textField: { fullWidth: true, size: 'small', placeholder: 'Deixe vazio para não alterar' } }} />
+                                </LocalizationProvider>
+                            </Grid>
+                            <Grid item xs={12} sm={6}>
+                                <FormControl fullWidth size="small">
+                                    <InputLabel>Novo Laboratório (opcional)</InputLabel>
+                                    <Select value={bulkEditFields.laboratorio}
+                                        onChange={(e) => setBulkEditFields(p => ({ ...p, laboratorio: e.target.value }))}
+                                        label="Novo Laboratório (opcional)">
+                                        <MenuItem value=""><em>Não alterar</em></MenuItem>
+                                        {LISTA_LABORATORIOS.map(l => <MenuItem key={l.id} value={l.name}>{l.name}</MenuItem>)}
+                                    </Select>
+                                </FormControl>
+                            </Grid>
+                            <Grid item xs={12} sm={6}>
+                                <FormControl fullWidth size="small">
+                                    <InputLabel>Novo Horário (opcional)</InputLabel>
+                                    <Select value={bulkEditFields.horario}
+                                        onChange={(e) => setBulkEditFields(p => ({ ...p, horario: e.target.value }))}
+                                        label="Novo Horário (opcional)">
+                                        <MenuItem value=""><em>Não alterar</em></MenuItem>
+                                        {BLOCOS_HORARIO.map(b => <MenuItem key={b.value} value={b.value}>{b.label}</MenuItem>)}
+                                    </Select>
+                                </FormControl>
+                            </Grid>
+                        </Grid>
+                    </DialogContent>
+                    <DialogActions>
+                        <Button onClick={() => { setIsBulkEditModalOpen(false); setBulkEditConflitos([]); }} disabled={bulkEditLoading}>Cancelar</Button>
+                        <Button onClick={handleBulkEdit} variant="contained" disabled={bulkEditLoading}>
+                            {bulkEditLoading ? <CircularProgress size={22} /> : `Salvar em ${selectedAulasIds.length} Aula(s)`}
+                        </Button>
+                    </DialogActions>
+                </Dialog>
 
                 <DialogConfirmacao 
                     open={isBulkDeleteModalOpen} 

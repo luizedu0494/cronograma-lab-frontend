@@ -1042,7 +1042,7 @@ const PaginaInicial = ({ userInfo }) => {
                     variant="fullWidth"
                     sx={{ borderBottom: 1, borderColor: 'divider' }}
                 >
-                    <Tab label="Aulas Recentes!" />
+                    <Tab label="Aulas Recentes" />
                     {userInfo?.role === 'coordenador' && <Tab label="Eventos Recentes" />}
                 </Tabs>
 
