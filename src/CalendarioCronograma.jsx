@@ -86,26 +86,30 @@ const AulaCard = ({ aula, onEdit, onDelete, isCoordenador, isSelectionMode, isSe
         else setExpanded(!expanded);
     };
 
-    const corBorda = aula.isRevisao
-        ? '#9c27b0'  // roxo para revisões
-        : (CURSO_COLORS[aula.cursos?.[0]] || CURSO_COLORS.default);
+    const corBorda = aula.isProva
+        ? '#f44336'  // vermelho para provas
+        : aula.isRevisao
+            ? '#9c27b0'  // roxo para revisões
+            : (CURSO_COLORS[aula.cursos?.[0]] || CURSO_COLORS.default);
 
     const tipoRevisaoLabel = aula.tipoRevisaoLabel || 'Revisão';
 
     return (
         <>
-            <Paper 
-                elevation={expanded ? 6 : 2} 
-                sx={{ 
-                    width: '100%', mb: 1, position: 'relative', 
+            <Paper
+                elevation={expanded ? 6 : 2}
+                sx={{
+                    width: '100%', mb: 1, position: 'relative',
                     borderLeft: `4px solid ${corBorda}`,
                     transition: 'all 0.2s',
                     transform: isSelected ? 'scale(0.98)' : 'scale(1)',
                     bgcolor: isSelected
                         ? (theme.palette.mode === 'dark' ? 'rgba(25, 118, 210, 0.2)' : 'rgba(25, 118, 210, 0.08)')
-                        : aula.isRevisao
-                            ? (theme.palette.mode === 'dark' ? 'rgba(156, 39, 176, 0.07)' : 'rgba(156, 39, 176, 0.04)')
-                            : 'background.paper',
+                        : aula.isProva
+                            ? (theme.palette.mode === 'dark' ? 'rgba(244, 67, 54, 0.07)' : 'rgba(244, 67, 54, 0.04)')
+                            : aula.isRevisao
+                                ? (theme.palette.mode === 'dark' ? 'rgba(156, 39, 176, 0.07)' : 'rgba(156, 39, 176, 0.04)')
+                                : 'background.paper',
                     border: isSelected ? '1px solid #1976d2' : undefined,
                     color: 'text.primary'
                 }}
@@ -127,8 +131,20 @@ const AulaCard = ({ aula, onEdit, onDelete, isCoordenador, isSelectionMode, isSe
                 )}
 
                 <Box onClick={handleCardClick} sx={{ p: 1.5, pl: isSelectionMode ? 5 : 1.5, cursor: 'pointer' }}>
-                    {/* Badge de revisão — aparece acima do título */}
-                    {aula.isRevisao && (
+                    {/* Badge de prova */}
+                    {aula.isProva && (
+                        <Chip
+                            label="📝 Prova"
+                            size="small"
+                            sx={{
+                                mb: 0.5, height: 18, fontSize: '0.6rem',
+                                bgcolor: 'rgba(244,67,54,0.15)', color: '#f44336',
+                                fontWeight: 'bold'
+                            }}
+                        />
+                    )}
+                    {/* Badge de revisão */}
+                    {!aula.isProva && aula.isRevisao && (
                         <Chip
                             label={`📖 ${tipoRevisaoLabel}`}
                             size="small"
@@ -422,7 +438,8 @@ function CalendarioCronograma({ userInfo }) {
     const [isBulkEditModalOpen, setIsBulkEditModalOpen] = useState(false);
     const [bulkEditFields, setBulkEditFields] = useState({
         assunto: '', observacoes: '', cursos: [],
-        dataInicio: null, laboratorio: '', horario: ''
+        dataInicio: null, laboratorio: '', horario: '',
+        tipoAula: '' // 'aula' | 'revisao' | 'prova' | '' (não alterar)
     });
     const [bulkEditLoading, setBulkEditLoading] = useState(false);
     const [bulkEditConflitos, setBulkEditConflitos] = useState([]); // lista de conflitos encontrados
@@ -502,8 +519,9 @@ function CalendarioCronograma({ userInfo }) {
             // Filtro de tipo: aulas normais vs revisões
             let matchTipo = true;
             if (!isEvento && filtros.tipoConteudo && filtros.tipoConteudo !== 'todos') {
-                if (filtros.tipoConteudo === 'revisao') matchTipo = !!item.isRevisao;
-                if (filtros.tipoConteudo === 'aula')    matchTipo = !item.isRevisao;
+                if (filtros.tipoConteudo === 'revisao') matchTipo = !!item.isRevisao && !item.isProva;
+                if (filtros.tipoConteudo === 'prova')   matchTipo = !!item.isProva;
+                if (filtros.tipoConteudo === 'aula')    matchTipo = !item.isRevisao && !item.isProva;
             }
             return matchLab && matchCurso && matchAssunto && matchTurno && matchTipo;
         };
@@ -567,6 +585,10 @@ function CalendarioCronograma({ userInfo }) {
             if (bulkEditFields.assunto.trim())     updates.assunto     = bulkEditFields.assunto.trim();
             if (bulkEditFields.observacoes.trim()) updates.observacoes = bulkEditFields.observacoes.trim();
             if (bulkEditFields.cursos.length > 0)  updates.cursos      = bulkEditFields.cursos;
+            if (bulkEditFields.tipoAula) {
+                updates.isProva   = bulkEditFields.tipoAula === 'prova';
+                updates.isRevisao = bulkEditFields.tipoAula === 'revisao';
+            }
 
             const mudandoData      = !!bulkEditFields.dataInicio;
             const mudandoLab       = !!bulkEditFields.laboratorio;
@@ -657,7 +679,7 @@ function CalendarioCronograma({ userInfo }) {
 
             setFeedback({ open: true, message: `${selectedAulasIds.length} aula(s) atualizadas com sucesso!`, severity: 'success' });
             setIsBulkEditModalOpen(false);
-            setBulkEditFields({ assunto: '', observacoes: '', cursos: [], dataInicio: null, laboratorio: '', horario: '' });
+            setBulkEditFields({ assunto: '', observacoes: '', cursos: [], dataInicio: null, laboratorio: '', horario: '', tipoAula: '' });
             setBulkEditConflitos([]);
             setIsSelectionMode(false);
             setSelectedAulasIds([]);
@@ -739,7 +761,7 @@ function CalendarioCronograma({ userInfo }) {
                         <Box sx={{ mt: 2, p: 1, bgcolor: theme.palette.mode === 'dark' ? 'rgba(144, 202, 249, 0.1)' : '#e3f2fd', borderRadius: 1, display: isSelectionMode ? 'flex' : 'none', alignItems: 'center', justifyContent: 'space-between', border: '1px solid', borderColor: 'primary.main' }}>
                             <Typography variant="body2" sx={{ ml: 1 }}>{selectedAulasIds.length} selecionadas</Typography>
                             <Box sx={{ display: 'flex', gap: 1 }}>
-                                <Button size="small" variant="outlined" color="primary" startIcon={<EditIcon />} disabled={selectedAulasIds.length === 0} onClick={() => { setBulkEditFields({ assunto: '', observacoes: '', cursos: [] }); setIsBulkEditModalOpen(true); }}>Editar Selecionadas</Button>
+                                <Button size="small" variant="outlined" color="primary" startIcon={<EditIcon />} disabled={selectedAulasIds.length === 0} onClick={() => { setBulkEditFields({ assunto: '', observacoes: '', cursos: [], dataInicio: null, laboratorio: '', horario: '', tipoAula: '' }); setBulkEditConflitos([]); setIsBulkEditModalOpen(true); }}>Editar Selecionadas</Button>
                                 <Button size="small" variant="contained" color="error" startIcon={<DeleteIcon />} disabled={selectedAulasIds.length === 0} onClick={() => setIsBulkDeleteModalOpen(true)}>Excluir Selecionadas</Button>
                             </Box>
                         </Box>
@@ -788,6 +810,7 @@ function CalendarioCronograma({ userInfo }) {
                                             <MenuItem value="todos">📅 Todos</MenuItem>
                                             <MenuItem value="aula">🎓 Só Aulas</MenuItem>
                                             <MenuItem value="revisao">📖 Só Revisões</MenuItem>
+                                            <MenuItem value="prova">📝 Só Provas</MenuItem>
                                         </Select>
                                     </FormControl>
                                 </Grid>
@@ -945,6 +968,19 @@ function CalendarioCronograma({ userInfo }) {
                                             </Box>
                                         )}>
                                         {LISTA_CURSOS.map(c => <MenuItem key={c.value} value={c.value}>{c.label}</MenuItem>)}
+                                    </Select>
+                                </FormControl>
+                            </Grid>
+                            <Grid item xs={12}>
+                                <FormControl fullWidth size="small">
+                                    <InputLabel>Tipo (opcional)</InputLabel>
+                                    <Select value={bulkEditFields.tipoAula}
+                                        onChange={(e) => setBulkEditFields(p => ({ ...p, tipoAula: e.target.value }))}
+                                        label="Tipo (opcional)">
+                                        <MenuItem value=""><em>Não alterar</em></MenuItem>
+                                        <MenuItem value="aula">📅 Aula Normal</MenuItem>
+                                        <MenuItem value="revisao">📖 Revisão / Reforço</MenuItem>
+                                        <MenuItem value="prova">📝 Prova</MenuItem>
                                     </Select>
                                 </FormControl>
                             </Grid>

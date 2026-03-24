@@ -19,6 +19,23 @@ const TODOS_HORARIOS = [
 // Helper para ordenação de meses
 const ORDEM_MESES = { 'jan':1, 'fev':2, 'mar':3, 'abr':4, 'mai':5, 'jun':6, 'jul':7, 'ago':8, 'set':9, 'out':10, 'nov':11, 'dez':12 };
 
+// Labels amigáveis para tipos de atividade
+const LABEL_TIPO = {
+    prova: '📝 Prova',
+    revisao: '📖 Revisão',
+    aula_normal: '📚 Aula Normal',
+};
+
+// Labels amigáveis para subtipos de revisão
+const LABEL_TIPO_REVISAO = {
+    revisao_conteudo: 'Revisão de Conteúdo',
+    revisao_pre_prova: 'Revisão Pré-Prova',
+    aula_reforco: 'Aula de Reforço',
+    pratica_extra: 'Prática Extra',
+    monitoria: 'Monitoria',
+    outro: 'Outro',
+};
+
 class ExecutorAcoes {
   constructor(currentUser) {
     this.currentUser = currentUser;
@@ -65,6 +82,7 @@ class ExecutorAcoes {
     if (analiseEspecial === 'nao_utilizados') return this.analisarOciosidade(aulas, criterios);
     if (analiseEspecial === 'media_diaria') return this.analisarMediaDiaria(aulas, criterios);
     if (analiseEspecial === 'dias_lotados') return this.analisarDiasLotados(aulas, criterios);
+    if (analiseEspecial === 'comparar_tipos') return this.analisarComparacaoTipos(aulas, criterios, tituloSugerido);
 
     // 3. Gráfico de LINHA (Evolução Temporal)
     if (tipoVisual === 'grafico_linha') {
@@ -84,7 +102,7 @@ class ExecutorAcoes {
     // 6. Padrão: KPI Numérico
     return {
         tipo: 'kpi_numero',
-        titulo: metrica === 'duracao' ? 'Horas Totais' : 'Total Encontrado',
+        titulo: metrica === 'duracao' ? 'Horas Totais' : this.gerarTituloKpi(criterios),
         valor: metrica === 'duracao' 
             ? (this.calcularMinutosTotais(aulas)/60).toFixed(1) + 'h' 
             : aulas.length,
@@ -121,7 +139,7 @@ class ExecutorAcoes {
       const snapshot = await getDocs(q);
       let aulas = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
 
-      // B. Filtros de Texto "Fuzzy" (Local - Resolve letras maiúsculas/minúsculas)
+      // B. Filtros de Texto "Fuzzy" (Local)
       
       // Filtro de Laboratório
       if (criterios.laboratorio) {
@@ -129,7 +147,7 @@ class ExecutorAcoes {
           aulas = aulas.filter(a => (a.laboratorioSelecionado || '').toLowerCase().includes(t));
       }
       
-      // Filtro de Curso (Busca dentro do array de cursos)
+      // Filtro de Curso
       if (criterios.cursos && criterios.cursos.length > 0) {
           const t = criterios.cursos.map(c => c.toLowerCase().trim());
           aulas = aulas.filter(a => {
@@ -146,6 +164,16 @@ class ExecutorAcoes {
           );
       }
 
+      // C. Filtro por Tipo de Atividade (Prova / Revisão / Aula Normal)
+      if (criterios.filtro_tipo === 'prova') {
+          aulas = aulas.filter(a => a.isProva === true);
+      } else if (criterios.filtro_tipo === 'revisao') {
+          aulas = aulas.filter(a => a.isRevisao === true && !a.isProva);
+      } else if (criterios.filtro_tipo === 'aula_normal') {
+          aulas = aulas.filter(a => !a.isProva && !a.isRevisao);
+      }
+      // filtro_tipo === null → sem filtro de tipo (retorna tudo)
+
       return aulas;
     } catch (e) { console.error(e); return []; }
   }
@@ -159,7 +187,6 @@ class ExecutorAcoes {
       
       aulas.forEach(aula => {
           if (!aula.dataInicio) return;
-          // Agrupa por Mês/Ano (ex: "nov/2025")
           const chave = dayjs(aula.dataInicio.toDate()).format('MMM/YY').toLowerCase();
           
           if (!dadosTemporais[chave]) dadosTemporais[chave] = 0;
@@ -168,7 +195,6 @@ class ExecutorAcoes {
           else dadosTemporais[chave] += 1;
       });
 
-      // Ordenação Cronológica dos Meses
       const labels = Object.keys(dadosTemporais).sort((a, b) => {
           const [mesA, anoA] = a.split('/');
           const [mesB, anoB] = b.split('/');
@@ -184,7 +210,7 @@ class ExecutorAcoes {
 
       return {
           tipo: 'grafico_linha',
-          titulo: tituloSugerido || 'Evolução Temporal',
+          titulo: tituloSugerido || this.gerarTituloComTipo(criterios, 'Evolução Temporal'),
           dados_consulta: { labels: labelsFormatadas, valores, tipo_grafico: 'line' }
       };
   }
@@ -226,7 +252,6 @@ class ExecutorAcoes {
 
       let labels = Object.keys(contagem);
       
-      // Ordenação
       if (agruparPor === 'dia_semana') {
           const dias = ['Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado', 'Domingo'];
           labels.sort((a, b) => dias.indexOf(a) - dias.indexOf(b));
@@ -246,8 +271,31 @@ class ExecutorAcoes {
 
       return {
           tipo: 'grafico_estatisticas',
-          titulo: tituloSugerido || tituloGrafico,
+          titulo: tituloSugerido || this.gerarTituloComTipo(criterios, tituloGrafico),
           dados_consulta: { labels, valores, tipo_grafico: (['turno', 'dia_semana'].includes(agruparPor)) ? 'pie' : 'bar' }
+      };
+  }
+
+  // =========================================================================
+  // ANÁLISE ESPECIAL: COMPARAÇÃO DE TIPOS (Provas vs Revisões vs Aulas)
+  // =========================================================================
+
+  analisarComparacaoTipos(aulas, criterios, tituloSugerido) {
+      const contagem = { 'Provas': 0, 'Revisões': 0, 'Aulas Normais': 0 };
+
+      aulas.forEach(a => {
+          if (a.isProva) contagem['Provas']++;
+          else if (a.isRevisao) contagem['Revisões']++;
+          else contagem['Aulas Normais']++;
+      });
+
+      const labels = Object.keys(contagem);
+      const valores = Object.values(contagem);
+
+      return {
+          tipo: 'grafico_estatisticas',
+          titulo: tituloSugerido || `Distribuição por Tipo de Atividade`,
+          dados_consulta: { labels, valores, tipo_grafico: 'pie' }
       };
   }
 
@@ -256,12 +304,12 @@ class ExecutorAcoes {
   // =========================================================================
 
   analisarMediaDiaria(aulas, criterios) {
-      if (aulas.length === 0) return { tipo: 'kpi_numero', valor: 0, descricao: 'Nenhuma aula' };
+      if (aulas.length === 0) return { tipo: 'kpi_numero', valor: 0, descricao: 'Nenhum registro encontrado' };
       const diasUnicos = new Set(aulas.map(a => dayjs(a.dataInicio.toDate()).format('YYYY-MM-DD'))).size;
       const media = aulas.length / (diasUnicos || 1);
       return {
           tipo: 'kpi_numero',
-          titulo: 'Média de Aulas/Dia',
+          titulo: `Média por Dia${this.sufixoTipo(criterios)}`,
           valor: media.toFixed(1),
           descricao: `Baseado em ${diasUnicos} dias letivos`
       };
@@ -278,9 +326,9 @@ class ExecutorAcoes {
 
       return {
           tipo: 'kpi_numero',
-          titulo: 'Taxa de Ocupação',
+          titulo: `Taxa de Ocupação${this.sufixoTipo(criterios)}`,
           valor: taxa.toFixed(1) + '%',
-          descricao: `Estimativa (${aulas.length} aulas / ~${capacidade} slots)`
+          descricao: `Estimativa (${aulas.length} registros / ~${capacidade} slots)`
       };
   }
 
@@ -315,7 +363,7 @@ class ExecutorAcoes {
       const dias = Object.entries(contagem)
           .sort(([,a], [,b]) => b - a)
           .slice(0, 10)
-          .map(([data, qtd]) => ({ assunto: `${qtd} aulas`, data, horario: 'Dia Todo', laboratorio: 'Vários', cursos: ['Pico de Demanda'] }));
+          .map(([data, qtd]) => ({ assunto: `${qtd} atividades`, data, horario: 'Dia Todo', laboratorio: 'Vários', cursos: ['Pico de Demanda'] }));
 
       return { tipo: 'tabela_aulas', titulo: 'Dias com Maior Demanda', dados_consulta: dias };
   }
@@ -323,6 +371,30 @@ class ExecutorAcoes {
   // =========================================================================
   // UTILITÁRIOS
   // =========================================================================
+
+  /** Gera sufixo amigável para KPIs com base no tipo filtrado */
+  sufixoTipo(criterios) {
+      if (criterios.filtro_tipo === 'prova') return ' (Provas)';
+      if (criterios.filtro_tipo === 'revisao') return ' (Revisões)';
+      if (criterios.filtro_tipo === 'aula_normal') return ' (Aulas Normais)';
+      return '';
+  }
+
+  /** Gera título de KPI contextualizado */
+  gerarTituloKpi(criterios) {
+      if (criterios.filtro_tipo === 'prova') return 'Total de Provas';
+      if (criterios.filtro_tipo === 'revisao') return 'Total de Revisões';
+      if (criterios.filtro_tipo === 'aula_normal') return 'Total de Aulas';
+      return 'Total Encontrado';
+  }
+
+  /** Adiciona prefixo de tipo ao título de gráficos */
+  gerarTituloComTipo(criterios, base) {
+      if (criterios.filtro_tipo === 'prova') return `Provas — ${base}`;
+      if (criterios.filtro_tipo === 'revisao') return `Revisões — ${base}`;
+      if (criterios.filtro_tipo === 'aula_normal') return `Aulas Normais — ${base}`;
+      return base;
+  }
 
   calcularDuracaoAula(slot) {
       if (!slot || !slot.includes('-')) return 0;
@@ -340,6 +412,7 @@ class ExecutorAcoes {
 
   gerarDescricaoFiltro(criterios) {
       let p = [];
+      if (criterios.filtro_tipo) p.push(LABEL_TIPO[criterios.filtro_tipo] || criterios.filtro_tipo);
       if (criterios.cursos?.length) p.push(`Curso: ${criterios.cursos}`);
       if (criterios.laboratorio) p.push(`Lab: ${criterios.laboratorio}`);
       if (criterios.data) p.push(`Dia: ${criterios.data}`);
@@ -351,13 +424,17 @@ class ExecutorAcoes {
   gerarTabelaAulas(aulas, criterios) {
       return {
           tipo: 'tabela_aulas',
-          titulo: `Lista (${aulas.length})`,
+          titulo: `${this.gerarTituloKpi(criterios)} (${aulas.length})`,
           dados_consulta: aulas.slice(0, 50).map(a => ({
               assunto: a.assunto,
               data: dayjs(a.dataInicio.toDate()).format('DD/MM/YYYY'),
               horario: a.horarioSlotString,
               laboratorio: a.laboratorioSelecionado,
-              cursos: a.cursos || []
+              cursos: a.cursos || [],
+              // Campos de tipo expostos para o FormatadorResultados usar
+              isProva: a.isProva || false,
+              isRevisao: a.isRevisao || false,
+              tipoRevisao: a.tipoRevisao || null,
           }))
       };
   }
@@ -367,15 +444,12 @@ class ExecutorAcoes {
   // =========================================================================
 
   async adicionar(dados) {
-      // 1. Validação Flexível
       if (!dados.data || !dados.assunto) {
           throw new Error('Dados incompletos. Preciso de Data e Assunto.');
       }
       
       const batch = writeBatch(db);
       
-      // 2. Normalização Inteligente (Correção de erros da IA)
-      // Garante que se a IA mandar "07:00", usamos "07:00-09:10"
       let labs = (dados.laboratorios && dados.laboratorios.length) ? dados.laboratorios : ['multidisciplinar_1'];
       let horarios = (dados.horarios && dados.horarios.length) ? dados.horarios : ['07:00-09:10'];
 
@@ -384,7 +458,6 @@ class ExecutorAcoes {
           return match || h;
       });
 
-      // Busca Fuzzy no nome do lab (Ex: "Anatomia" -> "anatomia_1")
       labs = labs.map(l => {
           const match = LISTA_LABORATORIOS.find(labOficial => 
               labOficial.name.toLowerCase().includes(l.toLowerCase()) || 
@@ -395,6 +468,11 @@ class ExecutorAcoes {
 
       const dataISO = dayjs(dados.data, 'DD/MM/YYYY').format('YYYY-MM-DD');
       let count = 0;
+
+      // Determina o tipo de atividade
+      const isProva = dados.isProva === true;
+      const isRevisao = !isProva && dados.isRevisao === true;
+      const tipoRevisao = isRevisao ? (dados.tipoRevisao || 'revisao_conteudo') : null;
 
       for (const lab of labs) {
           for (const h of horarios) {
@@ -409,27 +487,31 @@ class ExecutorAcoes {
                   createdAt: serverTimestamp(),
                   observacoes: dados.observacoes || 'Agendado via Assistente IA',
                   propostoPorUid: this.currentUser?.uid || 'sys',
-                  propostoPorNome: this.currentUser?.displayName || 'IA'
+                  propostoPorNome: this.currentUser?.displayName || 'IA',
+                  // Campos de tipo
+                  isProva,
+                  isRevisao,
+                  tipoRevisao,
               });
               count++;
           }
       }
       await batch.commit();
       
-      // Notificação com Link
       this.notificar(dados, horarios, labs, 'adicionar', dataISO);
+
+      const tipoLabel = isProva ? 'prova(s)' : isRevisao ? 'revisão(ões)' : 'aula(s)';
       
       return { 
           tipo: 'aviso_acao', 
           titulo: 'Agendamento Realizado', 
-          mensagem: `${count} aula(s) de "${dados.assunto}" criada(s) para ${dados.data}.` 
+          mensagem: `${count} ${tipoLabel} de "${dados.assunto}" criada(s) para ${dados.data}.` 
       };
   }
 
   async editar(criterios, dadosNovos) {
       const aulas = await this.buscarAulas(criterios);
       if (aulas.length === 0) throw new Error('Nenhuma aula encontrada para editar.');
-      // Edita apenas a primeira encontrada para segurança
       const aula = aulas[0];
       
       const updateData = { updatedAt: serverTimestamp() };
@@ -438,18 +520,22 @@ class ExecutorAcoes {
       if (dadosNovos.horarios?.length) updateData.horarioSlotString = dadosNovos.horarios[0];
       if (dadosNovos.laboratorios?.length) updateData.laboratorioSelecionado = dadosNovos.laboratorios[0];
       if (dadosNovos.cursos) updateData.cursos = dadosNovos.cursos;
+      // Atualiza campos de tipo se fornecidos
+      if (dadosNovos.isProva !== undefined) updateData.isProva = dadosNovos.isProva;
+      if (dadosNovos.isRevisao !== undefined) updateData.isRevisao = dadosNovos.isRevisao;
+      if (dadosNovos.tipoRevisao !== undefined) updateData.tipoRevisao = dadosNovos.tipoRevisao;
 
       await updateDoc(doc(db, "aulas", aula.id), updateData);
       
       const dataISO = dayjs(updateData.dataInicio ? updateData.dataInicio.toDate() : aula.dataInicio.toDate()).format('YYYY-MM-DD');
       this.notificar({...aula, ...updateData}, [updateData.horarioSlotString || aula.horarioSlotString], [updateData.laboratorioSelecionado || aula.laboratorioSelecionado], 'editar', dataISO);
       
-      return { tipo: 'aviso_acao', titulo: 'Sucesso', mensagem: 'Aula editada com sucesso.' };
+      return { tipo: 'aviso_acao', titulo: 'Sucesso', mensagem: 'Atividade editada com sucesso.' };
   }
 
   async excluir(criterios) {
       const aulas = await this.buscarAulas(criterios);
-      if (aulas.length === 0) throw new Error('Nenhuma aula encontrada para excluir.');
+      if (aulas.length === 0) throw new Error('Nenhuma atividade encontrada para excluir.');
       
       const batch = writeBatch(db);
       aulas.forEach(a => batch.delete(doc(db, "aulas", a.id)));
@@ -459,7 +545,7 @@ class ExecutorAcoes {
           this.notificar(aulas[0], [aulas[0].horarioSlotString], [aulas[0].laboratorioSelecionado], 'excluir', null);
       }
       
-      return { tipo: 'aviso_acao', titulo: 'Sucesso', mensagem: `${aulas.length} aula(s) excluída(s).` };
+      return { tipo: 'aviso_acao', titulo: 'Sucesso', mensagem: `${aulas.length} atividade(s) excluída(s).` };
   }
 
   async notificar(dados, horarios, laboratorios, tipo, dataISO) {

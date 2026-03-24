@@ -5,7 +5,7 @@ import {
     List, ListItem, ListItemText, FormHelperText, Autocomplete, Dialog, DialogTitle, DialogContent,
     DialogActions, ToggleButton, ToggleButtonGroup, Collapse
 } from '@mui/material';
-import { ArrowBack, Delete as DeleteIcon, Add as AddIcon, Lock as LockIcon, MenuBook as MenuBookIcon } from '@mui/icons-material';
+import { ArrowBack, Delete as DeleteIcon, Add as AddIcon, Lock as LockIcon, MenuBook as MenuBookIcon, Assignment as AssignmentIcon } from '@mui/icons-material';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider } from '@mui/x-date-pickers';
 import { DatePicker } from '@mui/x-date-pickers';
@@ -114,15 +114,15 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
 
             let tipoFinal;
             if (tipoAcao === 'adicionar') {
-                // Técnico propondo (pendente) → tópico Pendentes
-                // Coordenador adicionando diretamente → tópico do laboratório
                 tipoFinal = (!isCoordenador) ? 'pendente' : 'adicionar';
             } else if (tipoAcao === 'editar') {
-                // Edição sempre vai para o tópico do laboratório (coordenador ou técnico editando aprovada)
                 tipoFinal = 'editar';
             } else {
                 tipoFinal = tipoAcao;
             }
+
+            // Passa flag isProva para o notificador
+            dadosNotificacao.isProva = aula.isProva || false;
 
             await notificadorTelegram.enviarNotificacao(TELEGRAM_CHAT_ID, dadosNotificacao, tipoFinal);
         }
@@ -273,6 +273,7 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
                         const data = docSnap.data();
                         const labObj = LISTA_LABORATORIOS.find(l => l.name === data.laboratorioSelecionado);
                         if (data.isRevisao) setTipoEntrada('revisao');
+                        else if (data.isProva) setTipoEntrada('prova');
                         setFormData({
                             assunto: data.assunto || '',
                             observacoes: data.observacoes || '',
@@ -381,6 +382,7 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
                                 ? (TIPOS_REVISAO.find(t => t.value === formData.tipoRevisao)?.label || '')
                                 : null,
                             professorRevisao: tipoEntrada === 'revisao' ? (formData.professorRevisao || '') : null,
+                            isProva: tipoEntrada === 'prova',
                         });
                     }
                 }
@@ -490,12 +492,12 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
             <Container maxWidth="md">
                 <Typography variant="h4" component="h1" gutterBottom align="center" sx={{ mb: 3, color: '#3f51b5', fontWeight: 'bold', mt: isModal ? 0 : 4 }}>
                     {formTitle || (isEditMode
-                        ? (tipoEntrada === 'revisao' ? 'Editar Revisão' : 'Editar Aula')
+                        ? (tipoEntrada === 'revisao' ? 'Editar Revisão' : tipoEntrada === 'prova' ? 'Editar Prova' : 'Editar Aula')
                         : 'Propor Nova Aula'
                     )}
                 </Typography>
 
-                {/* ── Seletor de tipo: Aula Normal / Revisão — visível tanto na criação quanto na edição ── */}
+                {/* ── Seletor de tipo ── */}
                 <Box sx={{ display: 'flex', justifyContent: 'center', mb: 3 }}>
                     <ToggleButtonGroup
                         value={tipoEntrada}
@@ -503,21 +505,32 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
                         onChange={(_, v) => { if (v) setTipoEntrada(v); }}
                         size="large"
                     >
-                        <ToggleButton value="aula" sx={{ px: 4, gap: 1 }}>
+                        <ToggleButton value="aula" sx={{ px: 3, gap: 1 }}>
                             📅 Aula Normal
                         </ToggleButton>
-                        <ToggleButton value="revisao" sx={{ px: 4, gap: 1 }}>
+                        <ToggleButton value="revisao" sx={{ px: 3, gap: 1 }}>
                             <MenuBookIcon fontSize="small" /> Revisão / Reforço
+                        </ToggleButton>
+                        <ToggleButton value="prova" sx={{ px: 3, gap: 1 }}>
+                            <AssignmentIcon fontSize="small" /> Prova
                         </ToggleButton>
                     </ToggleButtonGroup>
                 </Box>
 
-                {/* Banner explicativo quando for revisão */}
+                {/* Banner revisão */}
                 {tipoEntrada === 'revisao' && (
                     <Alert severity="info" icon={<MenuBookIcon />} sx={{ mb: 3 }}>
                         <strong>Modo Revisão</strong> — Esta proposta será identificada como revisão/reforço.
                         {!isCoordenador && !isEditMode && ' Após enviar, o coordenador será notificado no Telegram.'}
                         {isEditMode && ' Alterações nesta revisão serão notificadas no Telegram.'}
+                    </Alert>
+                )}
+
+                {/* Banner prova */}
+                {tipoEntrada === 'prova' && (
+                    <Alert severity="warning" icon={<AssignmentIcon />} sx={{ mb: 3 }}>
+                        <strong>Modo Prova</strong> — Esta proposta será marcada como prova e aparecerá destacada no cronograma.
+                        {!isCoordenador && !isEditMode && ' O coordenador será notificado no Telegram como uma prova.'}
                     </Alert>
                 )}
 

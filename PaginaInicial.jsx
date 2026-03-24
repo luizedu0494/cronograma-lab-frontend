@@ -6,26 +6,18 @@ import {
     Container, Grid, Paper, Typography, Box, CircularProgress, Alert, Button,
     FormControlLabel, Switch, Dialog, DialogContent, IconButton, Badge,
     Card, CardActionArea, Divider, Chip, List, ListItem, ListItemText,
-    Accordion, AccordionSummary, AccordionDetails, Tab, Tabs,
-    Select, MenuItem, FormControl, InputLabel, ToggleButtonGroup, ToggleButton,
-    OutlinedInput, TextField, InputAdornment, Collapse
+    Accordion, AccordionSummary, AccordionDetails, Tab, Tabs
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import { 
     Close as CloseIcon, ExpandMore as ExpandMoreIcon, 
-    CalendarMonth as CalendarIcon,
-    FilterList as FilterListIcon,
-    Search as SearchIcon,
-    Clear as ClearIcon
-} from '@mui/icons-material';
+    CalendarMonth as CalendarIcon
+} from '@mui/icons-material'; // Ícones MUI padrão para componentes visuais
 import { 
     Clock, FileText, Bell, UserCheck, CalendarOff, 
-    PlusCircle, Trash2, CalendarCheck, LayoutDashboard, BookOpen, ClipboardList,
-    GraduationCap, FlaskConical, ListFilter
-} from 'lucide-react';
+    PlusCircle, Trash2, CalendarCheck, LayoutDashboard, BookOpen, ClipboardList
+} from 'lucide-react'; // Ícones Lucide para os cards
 import { useNavigate } from 'react-router-dom';
-import { LISTA_LABORATORIOS } from './constants/laboratorios';
-import { LISTA_CURSOS } from './constants/cursos';
 
 // Imagens
 import calendarioAcademico from './assets/images/destaque-calendario.jpeg';
@@ -61,11 +53,6 @@ const PaginaInicial = ({ userInfo }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [showWelcomeAlert, setShowWelcomeAlert] = useState(true);
     const [tabValue, setTabValue] = useState(0); // Controle das Abas (0 = Aulas, 1 = Eventos)
-
-    // Painel do Técnico — aulas de hoje com filtros
-    const [aulasHojeDetalhadas, setAulasHojeDetalhadas] = useState([]);
-    const [filtrosTecnico, setFiltrosTecnico] = useState({ laboratorio: '', curso: '', turno: 'todos', tipo: 'todos', assunto: '' });
-    const [filtrosTecnicoVisiveis, setFiltrosTecnicoVisiveis] = useState(false);
 
     const currentYear = dayjs().year();
 
@@ -117,13 +104,6 @@ const PaginaInicial = ({ userInfo }) => {
                     where('data', '<',  Timestamp.fromDate(tomorrow.toDate())),
                     orderBy('data', 'asc')
                 )));
-                // Todas as aulas aprovadas de hoje (para o painel de guia)
-                promises.push(getDocs(query(
-                    aulasRef,
-                    where('status', '==', 'aprovada'),
-                    where('dataInicio', '>=', today.toDate()),
-                    where('dataInicio', '<', tomorrow.toDate())
-                )));
             }
 
             const results = await Promise.all(promises);
@@ -145,8 +125,6 @@ const PaginaInicial = ({ userInfo }) => {
                 setMinhasPropostasCount(results[idx].size);
                 const revisoesDocs = results[idx + 1]?.docs || [];
                 setRevisoesTecnicoHoje(revisoesDocs.map(d => ({ id: d.id, ...d.data() })));
-                const aulasHojeDocs = results[idx + 2]?.docs || [];
-                setAulasHojeDetalhadas(aulasHojeDocs.map(d => ({ id: d.id, ...d.data() })));
             }
         } catch (err) {
             console.error("Erro ao buscar dados:", err);
@@ -409,231 +387,7 @@ const PaginaInicial = ({ userInfo }) => {
                 </Paper>
             )}
 
-            {/* 4. PAINEL DE AULAS DO DIA — Guia do Técnico */}
-            {userInfo?.role === 'tecnico' && (() => {
-                const TURNO_MAP = { 'Manhã': h => h < 12, 'Tarde': h => h >= 12 && h < 18, 'Noite': h => h >= 18 };
-                const aulasFiltradas = aulasHojeDetalhadas.filter(a => {
-                    const hora = parseInt((a.horarioSlotString || '').split(':')[0]);
-                    const matchLab   = !filtrosTecnico.laboratorio || (a.laboratorioSelecionado || '') === filtrosTecnico.laboratorio;
-                    const matchCurso = !filtrosTecnico.curso || (Array.isArray(a.cursos) ? a.cursos : []).includes(filtrosTecnico.curso);
-                    const matchTurno = filtrosTecnico.turno === 'todos' || (TURNO_MAP[filtrosTecnico.turno]?.(hora) ?? true);
-                    const matchTipo  = filtrosTecnico.tipo === 'todos'
-                        ? true
-                        : filtrosTecnico.tipo === 'prova'   ? !!a.isProva
-                        : filtrosTecnico.tipo === 'revisao' ? (!!a.isRevisao && !a.isProva)
-                        : (!a.isProva && !a.isRevisao);
-                    const matchAssunto = !filtrosTecnico.assunto || (a.assunto || '').toLowerCase().includes(filtrosTecnico.assunto.toLowerCase());
-                    return matchLab && matchCurso && matchTurno && matchTipo && matchAssunto;
-                }).sort((a, b) => (a.horarioSlotString || '').localeCompare(b.horarioSlotString || ''));
-
-                const filtroAtivo = filtrosTecnico.laboratorio || filtrosTecnico.curso
-                    || filtrosTecnico.turno !== 'todos' || filtrosTecnico.tipo !== 'todos' || filtrosTecnico.assunto;
-
-                const TIPO_CHIP = { prova: { label: '📝 Prova', color: 'error' }, revisao: { label: '📖 Revisão', color: 'secondary' } };
-                const HORARIO_LABEL = {
-                    '07:00-09:10': '07:00–09:10', '09:30-12:00': '09:30–12:00',
-                    '13:00-15:10': '13:00–15:10', '15:30-18:00': '15:30–18:00',
-                    '18:30-20:10': '18:30–20:10', '20:30-22:00': '20:30–22:00',
-                };
-
-                return (
-                    <Paper elevation={2} sx={{ mb: 3, overflow: 'hidden', border: '1px solid', borderColor: 'primary.light' }}>
-                        {/* Cabeçalho */}
-                        <Box sx={{ px: 2, py: 1.5, bgcolor: 'primary.main', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                <GraduationCap size={18} />
-                                <Typography variant="subtitle2" fontWeight="bold">
-                                    Aulas de Hoje — {dayjs().format('dddd, DD/MM')}
-                                </Typography>
-                                <Chip
-                                    label={aulasFiltradas.length}
-                                    size="small"
-                                    sx={{ bgcolor: 'rgba(255,255,255,0.25)', color: 'white', fontWeight: 'bold', height: 20, fontSize: '0.7rem' }}
-                                />
-                                {filtroAtivo && (
-                                    <Chip label="Filtrado" size="small" sx={{ bgcolor: 'rgba(255,255,255,0.15)', color: 'white', height: 20, fontSize: '0.65rem' }} />
-                                )}
-                            </Box>
-                            <Box sx={{ display: 'flex', gap: 1 }}>
-                                <Button
-                                    size="small"
-                                    variant={filtrosTecnicoVisiveis ? 'contained' : 'outlined'}
-                                    startIcon={<ListFilter size={14} />}
-                                    onClick={() => setFiltrosTecnicoVisiveis(v => !v)}
-                                    sx={{ color: 'white', borderColor: 'rgba(255,255,255,0.5)', bgcolor: filtrosTecnicoVisiveis ? 'rgba(255,255,255,0.2)' : 'transparent', fontSize: '0.7rem' }}
-                                >
-                                    Filtros
-                                </Button>
-                                <Button
-                                    size="small"
-                                    sx={{ color: 'white', borderColor: 'rgba(255,255,255,0.5)', fontSize: '0.7rem' }}
-                                    variant="outlined"
-                                    onClick={() => navigate('/calendario', { state: { initialDate: dayjs().toISOString() } })}
-                                >
-                                    Ver Calendário
-                                </Button>
-                            </Box>
-                        </Box>
-
-                        {/* Painel de Filtros */}
-                        <Collapse in={filtrosTecnicoVisiveis}>
-                            <Box sx={{ p: 2, bgcolor: theme.palette.action.hover, borderBottom: '1px solid', borderColor: 'divider' }}>
-                                <Grid container spacing={1.5} alignItems="center">
-                                    {/* Busca por assunto */}
-                                    <Grid item xs={12} sm={4}>
-                                        <TextField
-                                            fullWidth size="small" label="Buscar assunto"
-                                            value={filtrosTecnico.assunto}
-                                            onChange={e => setFiltrosTecnico(f => ({ ...f, assunto: e.target.value }))}
-                                            InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> }}
-                                        />
-                                    </Grid>
-                                    {/* Laboratório */}
-                                    <Grid item xs={12} sm={4}>
-                                        <FormControl fullWidth size="small">
-                                            <InputLabel>Laboratório</InputLabel>
-                                            <Select
-                                                value={filtrosTecnico.laboratorio}
-                                                label="Laboratório"
-                                                onChange={e => setFiltrosTecnico(f => ({ ...f, laboratorio: e.target.value }))}
-                                            >
-                                                <MenuItem value=""><em>Todos</em></MenuItem>
-                                                {LISTA_LABORATORIOS.map(l => (
-                                                    <MenuItem key={l.id} value={l.name}>{l.name}</MenuItem>
-                                                ))}
-                                            </Select>
-                                        </FormControl>
-                                    </Grid>
-                                    {/* Curso */}
-                                    <Grid item xs={12} sm={4}>
-                                        <FormControl fullWidth size="small">
-                                            <InputLabel>Curso</InputLabel>
-                                            <Select
-                                                value={filtrosTecnico.curso}
-                                                label="Curso"
-                                                onChange={e => setFiltrosTecnico(f => ({ ...f, curso: e.target.value }))}
-                                            >
-                                                <MenuItem value=""><em>Todos</em></MenuItem>
-                                                {LISTA_CURSOS.map(c => (
-                                                    <MenuItem key={c.value} value={c.value}>{c.label}</MenuItem>
-                                                ))}
-                                            </Select>
-                                        </FormControl>
-                                    </Grid>
-                                    {/* Turno */}
-                                    <Grid item xs={12} sm={6}>
-                                        <Box>
-                                            <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: 'block' }}>Turno</Typography>
-                                            <ToggleButtonGroup
-                                                size="small" exclusive
-                                                value={filtrosTecnico.turno}
-                                                onChange={(_, v) => v && setFiltrosTecnico(f => ({ ...f, turno: v }))}
-                                                sx={{ flexWrap: 'wrap' }}
-                                            >
-                                                {['todos', 'Manhã', 'Tarde', 'Noite'].map(t => (
-                                                    <ToggleButton key={t} value={t} sx={{ fontSize: '0.7rem', py: 0.5, px: 1.5 }}>
-                                                        {t === 'todos' ? 'Todos' : t}
-                                                    </ToggleButton>
-                                                ))}
-                                            </ToggleButtonGroup>
-                                        </Box>
-                                    </Grid>
-                                    {/* Tipo de atividade */}
-                                    <Grid item xs={12} sm={6}>
-                                        <Box>
-                                            <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: 'block' }}>Tipo de Atividade</Typography>
-                                            <ToggleButtonGroup
-                                                size="small" exclusive
-                                                value={filtrosTecnico.tipo}
-                                                onChange={(_, v) => v && setFiltrosTecnico(f => ({ ...f, tipo: v }))}
-                                                sx={{ flexWrap: 'wrap' }}
-                                            >
-                                                {[
-                                                    { value: 'todos', label: 'Todos' },
-                                                    { value: 'aula', label: '📚 Aula' },
-                                                    { value: 'revisao', label: '📖 Revisão' },
-                                                    { value: 'prova', label: '📝 Prova' },
-                                                ].map(t => (
-                                                    <ToggleButton key={t.value} value={t.value} sx={{ fontSize: '0.7rem', py: 0.5, px: 1.5 }}>
-                                                        {t.label}
-                                                    </ToggleButton>
-                                                ))}
-                                            </ToggleButtonGroup>
-                                        </Box>
-                                    </Grid>
-                                    {/* Limpar filtros */}
-                                    {filtroAtivo && (
-                                        <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-                                            <Button
-                                                size="small" color="error" variant="text"
-                                                startIcon={<ClearIcon fontSize="small" />}
-                                                onClick={() => setFiltrosTecnico({ laboratorio: '', curso: '', turno: 'todos', tipo: 'todos', assunto: '' })}
-                                            >
-                                                Limpar filtros
-                                            </Button>
-                                        </Grid>
-                                    )}
-                                </Grid>
-                            </Box>
-                        </Collapse>
-
-                        {/* Lista de Aulas */}
-                        {aulasFiltradas.length === 0 ? (
-                            <Box sx={{ p: 3, textAlign: 'center' }}>
-                                <Typography variant="body2" color="text.secondary">
-                                    {aulasHojeDetalhadas.length === 0
-                                        ? 'Nenhuma aula agendada para hoje.'
-                                        : 'Nenhuma aula encontrada com os filtros atuais.'}
-                                </Typography>
-                            </Box>
-                        ) : (
-                            <List dense disablePadding>
-                                {aulasFiltradas.map((aula, i) => {
-                                    const tipoChip = aula.isProva
-                                        ? TIPO_CHIP.prova
-                                        : aula.isRevisao
-                                        ? TIPO_CHIP.revisao
-                                        : null;
-                                    const horarioLabel = HORARIO_LABEL[aula.horarioSlotString] || aula.horarioSlotString || '–';
-                                    const cursosLabel = Array.isArray(aula.cursos) && aula.cursos.length > 0
-                                        ? aula.cursos.map(c => LISTA_CURSOS.find(lc => lc.value === c)?.label || c).join(', ')
-                                        : null;
-                                    return (
-                                        <React.Fragment key={aula.id}>
-                                            {i > 0 && <Divider />}
-                                            <ListItem sx={{ py: 1.2, px: 2 }}>
-                                                <ListItemText
-                                                    primary={
-                                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8, flexWrap: 'wrap' }}>
-                                                            <Typography variant="body2" fontWeight="medium">{aula.assunto}</Typography>
-                                                            {tipoChip && (
-                                                                <Chip label={tipoChip.label} color={tipoChip.color} size="small" sx={{ height: 18, fontSize: '0.65rem' }} />
-                                                            )}
-                                                        </Box>
-                                                    }
-                                                    secondary={
-                                                        <Box sx={{ display: 'flex', gap: 1.5, mt: 0.3, flexWrap: 'wrap', alignItems: 'center' }}>
-                                                            <Typography variant="caption" color="text.secondary">🕐 {horarioLabel}</Typography>
-                                                            {aula.laboratorioSelecionado && (
-                                                                <Typography variant="caption" color="text.secondary">🏛️ {aula.laboratorioSelecionado}</Typography>
-                                                            )}
-                                                            {cursosLabel && (
-                                                                <Typography variant="caption" color="text.secondary">🎓 {cursosLabel}</Typography>
-                                                            )}
-                                                        </Box>
-                                                    }
-                                                />
-                                            </ListItem>
-                                        </React.Fragment>
-                                    );
-                                })}
-                            </List>
-                        )}
-                    </Paper>
-                );
-            })()}
-
-            {/* 6. ASSISTENTE IA (Opcional/Compacto) */}
+            {/* 4. ASSISTENTE IA (Opcional/Compacto) */}
             {canUseAI && (
                 <Accordion sx={{ mb: 3, bgcolor: 'background.paper', boxShadow: 1, '&:before': { display: 'none' } }}>
                     <AccordionSummary expandIcon={<ExpandMoreIcon />}>
@@ -648,7 +402,7 @@ const PaginaInicial = ({ userInfo }) => {
                 </Accordion>
             )}
 
-            {/* 7. CONTEÚDO PRINCIPAL (Abas para economizar espaço) */}
+            {/* 5. CONTEÚDO PRINCIPAL (Abas para economizar espaço) */}
             <Paper elevation={2} sx={{ mb: 3 }}>
                 <Tabs 
                     value={tabValue} 
@@ -729,7 +483,7 @@ const PaginaInicial = ({ userInfo }) => {
                 )}
             </Paper>
 
-            {/* 8. CALENDÁRIO ACADÊMICO (Acordeão para não ocupar espaço) */}
+            {/* 6. CALENDÁRIO ACADÊMICO (Acordeão para não ocupar espaço) */}
             <Accordion elevation={2}>
                 <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                     <Box display="flex" alignItems="center" gap={1}>
