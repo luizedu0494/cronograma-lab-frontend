@@ -166,6 +166,11 @@ const AulaCard = ({ aula, onEdit, onDelete, isCoordenador, isSelectionMode, isSe
                             {aula.isRevisao && aula.professorRevisao && (
                                 <Typography variant="body2" sx={{ color: 'text.primary' }}><strong>Professor:</strong> {aula.professorRevisao}</Typography>
                             )}
+                            {aula.observacoes && aula.observacoes.trim() !== '' && (
+                                <Typography variant="body2" sx={{ color: 'text.primary', mt: 0.5 }}>
+                                    <strong>Observações:</strong> {aula.observacoes}
+                                </Typography>
+                            )}
                         </Collapse>
                     )}
                 </Box>
@@ -241,6 +246,16 @@ const AulaCard = ({ aula, onEdit, onDelete, isCoordenador, isSelectionMode, isSe
                             <Typography variant="body2" fontWeight="medium">{cursosNomes}</Typography>
                         </Box>
                     </Box>
+
+                    {aula.observacoes && aula.observacoes.trim() !== '' && (
+                        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+                            <Typography sx={{ fontSize: 18 }}>📝</Typography>
+                            <Box>
+                                <Typography variant="caption" color="text.secondary">Observações</Typography>
+                                <Typography variant="body2" fontWeight="medium">{aula.observacoes}</Typography>
+                            </Box>
+                        </Box>
+                    )}
 
                     {isCoordenador && (
                         <>
