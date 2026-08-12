@@ -1,31 +1,32 @@
 // public/firebase-messaging-sw.js
 
-// Tenta inicialização automática do Firebase via Hosting
-try {
-  importScripts('/__/firebase/init.js');
-} catch (e) {
-  // Em dev ou sem Firebase Hosting, usa compat scripts
-  importScripts("https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js");
-  importScripts("https://www.gstatic.com/firebasejs/9.0.0/firebase-messaging-compat.js");
-}
+importScripts("https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js");
+importScripts("https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js");
 
+// Inicialização com as configurações do projeto
 if (!firebase.apps.length) {
-  // Inicialização condicional dinâmica se necessário
+  firebase.initializeApp({
+    apiKey: new URL(location.href).searchParams.get("apiKey") || undefined,
+    authDomain: new URL(location.href).searchParams.get("authDomain") || undefined,
+    projectId: new URL(location.href).searchParams.get("projectId") || undefined,
+    storageBucket: new URL(location.href).searchParams.get("storageBucket") || undefined,
+    messagingSenderId: "386849385604",
+    appId: "1:386849385604:web:8c76bd4ca86d3d2ea926d1"
+  });
 }
 
 const messaging = firebase.messaging();
 
-messaging.onBackgroundMessage(function(payload) {
-  console.log(
-    "[firebase-messaging-sw.js] Mensagem recebida em segundo plano: ",
-    payload
-  );
+messaging.onBackgroundMessage((payload) => {
+  console.log("[firebase-messaging-sw.js] Mensagem recebida em segundo plano: ", payload);
 
   const notificationTitle = payload.notification?.title || "CronoLab";
   const notificationOptions = {
     body: payload.notification?.body || "Nova atualização recebida.",
-    icon: "/logo192.png"
+    icon: "/logo192.png",
+    badge: "/favicon.ico"
   };
 
   self.registration.showNotification(notificationTitle, notificationOptions);
 });
+
