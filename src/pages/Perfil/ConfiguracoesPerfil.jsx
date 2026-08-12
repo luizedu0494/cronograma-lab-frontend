@@ -92,48 +92,59 @@ function ConfiguracoesPerfil() {
 
     const handleAtivarPush = async () => {
         setPushLoading(true);
+        console.log('[PUSH] Iniciando processo de ativação de notificações...');
         try {
             if (!('Notification' in window)) {
+                console.error('[PUSH] Navegador não possui a API Notification.');
                 throw new Error('Navegador não suporta notificações Push.');
             }
 
+            console.log('[PUSH] Solicitando permissão ao usuário...');
             const permission = await Notification.requestPermission();
+            console.log('[PUSH] Permissão obtida:', permission);
             if (permission !== 'granted') {
                 throw new Error('Permissão de notificação negada pelo usuário.');
             }
 
+            console.log('[PUSH] Importando SDK do Firebase Messaging...');
             const { getMessaging, getToken } = await import('firebase/messaging');
             const { app } = await import('../../firebaseConfig');
             const messaging = getMessaging(app);
 
+            console.log('[PUSH] Registrando Service Worker /firebase-messaging-sw.js ...');
             let swRegistration;
             try {
               swRegistration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
-              // Se já houver uma requisição pronta ou em andamento
+              console.log('[PUSH] Service Worker registrado:', swRegistration);
               if (swRegistration.active) {
-                console.log('Service Worker já ativo:', swRegistration);
+                console.log('[PUSH] Service Worker já está ativo.');
               } else {
+                console.log('[PUSH] Aguardando Service Worker ficar ready...');
                 await navigator.serviceWorker.ready;
+                console.log('[PUSH] Service Worker agora está ready!');
               }
             } catch (swErr) {
-              console.warn('Erro ao registrar Service Worker:', swErr);
+              console.warn('[PUSH] Falha no registro normal do SW, buscando existente...', swErr);
               swRegistration = await navigator.serviceWorker.getRegistration('/firebase-messaging-sw.js');
+              console.log('[PUSH] Registro existente obtido:', swRegistration);
             }
 
             const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY;
+            console.log('[PUSH] VAPID Key configurada:', vapidKey ? `${vapidKey.substring(0, 10)}...` : 'AUSENTE!');
             
-            // Adicionado timeout de 10s para a chamada do FCM em caso de travamento do PushManager
+            console.log('[PUSH] Chamando getToken() no FCM...');
             const getTokenWithTimeout = () => Promise.race([
               getToken(messaging, {
                 vapidKey: vapidKey,
                 serviceWorkerRegistration: swRegistration
               }),
               new Promise((_, reject) => 
-                setTimeout(() => reject(new Error('Tempo limite excedido ao obter token de notificação. Verifique se o navegador bloqueia push no localhost.')), 10000)
+                setTimeout(() => reject(new Error('Tempo limite (10s) excedido ao obter token do FCM.')), 10000)
               )
             ]);
 
             const token = await getTokenWithTimeout();
+            console.log('[PUSH] Token FCM obtido com sucesso:', token ? `${token.substring(0, 15)}...` : 'NULO');
 
             if (!token) {
                 throw new Error('Não foi possível obter o token do FCM.');
@@ -141,8 +152,8 @@ function ConfiguracoesPerfil() {
 
             const user = auth.currentUser;
             const idToken = await user.getIdToken();
+            console.log('[PUSH] Salvando token para UID:', user.uid);
 
-            // Salva no Firestore direto se a rota serverless api/save-push-token nao responder em dev
             try {
               const response = await fetch('/api/save-push-token', {
                   method: 'POST',
@@ -152,21 +163,23 @@ function ConfiguracoesPerfil() {
                   },
                   body: JSON.stringify({ token })
               });
-              if (!response.ok) throw new Error('API route fallback');
+              if (!response.ok) throw new Error(`API respondeu status ${response.status}`);
+              console.log('[PUSH] Token salvo via Vercel Function /api/save-push-token!');
             } catch (apiErr) {
-              console.warn('Salvando token diretamente no Firestore local:', apiErr);
+              console.warn('[PUSH] API serverless indisponível localmente, salvando via Firestore direto:', apiErr);
               const { setDoc } = await import('firebase/firestore');
               await setDoc(doc(db, 'fcmTokens', user.uid), {
                 tokens: [token],
                 updatedAt: new Date()
               }, { merge: true });
+              console.log('[PUSH] Token salvo no Firestore (coleção fcmTokens)!');
             }
 
             setSnackbarMessage('Notificações Push ativadas com sucesso neste dispositivo!');
             setSnackbarSeverity('success');
             setOpenSnackbar(true);
         } catch (err) {
-            console.error('Erro ao ativar Push:', err);
+            console.error('[PUSH ERRO COMPLETO]:', err);
             let userMsg = err.message || 'Erro ao ativar notificações Push.';
             if (err.name === 'AbortError' || String(err).includes('push service error')) {
                 userMsg = 'O serviço de Push do navegador falhou ao registrar. Verifique se o bloqueador de anúncios/notificações está desativado ou tente reiniciar a guia do navegador.';
@@ -175,6 +188,7 @@ function ConfiguracoesPerfil() {
             setSnackbarSeverity('error');
             setOpenSnackbar(true);
         } finally {
+            console.log('[PUSH] Finalizado (setPushLoading false)');
             setPushLoading(false);
         }
     };
