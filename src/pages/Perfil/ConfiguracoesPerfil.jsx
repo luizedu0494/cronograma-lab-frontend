@@ -152,7 +152,11 @@ function ConfiguracoesPerfil() {
             setOpenSnackbar(true);
         } catch (err) {
             console.error('Erro ao ativar Push:', err);
-            setSnackbarMessage(err.message || 'Erro ao ativar notificações Push.');
+            let userMsg = err.message || 'Erro ao ativar notificações Push.';
+            if (err.name === 'AbortError' || String(err).includes('push service error')) {
+                userMsg = 'O serviço de Push do navegador falhou ao registrar. Verifique se o bloqueador de anúncios/notificações está desativado ou tente reiniciar a guia do navegador.';
+            }
+            setSnackbarMessage(userMsg);
             setSnackbarSeverity('error');
             setOpenSnackbar(true);
         } finally {
