@@ -29,15 +29,34 @@ const UltimasExclusoesCard = () => {
         );
 
         const unsubscribe = onSnapshot(q, (snapshot) => {
-            const todos = snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data(),
-                timestamp: doc.data().timestamp ? doc.data().timestamp.toDate() : new Date()
-            }));
+            try {
+                const todos = snapshot.docs.map(doc => {
+                    const data = doc.data();
+                    let ts = new Date();
+                    if (data.timestamp && typeof data.timestamp.toDate === 'function') {
+                        ts = data.timestamp.toDate();
+                    } else if (data.timestamp instanceof Date) {
+                        ts = data.timestamp;
+                    }
+                    return {
+                        id: doc.id,
+                        ...data,
+                        timestamp: ts
+                    };
+                });
 
-            setLogsAulas(todos.filter(l => !l.aula?.isRevisao && l.collection !== 'eventos').slice(0, 5));
-            setLogsRevisoes(todos.filter(l => l.aula?.isRevisao === true).slice(0, 5));
-            setLoading(false);
+                const aulasExcluidas = todos.filter(l => l.aula && !l.aula.isRevisao && l.collection !== 'eventos').slice(0, 5);
+                const revisoesExcluidas = todos.filter(l => l.aula && l.aula.isRevisao === true).slice(0, 5);
+
+                setLogsAulas(aulasExcluidas);
+                setLogsRevisoes(revisoesExcluidas);
+                setError(null);
+                setLoading(false);
+            } catch (err) {
+                console.error("Erro ao processar snapshot de exclusões:", err);
+                setError("Falha ao processar exclusões.");
+                setLoading(false);
+            }
         }, (err) => {
             console.error("Erro ao escutar logs em tempo real:", err);
             setError("Falha ao carregar exclusões.");
@@ -48,8 +67,17 @@ const UltimasExclusoesCard = () => {
     }, []);
 
     const getStatusChip = (status) => {
-        const map = { aprovada: ['success','Aprovada'], pendente: ['warning','Pendente'], rejeitada: ['error','Rejeitada'] };
-        const [color, label] = map[status] || ['default','Desconhecido'];
+        const sKey = (status || 'aprovada').toLowerCase();
+        const map = { 
+            aprovada: ['success', 'Aprovada'], 
+            pendente: ['warning', 'Pendente'], 
+            rejeitada: ['error', 'Rejeitada'],
+            concluida: ['info', 'Concluída'],
+            realizada: ['success', 'Realizada'],
+            confirmada: ['success', 'Confirmada'],
+            planejada: ['warning', 'Planejada']
+        };
+        const [color, label] = map[sKey] || ['default', 'Aprovada'];
         return <Chip label={label} color={color} size="small" sx={{ ml: 1, height: 20, fontSize: '0.7rem' }} />;
     };
 
@@ -62,7 +90,7 @@ const UltimasExclusoesCard = () => {
 
     const formatarAno = (d) => {
         if (!d) return '';
-        const obj = d.toDate ? d.toDate() : new Date(d);
+        const obj = (d && typeof d.toDate === 'function') ? d.toDate() : new Date(d);
         return dayjs(obj).isValid() ? ` - ${dayjs(obj).year()}` : '';
     };
 

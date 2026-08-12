@@ -28,6 +28,7 @@ import isBetween from 'dayjs/plugin/isBetween';
 import { LISTA_LABORATORIOS } from './constants/laboratorios';
 import { LISTA_CURSOS } from './constants/cursos';
 import PropTypes from 'prop-types';
+import { registrarLogExclusao } from './services/loggerService';
 
 dayjs.locale('pt-br');
 dayjs.extend(isBetween);
@@ -736,12 +737,22 @@ function CalendarioRevisoesTecnico({ userInfo }) {
         if (!revisaoSelecionada?.id) return;
         setActionLoading(true);
         try {
+            await registrarLogExclusao({
+                assunto: revisaoSelecionada.assunto || revisaoSelecionada.disciplina || 'Revisão',
+                cursos: revisaoSelecionada.cursos || (revisaoSelecionada.curso ? [revisaoSelecionada.curso] : []),
+                status: revisaoSelecionada.status || 'aprovada',
+                dataInicio: revisaoSelecionada.dataInicio || revisaoSelecionada.data || null,
+                laboratorio: revisaoSelecionada.laboratorio || revisaoSelecionada.laboratorioSelecionado || '',
+                isRevisao: true,
+                tipoRevisaoLabel: revisaoSelecionada.tipoRevisaoLabel || revisaoSelecionada.tipo || 'Revisão'
+            }, userInfo);
             await deleteDoc(doc(db, COLECAO_REVISOES, revisaoSelecionada.id));
             setFeedback({ open: true, message: 'Revisão excluída.', severity: 'info' });
             setIsDeleteOpen(false);
             setRevisaoSelecionada(null);
             fetchTudo();
         } catch (e) {
+            console.error("Erro ao excluir revisão:", e);
             setFeedback({ open: true, message: 'Erro ao excluir.', severity: 'error' });
         } finally {
             setActionLoading(false);

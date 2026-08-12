@@ -20,7 +20,7 @@ export const registrarLogExclusao = async (aulaData, user) => {
       timestamp: serverTimestamp(),
       user: {
         uid: user?.uid || 'desconhecido',
-        nome: user?.name || user?.displayName || user?.email || 'Usuário',
+        nome: user?.nome || user?.name || user?.displayName || user?.email || 'Usuário',
       }
     });
   } catch (error) {

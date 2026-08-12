@@ -596,6 +596,11 @@ function CalendarioCronograma({ userInfo }) {
     const handleBulkDelete = async () => {
         setActionLoading(true);
         try {
+            const aulasParaLog = todasAulas.filter(a => selectedAulasIds.includes(a.id));
+            for (const aula of aulasParaLog) {
+                await registrarLogExclusao(aula, userInfo);
+            }
+
             const batch = writeBatch(db);
             selectedAulasIds.forEach(id => batch.delete(doc(db, 'aulas', id)));
             await batch.commit();
@@ -604,6 +609,7 @@ function CalendarioCronograma({ userInfo }) {
             setSelectedAulasIds([]);
             fetchDados();
         } catch (e) {
+            console.error("Erro ao excluir aulas em lote:", e);
             setFeedback({ open: true, message: 'Erro ao excluir aulas.', severity: 'error' });
         } finally {
             setActionLoading(false);

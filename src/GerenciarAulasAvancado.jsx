@@ -16,6 +16,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import ClearIcon from '@mui/icons-material/Clear';
 import { LISTA_LABORATORIOS } from './constants/laboratorios';
 import { LISTA_CURSOS } from './constants/cursos';
+import { registrarLogExclusao } from './services/loggerService';
 
 const BLOCOS_HORARIO = [
     { value: "07:00-09:10", label: "07:00 - 09:10" },
@@ -175,7 +176,7 @@ function GerenciarAulasAvancado({ userInfo }) {
             });
 
             aulasParaLog.forEach(aula => {
-                logs.push(logActivity('exclusao', aula, { uid: userInfo.uid, name: userInfo.name }));
+                logs.push(registrarLogExclusao(aula, userInfo));
             });
 
             await batch.commit();

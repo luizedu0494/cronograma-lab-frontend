@@ -17,6 +17,7 @@ import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs from 'dayjs';
+import { registrarLogExclusao } from './services/loggerService';
 
 function ListagemMensalAulas({ userInfo, setSnackBar }) {
 
@@ -122,8 +123,8 @@ function ListagemMensalAulas({ userInfo, setSnackBar }) {
         const tecnicosDesignados = aulaToDelete.tecnicos || [];
         const nomeAulaCancelada = aulaToDelete.title;
         try {
+            await registrarLogExclusao(aulaToDelete, userInfo);
             await deleteDoc(doc(db, 'aulas', aulaToDelete.id));
-            logActivity('exclusao', aulaToDelete, { uid: userInfo.uid, name: userInfo.name });
             if(setSnackBar) setSnackBar('Aula excluída com sucesso!');
             if (tecnicosDesignados.length > 0) {
                 await fetch('/api/send-push-notification', {
