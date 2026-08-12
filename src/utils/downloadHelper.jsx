@@ -41,8 +41,6 @@ export const gerarRelatorioExcel = async (aulasDoMes, nomeArquivo) => {
         { header: 'Tipo', key: 'tipo', width: 18 },
         { header: 'Curso(s)', key: 'cursos', width: 35 },
         { header: 'Assunto/Atividade', key: 'assunto', width: 45 },
-        { header: 'Professor', key: 'professor', width: 30 },
-        { header: 'Técnico(s)', key: 'tecnicos', width: 30 },
     ];
 
     // Aulas já vêm ordenadas por lab + data do caller
@@ -86,8 +84,6 @@ export const gerarRelatorioExcel = async (aulasDoMes, nomeArquivo) => {
                 tipo: tipoLabel,
                 cursos: (aula.cursos || []).map(c => LISTA_CURSOS.find(lc => lc.value === c)?.label || c).join(', '),
                 assunto: aula.assunto,
-                professor: aula.isRevisao ? (aula.professorRevisao || aula.professorNome || '') : (aula.professorNome || ''),
-                tecnicos: (aula.tecnicosInfo || []).map(t => t.name).join(', ')
             });
 
             row.eachCell({ includeEmpty: true }, (cell, colNumber) => {

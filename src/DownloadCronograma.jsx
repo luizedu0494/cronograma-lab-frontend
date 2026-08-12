@@ -71,6 +71,7 @@ const generateICalContent = (aulas) => {
 
 function DownloadCronograma() {
   const [selectedDate, setSelectedDate] = useState(dayjs());
+  const [modoPeriodo, setModoPeriodo] = useState('mes'); // 'mes' | 'ano'
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState({ open: false, message: '', severity: 'info' });
   
@@ -81,76 +82,87 @@ function DownloadCronograma() {
   const [ligaFiltro, setLigaFiltro] = useState('');
   const [tipoFiltro, setTipoFiltro] = useState('todos'); // 'todos' | 'aula' | 'revisao'
 
-	  const handleDownload = async (format) => {
-	    setLoading(true);
-	    setFeedback({ open: false, message: '', severity: 'info' });
-	    
-	    const ano = selectedDate.year();
-	    const mes = selectedDate.month();
-	    const inicioDoMes = dayjs().year(ano).month(mes).startOf('month');
-	    const fimDoMes = dayjs().year(ano).month(mes).endOf('month');
-	
-	    try {
-	        let q = query(
-	            collection(db, 'aulas'),
-	            where('status', '==', 'aprovada'),
-	            where('dataInicio', '>=', Timestamp.fromDate(inicioDoMes.toDate())),
-	            where('dataInicio', '<=', Timestamp.fromDate(fimDoMes.toDate()))
-	        );
-	        if (laboratorioFiltro.length > 0) q = query(q, where('laboratorioSelecionado', 'in', laboratorioFiltro));
-	        if (horarioFiltro.length > 0) q = query(q, where('horarioSlotString', 'in', horarioFiltro));
-	        if (assuntoFiltro) q = query(q, where('assunto', '>=', assuntoFiltro), where('assunto', '<=', assuntoFiltro + '\uf8ff'));
-	        if (cursosFiltro.length > 0) q = query(q, where('cursos', 'array-contains-any', cursosFiltro));
-	        if (ligaFiltro) q = query(q, where('liga', '==', ligaFiltro));
-	        q = query(q, orderBy('dataInicio', 'asc'));
-	
-	        const querySnapshot = await getDocs(q);
-	        let aulasDoMes = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  const handleDownload = async (format) => {
+    setLoading(true);
+    setFeedback({ open: false, message: '', severity: 'info' });
+    
+    const ano = selectedDate.year();
+    let inicioIntervalo, fimIntervalo;
 
-	        // Filtro de tipo no frontend
-	        if (tipoFiltro === 'aula') aulasDoMes = aulasDoMes.filter(a => !a.isRevisao);
-	        if (tipoFiltro === 'revisao') aulasDoMes = aulasDoMes.filter(a => a.isRevisao === true);
+    if (modoPeriodo === 'ano') {
+        inicioIntervalo = dayjs().year(ano).startOf('year');
+        fimIntervalo = dayjs().year(ano).endOf('year');
+    } else {
+        const mes = selectedDate.month();
+        inicioIntervalo = dayjs().year(ano).month(mes).startOf('month');
+        fimIntervalo = dayjs().year(ano).month(mes).endOf('month');
+    }
 
-	        // Ordenar por laboratório (alfabético) e depois por data crescente
-	        aulasDoMes.sort((a, b) => {
-	            const labA = (a.laboratorioSelecionado || '').toLowerCase();
-	            const labB = (b.laboratorioSelecionado || '').toLowerCase();
-	            if (labA !== labB) return labA.localeCompare(labB, 'pt-BR');
-	            const dataA = a.dataInicio?.toDate ? a.dataInicio.toDate() : new Date(a.dataInicio);
-	            const dataB = b.dataInicio?.toDate ? b.dataInicio.toDate() : new Date(b.dataInicio);
-	            return dataA - dataB;
-	        });
-	
-	        if (aulasDoMes.length === 0) {
-	            setFeedback({ open: true, message: 'Nenhuma aula encontrada para os filtros selecionados.', severity: 'warning' });
-	            setLoading(false); 
-	            return;
-	        }
-	
-	        if (format === 'excel') {
-	            // Importação dinâmica da função de geração de Excel
-	            const { gerarRelatorioExcel } = await import('./utils/downloadHelper');
-	            const nomeArquivo = `Relatorio_Aulas_${selectedDate.locale('pt-br').format('MMMM_YYYY')}.xlsx`;
-	            
-	            await gerarRelatorioExcel(aulasDoMes, nomeArquivo);
-	            setFeedback({ open: true, message: 'Relatório em Excel gerado com sucesso!', severity: 'success' });
-	        } else if (format === 'ics') {
-	            const icalContent = generateICalContent(aulasDoMes);
-	            const blob = new Blob([icalContent], { type: 'text/calendar;charset=utf-8' });
-	            saveAs(blob, `Cronograma_Lab_${selectedDate.locale('pt-br').format('MMMM_YYYY')}.ics`);
-	            setFeedback({ open: true, message: 'Arquivo de calendário (.ics) gerado com sucesso!', severity: 'success' });
-	        }
-	
-	    } catch (err) {
-	        console.error("ERRO CRÍTICO em handleDownload:", err);
-	        setFeedback({ open: true, message: `Erro ao gerar relatório: ${err.message}`, severity: 'error' });
-	    } finally {
-	        setLoading(false);
-	    }
-	  };
+    try {
+        let q = query(
+            collection(db, 'aulas'),
+            where('status', '==', 'aprovada'),
+            where('dataInicio', '>=', Timestamp.fromDate(inicioIntervalo.toDate())),
+            where('dataInicio', '<=', Timestamp.fromDate(fimIntervalo.toDate()))
+        );
+        if (laboratorioFiltro.length > 0) q = query(q, where('laboratorioSelecionado', 'in', laboratorioFiltro));
+        if (horarioFiltro.length > 0) q = query(q, where('horarioSlotString', 'in', horarioFiltro));
+        if (assuntoFiltro) q = query(q, where('assunto', '>=', assuntoFiltro), where('assunto', '<=', assuntoFiltro + '\uf8ff'));
+        if (cursosFiltro.length > 0) q = query(q, where('cursos', 'array-contains-any', cursosFiltro));
+        if (ligaFiltro) q = query(q, where('liga', '==', ligaFiltro));
+        q = query(q, orderBy('dataInicio', 'asc'));
+
+        const querySnapshot = await getDocs(q);
+        let aulasDoMes = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+        // Filtro de tipo no frontend
+        if (tipoFiltro === 'aula') aulasDoMes = aulasDoMes.filter(a => !a.isRevisao);
+        if (tipoFiltro === 'revisao') aulasDoMes = aulasDoMes.filter(a => a.isRevisao === true);
+
+        // Ordenar por laboratório (alfabético) e depois por data crescente
+        aulasDoMes.sort((a, b) => {
+            const labA = (a.laboratorioSelecionado || '').toLowerCase();
+            const labB = (b.laboratorioSelecionado || '').toLowerCase();
+            if (labA !== labB) return labA.localeCompare(labB, 'pt-BR');
+            const dataA = a.dataInicio?.toDate ? a.dataInicio.toDate() : new Date(a.dataInicio);
+            const dataB = b.dataInicio?.toDate ? b.dataInicio.toDate() : new Date(b.dataInicio);
+            return dataA - dataB;
+        });
+
+        if (aulasDoMes.length === 0) {
+            setFeedback({ open: true, message: 'Nenhuma aula encontrada para os filtros selecionados.', severity: 'warning' });
+            setLoading(false); 
+            return;
+        }
+
+        const sufixoNome = modoPeriodo === 'ano' 
+            ? `Ano_${ano}` 
+            : selectedDate.locale('pt-br').format('MMMM_YYYY');
+
+        if (format === 'excel') {
+            const { gerarRelatorioExcel } = await import('./utils/downloadHelper');
+            const nomeArquivo = `Relatorio_Aulas_${sufixoNome}.xlsx`;
+            
+            await gerarRelatorioExcel(aulasDoMes, nomeArquivo);
+            setFeedback({ open: true, message: 'Relatório em Excel gerado com sucesso!', severity: 'success' });
+        } else if (format === 'ics') {
+            const icalContent = generateICalContent(aulasDoMes);
+            const blob = new Blob([icalContent], { type: 'text/calendar;charset=utf-8' });
+            saveAs(blob, `Cronograma_Lab_${sufixoNome}.ics`);
+            setFeedback({ open: true, message: 'Arquivo de calendário (.ics) gerado com sucesso!', severity: 'success' });
+        }
+
+    } catch (err) {
+        console.error("ERRO CRÍTICO em handleDownload:", err);
+        setFeedback({ open: true, message: `Erro ao gerar relatório: ${err.message}`, severity: 'error' });
+    } finally {
+        setLoading(false);
+    }
+  };
 
   const handleClearFilters = () => {
     setSelectedDate(dayjs());
+    setModoPeriodo('mes');
     setLaboratorioFiltro([]);
     setHorarioFiltro([]);
     setAssuntoFiltro('');
@@ -169,15 +181,33 @@ function DownloadCronograma() {
       <Container maxWidth="md" sx={{ mt: 4, mb: 4 }}>
         <Paper elevation={3} sx={{ p: { xs: 2, md: 4 } }}>
           <Typography variant="h5" component="h2" gutterBottom align="center">Download de Relatórios</Typography>
-          <Typography variant="body1" align="center" sx={{ mb: 3 }}>Selecione o mês e aplique filtros para gerar um relatório em Excel.</Typography>
+          <Typography variant="body1" align="center" sx={{ mb: 3 }}>Selecione o período e aplique filtros para gerar seu relatório em Excel ou Calendário.</Typography>
           <Grid container spacing={2} alignItems="flex-start" sx={{ mb: 3 }}>
             <Grid item xs={12} sm={6} md={4}>
+              <FormControl fullWidth sx={{ minWidth: 160 }}>
+                <InputLabel shrink>Período do Relatório</InputLabel>
+                <Select
+                  value={modoPeriodo}
+                  onChange={(e) => setModoPeriodo(e.target.value)}
+                  input={<OutlinedInput notched label="Período do Relatório" />}
+                >
+                  <MenuItem value="mes">📅 Mês Específico</MenuItem>
+                  <MenuItem value="ano">🗓️ Ano Inteiro</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} sm={6} md={4}>
               <DatePicker
-                label="Selecione Mês e Ano"
-                views={['month', 'year']}
+                label={modoPeriodo === 'ano' ? "Selecione o Ano" : "Selecione Mês e Ano"}
+                views={modoPeriodo === 'ano' ? ['year'] : ['month', 'year']}
                 value={selectedDate}
                 onChange={(newValue) => setSelectedDate(newValue)}
-                slotProps={{ textField: { fullWidth: true, helperText: 'Ex: Junho 2025' } }}
+                slotProps={{ 
+                  textField: { 
+                    fullWidth: true, 
+                    helperText: modoPeriodo === 'ano' ? `Ex: Ano ${selectedDate.year()}` : 'Ex: Junho 2025' 
+                  } 
+                }}
               />
             </Grid>
             <Grid item xs={12} sm={6} md={4}>
