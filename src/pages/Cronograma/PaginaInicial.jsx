@@ -1004,27 +1004,25 @@ const PaginaInicial = ({ userInfo }) => {
             {/* 6. CALENDÁRIO ACADÊMICO */}
             <Accordion elevation={2}>
                 <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                    <Box display="flex" alignItems="center" justifyContent="space-between" width="100%" pr={1}>
-                        <Box display="flex" alignItems="center" gap={1}>
-                            <CalendarIcon color="action" />
-                            <Typography fontWeight="medium">{calendarTitle}</Typography>
-                        </Box>
-                        {userInfo?.role === 'coordenador' && (
+                    <Box display="flex" alignItems="center" gap={1}>
+                        <CalendarIcon color="action" />
+                        <Typography fontWeight="medium">{calendarTitle}</Typography>
+                    </Box>
+                </AccordionSummary>
+                <AccordionDetails sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    {userInfo?.role === 'coordenador' && (
+                        <Box sx={{ width: '100%', display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
                             <Button
                                 size="small"
                                 variant="outlined"
                                 startIcon={<EditIcon />}
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleOpenEditCalendar();
-                                }}
+                                onClick={handleOpenEditCalendar}
                             >
-                                Editar Calendário
+                                Editar Frase e Imagem do Calendário
                             </Button>
-                        )}
-                    </Box>
-                </AccordionSummary>
-                <AccordionDetails sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                        </Box>
+                    )}
+
                     <img
                         src={calendarImageURL || calendarioAcademico}
                         alt="Calendário Acadêmico"
