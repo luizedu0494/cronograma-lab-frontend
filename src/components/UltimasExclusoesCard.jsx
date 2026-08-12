@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebaseConfig';
-import { collection, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
+import { collection, query, where, orderBy, limit, onSnapshot } from 'firebase/firestore';
 import {
     Card, CardContent, Typography, Box, CircularProgress, Alert, Button, Divider, Chip, Tabs, Tab
 } from '@mui/material';
@@ -19,33 +19,32 @@ const UltimasExclusoesCard = () => {
     const theme = useTheme();
 
     useEffect(() => {
-        const fetchLogs = async () => {
-            try {
-                setLoading(true);
-                const logsRef = collection(db, 'logs');
-                const q = query(
-                    logsRef,
-                    where('type', '==', 'exclusao'),
-                    orderBy('timestamp', 'desc'),
-                    limit(50)
-                );
-                const snapshot = await getDocs(q);
-                const todos = snapshot.docs.map(doc => ({
-                    id: doc.id,
-                    ...doc.data(),
-                    timestamp: doc.data().timestamp ? doc.data().timestamp.toDate() : new Date()
-                }));
+        setLoading(true);
+        const logsRef = collection(db, 'logs');
+        const q = query(
+            logsRef,
+            where('type', '==', 'exclusao'),
+            orderBy('timestamp', 'desc'),
+            limit(50)
+        );
 
-                setLogsAulas(todos.filter(l => !l.aula?.isRevisao && l.collection !== 'eventos').slice(0, 5));
-                setLogsRevisoes(todos.filter(l => l.aula?.isRevisao === true).slice(0, 5));
-            } catch (err) {
-                console.error("Erro ao buscar logs:", err);
-                setError("Falha ao carregar exclusões.");
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchLogs();
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const todos = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data(),
+                timestamp: doc.data().timestamp ? doc.data().timestamp.toDate() : new Date()
+            }));
+
+            setLogsAulas(todos.filter(l => !l.aula?.isRevisao && l.collection !== 'eventos').slice(0, 5));
+            setLogsRevisoes(todos.filter(l => l.aula?.isRevisao === true).slice(0, 5));
+            setLoading(false);
+        }, (err) => {
+            console.error("Erro ao escutar logs em tempo real:", err);
+            setError("Falha ao carregar exclusões.");
+            setLoading(false);
+        });
+
+        return () => unsubscribe();
     }, []);
 
     const getStatusChip = (status) => {

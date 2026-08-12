@@ -5,6 +5,7 @@ import {
 import dayjs from 'dayjs';
 import 'dayjs/locale/pt-br';
 import { notificadorTelegram } from '../services/NotificadorTelegram';
+import { registrarLogExclusao } from '../services/loggerService';
 // Importante: Lista de labs para calcular ociosidade e normalizar nomes
 import { LISTA_LABORATORIOS } from '../constants/laboratorios'; 
 
@@ -540,6 +541,11 @@ class ExecutorAcoes {
       const batch = writeBatch(db);
       aulas.forEach(a => batch.delete(doc(db, "aulas", a.id)));
       await batch.commit();
+
+      // Registra logs de exclusão
+      for (const a of aulas) {
+          await registrarLogExclusao(a, this.currentUser);
+      }
       
       if (aulas.length === 1) {
           this.notificar(aulas[0], [aulas[0].horarioSlotString], [aulas[0].laboratorioSelecionado], 'excluir', null);
