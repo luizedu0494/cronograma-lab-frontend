@@ -145,6 +145,31 @@ Todas as preferências do técnico ficam salvas localmente por `uid`, sem custo 
 
 ---
 
+## 🚀 Novidades da Atualização de UX/UI & Arquitetura
+
+> Atualização baseada no diagnóstico técnico [`analise_melhorias_cronolab.md`](file:///c:/Windows/System32/cronograma-lab-frontend/analise_melhorias_cronolab.md).
+
+### 👨‍💼 Para o Coordenador
+- **Layout Master-Detail em 2 Colunas (`GerenciarAprovacoes.jsx`)**: Painel de triagem otimizado com listagem de propostas à esquerda e inspeção com ações imediatas à direita.
+- **Motivo Obrigatório de Rejeição**: Ao rejeitar propostas, é exigida uma justificativa textual. O motivo é transmitido ao Telegram e exibido em `MinhasPropostas.jsx`.
+- **Moldura Visual por Tipo de Proposta**: Cores de destaque distintas (Azul para Aula, Roxo para Revisão e Laranja para Prova).
+
+### 🔬 Para o Técnico
+- **Painel do Dia Ordenado e Agrupado (`PaginaInicial.jsx`)**: Aulas organizadas cronologicamente por horário.
+- **Alerta "Aula em Breve"**: Banner destacado em tom dourado institucional (`#F5C518`) notificando aulas nos próximos 30 minutos em laboratórios favoritos.
+- **Sinalização "Lab Preparado ✓"**: Botão de confirmação de preparo de laboratório salvo localmente via `localStorage`.
+- **Status Pills de Tempo**: Indicadores relativos ("em andamento", "em 2h") nos cards de aula.
+- **Bordas Laterais de Hierarquia Visual**: Borda azul (`#1E7EC8`) no Cronograma Oficial e dourada (`#F5C518`) na Agenda Privada.
+
+### 🤖 Assistente IA
+- **Chips de Sugestão de Consulta (`AssistenteIA.jsx`)**: Atalhos de 1 clique para perguntas comuns ("Aulas de hoje nos meus labs", "Labs disponíveis agora").
+- **Histórico de Pesquisas Recentes**: Armazenamento automático das 5 pesquisas mais recentes no `localStorage`.
+
+### 🛠️ Padronização Técnica
+- **Renomeação de arquivos sem JSX**: `firebaseConfig.js`, `reportWebVitals.js` e `setupTests.js` ajustados de `.jsx` para `.js`.
+
+---
+
 ## Demonstrações
 
 ### 🔐 Login

@@ -165,7 +165,17 @@ const MinhasPropostas = () => {
                                                     <Typography variant="body2" component="span" color="text.secondary">
                                                         🏛️ {proposta.laboratorioSelecionado || '—'} &nbsp;|&nbsp; 📅 {dataAula}
                                                     </Typography>
-                                                    <Typography variant="caption" component="span" color="text.disabled">
+                                                    {proposta.status === 'rejeitada' && proposta.motivoRejeicao && (
+                                                        <Box sx={{ mt: 0.5, p: 1, bgcolor: 'error.light', color: 'error.contrastText', borderRadius: 1 }}>
+                                                            <Typography variant="caption" fontWeight="bold" component="span" display="block">
+                                                                Motivo da Rejeição:
+                                                            </Typography>
+                                                            <Typography variant="caption" component="span">
+                                                                {proposta.motivoRejeicao}
+                                                            </Typography>
+                                                        </Box>
+                                                    )}
+                                                    <Typography variant="caption" component="span" color="text.disabled" sx={{ mt: 0.5 }}>
                                                         Proposto em: {dataProposta}
                                                     </Typography>
                                                 </Box>

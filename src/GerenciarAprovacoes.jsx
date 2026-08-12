@@ -31,7 +31,7 @@ const MONTHS = Array.from({ length: 12 }, (_, i) => ({ value: i, label: dayjs().
 const YEARS  = Array.from({ length: 5  }, (_, i) => dayjs().year() - 2 + i);
 
 // ─── Card de Aula ─────────────────────────────────────────────────────────────
-function AulaCard({ aula, onAction, processando }) {
+function AulaCard({ aula, onAction, processando, isSelected, onClick }) {
     const cursosLabel = useMemo(() => {
         if (!aula.cursos?.length) return '—';
         return aula.cursos.map(v => LISTA_CURSOS.find(c => c.value === v)?.label || v).join(', ');
@@ -42,73 +42,47 @@ function AulaCard({ aula, onAction, processando }) {
         catch { return '—'; }
     }, [aula.dataInicio]);
 
-    const pedidoEm = useMemo(() => {
-        try { return dayjs(aula.createdAt.toDate()).format('DD/MM/YYYY HH:mm'); }
-        catch { return 'Data indisponível'; }
-    }, [aula.createdAt]);
-
-    const borderColor =
+    // Moldura por tipo: Roxa se Revisão, Laranja se Prova, Azul se Aula normal
+    const borderLeftColor = 
+        aula.isRevisao ? '#9c27b0' :
+        aula.isProva   ? '#ff9800' :
         aula.status === 'aprovada'  ? '#2e7d32' :
-        aula.status === 'rejeitada' ? '#c62828' : '#ed6c02';
+        aula.status === 'rejeitada' ? '#c62828' : '#1E7EC8';
 
     const isProcessando = processando === aula.id;
 
     return (
-        <Card variant="outlined" sx={{
-            mb: 2,
-            borderLeft: `5px solid ${borderColor}`,
-            transition: 'all 0.3s',
-            opacity: isProcessando ? 0.6 : 1,
-            '&:hover': { boxShadow: 4 }
-        }}>
-            <CardContent>
+        <Card variant="outlined" 
+            onClick={onClick}
+            sx={{
+                mb: 2,
+                cursor: 'pointer',
+                borderLeft: `6px solid ${borderLeftColor}`,
+                backgroundColor: isSelected ? 'action.selected' : 'background.paper',
+                transition: 'all 0.2s',
+                opacity: isProcessando ? 0.6 : 1,
+                '&:hover': { boxShadow: 3, transform: 'translateY(-1px)' }
+            }}>
+            <CardContent sx={{ pb: 1.5 }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1, flexWrap: 'wrap', gap: 1 }}>
-                    <Typography variant="h6" fontWeight="bold">{aula.assunto}</Typography>
+                    <Box display="flex" alignItems="center" gap={1}>
+                        <Typography variant="subtitle1" fontWeight="bold">{aula.assunto}</Typography>
+                        {aula.isRevisao && <Chip label="Revisão" size="small" color="secondary" sx={{ height: 20, fontSize: '0.65rem' }} />}
+                        {aula.isProva && <Chip label="Prova" size="small" color="warning" sx={{ height: 20, fontSize: '0.65rem' }} />}
+                    </Box>
                     <Chip
-                        label={aula.status === 'pendente' ? 'Aguardando aprovação' : aula.status === 'aprovada' ? 'Aprovada' : 'Rejeitada'}
+                        label={aula.status === 'pendente' ? 'Pendente' : aula.status === 'aprovada' ? 'Aprovada' : 'Rejeitada'}
                         color={aula.status === 'pendente' ? 'warning' : aula.status === 'aprovada' ? 'success' : 'error'}
                         size="small"
                     />
                 </Box>
-                <Typography color="text.secondary" variant="body2" gutterBottom>
+                <Typography color="text.secondary" variant="body2">
                     🏛️ {aula.laboratorioSelecionado || '—'} &nbsp;|&nbsp; 🎓 {cursosLabel}
                 </Typography>
-                <Divider sx={{ my: 1.5 }} />
-                <Grid container spacing={1}>
-                    <Grid item xs={12} sm={6}>
-                        <Typography variant="body2">
-                            <strong>Data e Horário:</strong> {dataFormatada}
-                        </Typography>
-                    </Grid>
-                    <Grid item xs={12} sm={6}>
-                        <Typography variant="body2">
-                            <strong>Solicitado por:</strong> {aula.propostoPorNome || aula.professorNome || 'N/A'}
-                        </Typography>
-                    </Grid>
-                </Grid>
-                <Typography variant="caption" color="text.disabled" sx={{ mt: 0.5, display: 'block' }}>
-                    Pedido em: {pedidoEm}
+                <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+                    📅 {dataFormatada} | 👤 {aula.propostoPorNome || aula.professorNome || 'N/A'}
                 </Typography>
             </CardContent>
-
-            {aula.status === 'pendente' && (
-                <CardActions sx={{ justifyContent: 'flex-end', pt: 0, pb: 1.5, px: 2, gap: 1 }}>
-                    {isProcessando ? (
-                        <CircularProgress size={24} />
-                    ) : (
-                        <>
-                            <Button size="small" color="error" variant="outlined" startIcon={<CancelIcon />}
-                                onClick={() => onAction(aula, 'rejeitada')}>
-                                Rejeitar
-                            </Button>
-                            <Button size="small" color="success" variant="contained" startIcon={<CheckCircleIcon />}
-                                onClick={() => onAction(aula, 'aprovada')}>
-                                Aprovar
-                            </Button>
-                        </>
-                    )}
-                </CardActions>
-            )}
         </Card>
     );
 }
@@ -120,11 +94,15 @@ function GerenciarAprovacoes() {
     const [loadingPendentes, setLoadingPendentes] = useState(true);
     const [loadingMes, setLoadingMes]             = useState(true);
 
-    // ID da aula sendo processada neste momento (evita duplo clique)
     const [processando, setProcessando] = useState(null);
 
-    // Confirmação antes de aprovar/rejeitar
+    // Item selecionado para visualização Master-Detail
+    const [aulaSelecionada, setAulaSelecionada] = useState(null);
+
+    // Confirmação antes de aprovar/rejeitar + Motivo de rejeição
     const [confirmDialog, setConfirmDialog] = useState({ open: false, aula: null, acao: null });
+    const [motivoRejeicao, setMotivoRejeicao] = useState('');
+    const [motivoErro, setMotivoErro] = useState(false);
 
     const [currentTab, setCurrentTab] = useState('pendente');
     const [busca, setBusca]           = useState('');
@@ -136,7 +114,7 @@ function GerenciarAprovacoes() {
 
     const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
-    // ── Pendentes: query global sem filtro de data ─────────────────────────
+    // ── Pendentes: query global ───────────────────────────────────────────
     useEffect(() => {
         setLoadingPendentes(true);
         const q = query(
@@ -145,7 +123,8 @@ function GerenciarAprovacoes() {
             orderBy('createdAt', 'asc')
         );
         const unsub = onSnapshot(q, snap => {
-            setPendentesGlobal(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+            const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            setPendentesGlobal(docs);
             setLoadingPendentes(false);
         }, err => {
             console.error(err);
@@ -176,20 +155,53 @@ function GerenciarAprovacoes() {
         return () => unsub();
     }, [selectedMonth, selectedYear]);
 
-    // Abre o diálogo de confirmação ao clicar em Aprovar/Rejeitar
+    // Seleciona automaticamente o primeiro item ao mudar a lista
+    const listaAtiva = useMemo(() => {
+        const base = currentTab === 'pendente'
+            ? pendentesGlobal
+            : aulasDoMes.filter(a => a.status === currentTab);
+        if (!busca.trim()) return base;
+        const b = busca.toLowerCase();
+        return base.filter(a =>
+            a.assunto?.toLowerCase().includes(b) ||
+            (a.propostoPorNome || a.professorNome || '').toLowerCase().includes(b) ||
+            a.laboratorioSelecionado?.toLowerCase().includes(b)
+        );
+    }, [currentTab, pendentesGlobal, aulasDoMes, busca]);
+
+    useEffect(() => {
+        if (listaAtiva.length > 0) {
+            if (!aulaSelecionada || !listaAtiva.some(a => a.id === aulaSelecionada.id)) {
+                setAulaSelecionada(listaAtiva[0]);
+            }
+        } else {
+            setAulaSelecionada(null);
+        }
+    }, [listaAtiva]);
+
     const handleActionClick = (aula, acao) => {
+        setMotivoRejeicao('');
+        setMotivoErro(false);
         setConfirmDialog({ open: true, aula, acao });
     };
 
-    // Executa a ação após confirmação
     const handleConfirmarAcao = async () => {
         const { aula, acao } = confirmDialog;
+        if (acao === 'rejeitada' && !motivoRejeicao.trim()) {
+            setMotivoErro(true);
+            return;
+        }
+
         setConfirmDialog({ open: false, aula: null, acao: null });
         setProcessando(aula.id);
         try {
-            await updateDoc(doc(db, 'aulas', aula.id), { status: acao });
+            const updatePayload = { status: acao };
+            if (acao === 'rejeitada') {
+                updatePayload.motivoRejeicao = motivoRejeicao.trim();
+            }
 
-            // Notificação Telegram
+            await updateDoc(doc(db, 'aulas', aula.id), updatePayload);
+
             if (TELEGRAM_CHAT_ID) {
                 const dataObj = aula.dataInicio?.toDate ? dayjs(aula.dataInicio.toDate()) : dayjs(aula.dataInicio);
                 const dadosNotif = {
@@ -204,9 +216,8 @@ function GerenciarAprovacoes() {
                     isRevisao:      aula.isRevisao || false,
                     tipoRevisaoLabel: aula.tipoRevisaoLabel || '',
                     isProva:        aula.isProva || false,
+                    motivoRejeicao: acao === 'rejeitada' ? motivoRejeicao.trim() : null
                 };
-                // Aprovada → tópico do laboratório (tipo 'aprovada' ou 'adicionar' para manter compat)
-                // Rejeitada → tópico de rejeições
                 await notificadorTelegram.enviarNotificacao(
                     TELEGRAM_CHAT_ID,
                     dadosNotif,
@@ -229,25 +240,12 @@ function GerenciarAprovacoes() {
         }
     };
 
-    const listaAtiva = useMemo(() => {
-        const base = currentTab === 'pendente'
-            ? pendentesGlobal
-            : aulasDoMes.filter(a => a.status === currentTab);
-        if (!busca.trim()) return base;
-        const b = busca.toLowerCase();
-        return base.filter(a =>
-            a.assunto?.toLowerCase().includes(b) ||
-            (a.propostoPorNome || a.professorNome || '').toLowerCase().includes(b) ||
-            a.laboratorioSelecionado?.toLowerCase().includes(b)
-        );
-    }, [currentTab, pendentesGlobal, aulasDoMes, busca]);
-
     const isLoading = currentTab === 'pendente' ? loadingPendentes : loadingMes;
 
     return (
-        <Container maxWidth="lg">
+        <Container maxWidth="xl">
             <Typography variant="h4" component="h1" gutterBottom align="center"
-                sx={{ mb: 2, mt: 4, color: '#3f51b5', fontWeight: 'bold' }}>
+                sx={{ mb: 2, mt: 4, color: '#1E7EC8', fontWeight: 'bold' }}>
                 Gerenciar Aprovações de Aulas
             </Typography>
 
@@ -325,42 +323,125 @@ function GerenciarAprovacoes() {
                             </Collapse>
                         </>
                     )}
-                    {currentTab === 'pendente' && (
-                        <Typography variant="caption" color="text.secondary" sx={{ ml: 'auto' }}>
-                            Exibindo todas as propostas pendentes, de qualquer período
-                        </Typography>
-                    )}
                 </Box>
             </Paper>
 
-            {/* Listagem */}
+            {/* Layout Master-Detail (2 Colunas) */}
             {isLoading ? (
                 <Box sx={{ textAlign: 'center', mt: 6 }}><CircularProgress /></Box>
             ) : listaAtiva.length > 0 ? (
-                listaAtiva.map(aula => (
-                    <AulaCard key={aula.id} aula={aula} onAction={handleActionClick} processando={processando} />
-                ))
+                <Grid container spacing={3}>
+                    {/* Coluna Esquerda: Lista de Propostas (Master) */}
+                    <Grid item xs={12} md={5}>
+                        <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
+                            Propostas ({listaAtiva.length})
+                        </Typography>
+                        <Box sx={{ maxHeight: '70vh', overflowY: 'auto', pr: 1 }}>
+                            {listaAtiva.map(aula => (
+                                <AulaCard
+                                    key={aula.id}
+                                    aula={aula}
+                                    isSelected={aulaSelecionada?.id === aula.id}
+                                    onClick={() => setAulaSelecionada(aula)}
+                                    processando={processando}
+                                />
+                            ))}
+                        </Box>
+                    </Grid>
+
+                    {/* Coluna Direita: Detalhes e Ações (Detail) */}
+                    <Grid item xs={12} md={7}>
+                        {aulaSelecionada ? (
+                            <Paper elevation={3} sx={{ p: 3, borderRadius: 3, sticky: true, top: 20 }}>
+                                <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={2}>
+                                    <Box>
+                                        <Typography variant="h5" fontWeight="bold" color="primary.main">
+                                            {aulaSelecionada.assunto}
+                                        </Typography>
+                                        <Box display="flex" gap={1} mt={0.5}>
+                                            {aulaSelecionada.isRevisao && <Chip label="Revisão" color="secondary" size="small" />}
+                                            {aulaSelecionada.isProva && <Chip label="Prova" color="warning" size="small" />}
+                                            <Chip
+                                                label={aulaSelecionada.status === 'pendente' ? 'Aguardando aprovação' : aulaSelecionada.status === 'aprovada' ? 'Aprovada' : 'Rejeitada'}
+                                                color={aulaSelecionada.status === 'pendente' ? 'warning' : aulaSelecionada.status === 'aprovada' ? 'success' : 'error'}
+                                                size="small"
+                                            />
+                                        </Box>
+                                    </Box>
+                                </Box>
+
+                                <Divider sx={{ my: 2 }} />
+
+                                <Grid container spacing={2}>
+                                    <Grid item xs={12} sm={6}>
+                                        <Typography variant="body2" color="text.secondary">Laboratório</Typography>
+                                        <Typography variant="body1" fontWeight="bold">🏛️ {aulaSelecionada.laboratorioSelecionado || '—'}</Typography>
+                                    </Grid>
+                                    <Grid item xs={12} sm={6}>
+                                        <Typography variant="body2" color="text.secondary">Solicitado por</Typography>
+                                        <Typography variant="body1" fontWeight="bold">👤 {aulaSelecionada.propostoPorNome || aulaSelecionada.professorNome || 'N/A'}</Typography>
+                                    </Grid>
+                                    <Grid item xs={12} sm={6}>
+                                        <Typography variant="body2" color="text.secondary">Data e Horário</Typography>
+                                        <Typography variant="body1" fontWeight="bold">
+                                            📅 {(() => { try { return dayjs(aulaSelecionada.dataInicio.toDate()).format('DD/MM/YYYY [às] HH:mm'); } catch { return '—'; } })()}
+                                        </Typography>
+                                    </Grid>
+                                    <Grid item xs={12} sm={6}>
+                                        <Typography variant="body2" color="text.secondary">Cursos Atendidos</Typography>
+                                        <Typography variant="body1" fontWeight="bold">
+                                            🎓 {aulaSelecionada.cursos?.map(v => LISTA_CURSOS.find(c => c.value === v)?.label || v).join(', ') || '—'}
+                                        </Typography>
+                                    </Grid>
+                                </Grid>
+
+                                {aulaSelecionada.observacoes && (
+                                    <Box sx={{ mt: 2, p: 2, bgcolor: 'action.hover', borderRadius: 2 }}>
+                                        <Typography variant="body2" fontWeight="bold">Observações:</Typography>
+                                        <Typography variant="body2" color="text.secondary">{aulaSelecionada.observacoes}</Typography>
+                                    </Box>
+                                )}
+
+                                {aulaSelecionada.status === 'rejeitada' && aulaSelecionada.motivoRejeicao && (
+                                    <Box sx={{ mt: 2, p: 2, bgcolor: 'error.light', color: 'error.contrastText', borderRadius: 2 }}>
+                                        <Typography variant="body2" fontWeight="bold">Motivo da Rejeição:</Typography>
+                                        <Typography variant="body2">{aulaSelecionada.motivoRejeicao}</Typography>
+                                    </Box>
+                                )}
+
+                                {aulaSelecionada.status === 'pendente' && (
+                                    <Box display="flex" justifyContent="flex-end" gap={2} mt={4}>
+                                        <Button
+                                            variant="outlined" color="error" size="large" startIcon={<CancelIcon />}
+                                            onClick={() => handleActionClick(aulaSelecionada, 'rejeitada')}
+                                        >
+                                            Rejeitar Proposta
+                                        </Button>
+                                        <Button
+                                            variant="contained" color="success" size="large" startIcon={<CheckCircleIcon />}
+                                            onClick={() => handleActionClick(aulaSelecionada, 'aprovada')}
+                                        >
+                                            Aprovar Proposta
+                                        </Button>
+                                    </Box>
+                                )}
+                            </Paper>
+                        ) : (
+                            <Paper elevation={1} sx={{ p: 4, textAlign: 'center', borderRadius: 3 }}>
+                                <Typography color="text.secondary">Selecione uma proposta à esquerda para ver os detalhes.</Typography>
+                            </Paper>
+                        )}
+                    </Grid>
+                </Grid>
             ) : (
                 <Box sx={{ textAlign: 'center', mt: 8 }}>
-                    {currentTab === 'pendente' ? (
-                        <>
-                            <TaskAltIcon sx={{ fontSize: 64, color: 'success.main', mb: 1 }} />
-                            <Typography color="success.main" variant="h6" fontWeight="bold">
-                                Tudo em dia!
-                            </Typography>
-                            <Typography color="text.secondary">
-                                Nenhuma proposta pendente no momento.
-                            </Typography>
-                        </>
-                    ) : (
-                        <Typography color="text.secondary" variant="h6">
-                            Nenhuma aula {currentTab === 'aprovada' ? 'aprovada' : 'rejeitada'} neste período.
-                        </Typography>
-                    )}
+                    <TaskAltIcon sx={{ fontSize: 64, color: 'success.main', mb: 1 }} />
+                    <Typography color="success.main" variant="h6" fontWeight="bold">Tudo em dia!</Typography>
+                    <Typography color="text.secondary">Nenhuma proposta nesta aba.</Typography>
                 </Box>
             )}
 
-            {/* Diálogo de confirmação */}
+            {/* Diálogo de confirmação com Motivo Obrigatório de Rejeição */}
             <Dialog open={confirmDialog.open} onClose={() => setConfirmDialog({ open: false, aula: null, acao: null })} maxWidth="xs" fullWidth>
                 <DialogTitle sx={{
                     bgcolor: confirmDialog.acao === 'aprovada' ? 'success.main' : 'error.main',
@@ -371,19 +452,30 @@ function GerenciarAprovacoes() {
                 <DialogContent sx={{ mt: 2 }}>
                     <DialogContentText>
                         {confirmDialog.acao === 'aprovada'
-                            ? <>Você está aprovando a aula <strong>"{confirmDialog.aula?.assunto}"</strong>. Ela será incluída no cronograma oficial e ficará visível para todos.</>
-                            : <>Você está rejeitando a aula <strong>"{confirmDialog.aula?.assunto}"</strong>. O técnico poderá ver a rejeição em "Minhas Propostas".</>
+                            ? <>Você está aprovando a aula <strong>"{confirmDialog.aula?.assunto}"</strong>. Ela será incluída no cronograma oficial.</>
+                            : <>Você está rejeitando a aula <strong>"{confirmDialog.aula?.assunto}"</strong>. Informe abaixo o motivo obrigatório.</>
                         }
                     </DialogContentText>
-                    {confirmDialog.aula && (
-                        <Box sx={{ mt: 2, p: 1.5, bgcolor: 'action.hover', borderRadius: 1 }}>
-                            <Typography variant="caption" display="block">🏛️ {confirmDialog.aula.laboratorioSelecionado || '—'}</Typography>
-                            <Typography variant="caption" display="block">📅 {(() => { try { return dayjs(confirmDialog.aula.dataInicio.toDate()).format('ddd, DD/MM/YYYY [às] HH:mm'); } catch { return '—'; } })()}</Typography>
-                            <Typography variant="caption" display="block">👤 {confirmDialog.aula.propostoPorNome || confirmDialog.aula.professorNome || 'N/A'}</Typography>
-                        </Box>
+
+                    {confirmDialog.acao === 'rejeitada' && (
+                        <TextField
+                            fullWidth
+                            multiline
+                            rows={3}
+                            label="Motivo da Rejeição *"
+                            placeholder="Ex: Laboratório indisponível para manutenção."
+                            value={motivoRejeicao}
+                            onChange={e => {
+                                setMotivoRejeicao(e.target.value);
+                                if (e.target.value.trim()) setMotivoErro(false);
+                            }}
+                            error={motivoErro}
+                            helperText={motivoErro ? 'O motivo é obrigatório para rejeitar.' : ''}
+                            sx={{ mt: 2 }}
+                        />
                     )}
                 </DialogContent>
-                <DialogActions>
+                <DialogActions sx={{ px: 3, pb: 2 }}>
                     <Button onClick={() => setConfirmDialog({ open: false, aula: null, acao: null })}>
                         Cancelar
                     </Button>
@@ -408,3 +500,4 @@ function GerenciarAprovacoes() {
 }
 
 export default GerenciarAprovacoes;
+

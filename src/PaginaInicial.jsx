@@ -536,7 +536,7 @@ const PaginaInicial = ({ userInfo }) => {
                 <Grid container spacing={2} sx={{ mb: 3 }}>
                     {/* Coluna esquerda: Cronograma Oficial com filtro de labs */}
                     <Grid item xs={12} md={6}>
-                        <Paper elevation={2} sx={{ overflow: 'hidden', height: '100%' }}>
+                        <Paper elevation={2} sx={{ overflow: 'hidden', height: '100%', borderLeft: '5px solid #1E7EC8' }}>
                             <Box sx={{ px: 2, py: 1.5, bgcolor: 'info.main', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                 <Box display="flex" alignItems="center" gap={1}>
                                     <Clock size={16} />
@@ -561,11 +561,45 @@ const PaginaInicial = ({ userInfo }) => {
                                 </Box>
                             </Box>
 
-                            {/* Aulas normais */}
+                            {/* Alerta de Aula em Breve (próximos 30 minutos) */}
                             {(() => {
-                                const aulasVisiveis = labsFavoritos.length > 0
+                                const agora = dayjs();
+                                const em30Min = agora.add(30, 'minute');
+                                const aulasFiltradas = labsFavoritos.length > 0
                                     ? aulasOficiaisHoje.filter(a => labsFavoritos.includes(a.laboratorioSelecionado))
                                     : aulasOficiaisHoje;
+                                
+                                const aulaEmBreve = aulasFiltradas.find(a => {
+                                    const inicio = a.dataInicio?.toDate ? dayjs(a.dataInicio.toDate()) : dayjs(a.dataInicio);
+                                    return inicio.isAfter(agora) && inicio.isBefore(em30Min);
+                                });
+
+                                if (!aulaEmBreve) return null;
+
+                                const inicio = aulaEmBreve.dataInicio?.toDate ? dayjs(aulaEmBreve.dataInicio.toDate()) : dayjs(aulaEmBreve.dataInicio);
+                                const diffMin = inicio.diff(agora, 'minute');
+
+                                return (
+                                    <Box sx={{ bgcolor: '#F5C518', color: '#000', px: 2, py: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                                        <Bell size={16} />
+                                        <Typography variant="caption" fontWeight="bold">
+                                            ⚠️ AULA EM BREVE ({diffMin === 0 ? 'agora' : `em ${diffMin} min`}): {aulaEmBreve.assunto} em {aulaEmBreve.laboratorioSelecionado}
+                                        </Typography>
+                                    </Box>
+                                );
+                            })()}
+
+                            {/* Aulas normais */}
+                            {(() => {
+                                const aulasVisiveis = (labsFavoritos.length > 0
+                                    ? aulasOficiaisHoje.filter(a => labsFavoritos.includes(a.laboratorioSelecionado))
+                                    : aulasOficiaisHoje
+                                ).sort((a, b) => {
+                                    const dA = a.dataInicio?.toDate ? a.dataInicio.toDate() : new Date(a.dataInicio);
+                                    const dB = b.dataInicio?.toDate ? b.dataInicio.toDate() : new Date(b.dataInicio);
+                                    return dA - dB;
+                                });
+
                                 if (aulasVisiveis.length === 0) return null;
                                 return (
                                     <>
@@ -579,20 +613,63 @@ const PaginaInicial = ({ userInfo }) => {
                                                 const dataInicio = aula.dataInicio?.toDate ? aula.dataInicio.toDate() : new Date(aula.dataInicio);
                                                 const dataFim = aula.dataFim?.toDate ? aula.dataFim.toDate() : null;
                                                 const horario = dataFim ? `${dayjs(dataInicio).format('HH:mm')} - ${dayjs(dataFim).format('HH:mm')}` : dayjs(dataInicio).format('HH:mm');
+
+                                                // Pill de tempo restante
+                                                const agora = dayjs();
+                                                const inicio = dayjs(dataInicio);
+                                                const fim = dataFim ? dayjs(dataFim) : inicio.add(1, 'hour');
+
+                                                let statusPill = null;
+                                                if (agora.isAfter(inicio) && agora.isBefore(fim)) {
+                                                    statusPill = <Chip label="em andamento" size="small" color="success" sx={{ height: 18, fontSize: '0.62rem' }} />;
+                                                } else if (inicio.isAfter(agora)) {
+                                                    const diffHoras = inicio.diff(agora, 'hour');
+                                                    const diffMin = inicio.diff(agora, 'minute');
+                                                    const tempoTexto = diffHoras > 0 ? `em ${diffHoras}h` : `em ${diffMin}m`;
+                                                    statusPill = <Chip label={tempoTexto} size="small" sx={{ height: 18, fontSize: '0.62rem', bgcolor: '#4AADE8', color: '#fff' }} />;
+                                                }
+
+                                                // Check de preparado via localStorage
+                                                const prepKey = `cronolab_preparado_${dayjs().format('YYYY-MM-DD')}_${aula.id}`;
+                                                const isPreparado = localStorage.getItem(prepKey) === 'true';
+
                                                 return (
                                                     <React.Fragment key={aula.id}>
                                                         {i > 0 && <Divider />}
-                                                        <ListItem sx={{ py: 1, px: 2 }}>
+                                                        <ListItem sx={{ py: 1, px: 2, opacity: isPreparado ? 0.75 : 1, bgcolor: isPreparado ? 'action.hover' : 'transparent' }}>
                                                             <ListItemText
-                                                                primary={<Typography variant="body2" fontWeight="medium">{aula.assunto || 'Sem título'}</Typography>}
+                                                                primary={
+                                                                    <Box display="flex" alignItems="center" gap={1}>
+                                                                        <Typography variant="body2" fontWeight="medium" sx={{ textDecoration: isPreparado ? 'line-through' : 'none' }}>
+                                                                            {aula.assunto || 'Sem título'}
+                                                                        </Typography>
+                                                                        {statusPill}
+                                                                        {isPreparado && <Chip label="Lab preparado ✓" size="small" color="success" variant="outlined" sx={{ height: 18, fontSize: '0.62rem' }} />}
+                                                                    </Box>
+                                                                }
                                                                 secondary={
-                                                                    <Box sx={{ display: 'flex', gap: 1, mt: 0.2, flexWrap: 'wrap' }}>
+                                                                    <Box sx={{ display: 'flex', gap: 1, mt: 0.2, flexWrap: 'wrap', alignItems: 'center' }}>
                                                                         <Typography variant="caption" color="text.secondary">🕐 {horario}</Typography>
                                                                         {aula.laboratorioSelecionado && <Typography variant="caption" color="text.secondary">🏛️ {aula.laboratorioSelecionado}</Typography>}
                                                                         {aula.professorNome && <Typography variant="caption" color="text.secondary">👨‍🏫 {aula.professorNome}</Typography>}
                                                                     </Box>
                                                                 }
                                                             />
+                                                            <Button
+                                                                size="small"
+                                                                variant={isPreparado ? "contained" : "outlined"}
+                                                                color={isPreparado ? "success" : "inherit"}
+                                                                sx={{ fontSize: '0.65rem', py: 0.3, px: 1, minWidth: 'auto' }}
+                                                                onClick={() => {
+                                                                    try {
+                                                                        if (isPreparado) localStorage.removeItem(prepKey);
+                                                                        else localStorage.setItem(prepKey, 'true');
+                                                                        fetchData(); // atualiza a interface
+                                                                    } catch {}
+                                                                }}
+                                                            >
+                                                                {isPreparado ? "✓ Preparado" : "Marcar Preparado"}
+                                                            </Button>
                                                         </ListItem>
                                                     </React.Fragment>
                                                 );
@@ -604,9 +681,15 @@ const PaginaInicial = ({ userInfo }) => {
 
                             {/* Revisões do cronograma oficial */}
                             {(() => {
-                                const revisVisiveis = labsFavoritos.length > 0
+                                const revisVisiveis = (labsFavoritos.length > 0
                                     ? revisoesOficiaisHoje.filter(a => labsFavoritos.includes(a.laboratorioSelecionado))
-                                    : revisoesOficiaisHoje;
+                                    : revisoesOficiaisHoje
+                                ).sort((a, b) => {
+                                    const dA = a.dataInicio?.toDate ? a.dataInicio.toDate() : new Date(a.dataInicio);
+                                    const dB = b.dataInicio?.toDate ? b.dataInicio.toDate() : new Date(b.dataInicio);
+                                    return dA - dB;
+                                });
+
                                 if (revisVisiveis.length === 0) return null;
                                 return (
                                     <>
@@ -672,7 +755,7 @@ const PaginaInicial = ({ userInfo }) => {
 
                     {/* Coluna direita: Agenda Privada do Técnico */}
                     <Grid item xs={12} md={6}>
-                        <Paper elevation={2} sx={{ overflow: 'hidden', height: '100%', border: '1px solid', borderColor: 'secondary.light' }}>
+                        <Paper elevation={2} sx={{ overflow: 'hidden', height: '100%', borderLeft: '5px solid #F5C518' }}>
                             <Box sx={{ px: 2, py: 1.5, bgcolor: 'secondary.main', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                 <Box display="flex" alignItems="center" gap={1}>
                                     <BookOpen size={16} />
