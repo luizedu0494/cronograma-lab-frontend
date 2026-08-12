@@ -168,11 +168,15 @@ function ConfiguracoesPerfil() {
             } catch (apiErr) {
               console.warn('[PUSH] API serverless indisponível localmente, salvando via Firestore direto:', apiErr);
               const { setDoc } = await import('firebase/firestore');
-              await setDoc(doc(db, 'fcmTokens', user.uid), {
+              await setDoc(doc(db, 'userTokens', user.uid), {
                 tokens: [token],
                 updatedAt: new Date()
               }, { merge: true });
-              console.log('[PUSH] Token salvo no Firestore (coleção fcmTokens)!');
+              await setDoc(doc(db, 'fcmTokens', user.uid), {
+                tokens: [token],
+                updatedAt: new Date()
+              }, { merge: true }).catch(() => {});
+              console.log('[PUSH] Token salvo no Firestore (coleção userTokens)!');
             }
 
             setSnackbarMessage('Notificações Push ativadas com sucesso neste dispositivo!');
