@@ -596,7 +596,7 @@ function CalendarioCronograma({ userInfo }) {
     const handleBulkDelete = async () => {
         setActionLoading(true);
         try {
-            const aulasParaLog = todasAulas.filter(a => selectedAulasIds.includes(a.id));
+            const aulasParaLog = aulas.filter(a => selectedAulasIds.includes(a.id));
             for (const aula of aulasParaLog) {
                 await registrarLogExclusao(aula, userInfo);
             }
