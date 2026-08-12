@@ -26,10 +26,7 @@ function ConfiguracoesPerfil() {
     const [pushLoading, setPushLoading] = useState(false);
 
     useEffect(() => {
-        if ('Notification' in window && Notification.permission === 'granted') {
-            setPushAtivo(true);
-        }
-        const fetchProfile = async () => {
+        const fetchProfileAndPushStatus = async () => {
             setLoading(true);
             const user = auth.currentUser;
             if (user) {
@@ -44,10 +41,25 @@ function ConfiguracoesPerfil() {
                 } else {
                     setError("Perfil não encontrado.");
                 }
+
+                // Verificar se já tem token cadastrado para este usuário
+                try {
+                    const tokenDocRef = doc(db, 'userTokens', user.uid);
+                    const tokenDocSnap = await getDoc(tokenDocRef);
+                    if (tokenDocSnap.exists() && (tokenDocSnap.data().tokens || []).length > 0) {
+                        setPushAtivo(true);
+                    } else if ('Notification' in window && Notification.permission === 'granted') {
+                        setPushAtivo(true);
+                    }
+                } catch (tErr) {
+                    if ('Notification' in window && Notification.permission === 'granted') {
+                        setPushAtivo(true);
+                    }
+                }
             }
             setLoading(false);
         };
-        fetchProfile();
+        fetchProfileAndPushStatus();
     }, []);
 
     const handleSaveProfile = async () => {
