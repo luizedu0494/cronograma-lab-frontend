@@ -57,8 +57,6 @@ class ProcessadorConsultas {
   }
 
   async processarComGroq(textoUsuario) {
-    if (!GROQ_API_KEY) return { erro: "Chave API Groq não configurada no .env." };
-
     // Injeta contexto temporal para a IA saber "hoje", "ontem", "amanhã"
     const agora = dayjs();
     const contextoTemporal = `
@@ -164,35 +162,47 @@ class ProcessadorConsultas {
     }
     `;
 
+    const payload = {
+      model: GROQ_MODEL,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: textoUsuario }
+      ],
+      temperature: 0.1,
+      response_format: { type: "json_object" }
+    };
+
     try {
-        const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${GROQ_API_KEY}`
-            },
-            body: JSON.stringify({
-                model: GROQ_MODEL,
-                messages: [
-                    { role: 'system', content: systemPrompt },
-                    { role: 'user', content: textoUsuario }
-                ],
-                temperature: 0.1, // Baixa temperatura = Mais obediência ao JSON
-                response_format: { type: "json_object" }
-            })
+      // 1. Tenta chamar via Serverless Function /api/groq (produção segura)
+      let response = await fetch('/api/groq', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ payload })
+      });
+
+      // Fallback para desenvolvimento local caso a API Key esteja no VITE_GROQ_API_KEY
+      if (!response.ok && GROQ_API_KEY) {
+        response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${GROQ_API_KEY}`
+          },
+          body: JSON.stringify(payload)
         });
+      }
 
-        if (!response.ok) throw new Error(`Erro API Groq: ${response.status}`);
+      if (!response.ok) throw new Error(`Erro API Groq: ${response.status}`);
 
-        const data = await response.json();
-        const conteudo = data.choices[0].message.content;
-        
-        // Tenta fazer o parse do JSON retornado pela IA
-        return JSON.parse(conteudo);
+      const data = await response.json();
+      const conteudo = data.choices?.[0]?.message?.content;
+      if (!conteudo) throw new Error("Resposta da IA veio vazia");
+      
+      return JSON.parse(conteudo);
 
     } catch (error) {
-        console.error("Erro Groq:", error);
-        return { erro: "Falha na inteligência do processador. Verifique a conexão." };
+      console.error("Erro Groq:", error);
+      return { erro: "Falha na inteligência do processador. Verifique a conexão." };
     }
   }
 }

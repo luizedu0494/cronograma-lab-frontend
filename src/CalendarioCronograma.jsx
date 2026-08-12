@@ -31,7 +31,8 @@ import DialogConfirmacao from './components/DialogConfirmacao';
 import { LISTA_CURSOS } from './constants/cursos';
 import EventoCard from './components/EventoCard';
 import { useSearchParams } from 'react-router-dom';
-import { notificadorTelegram } from './ia-estruturada/NotificadorTelegram';
+import { notificadorTelegram } from './services/NotificadorTelegram';
+import { registrarLogExclusao } from './services/loggerService';
 
 const BLOCOS_HORARIO = [
     { value: "07:00-09:10", label: "07:00 - 09:10" },
@@ -921,6 +922,7 @@ function CalendarioCronograma({ userInfo }) {
                                 isRevisao:        aulaParaAcao.isRevisao || false,
                                 tipoRevisaoLabel: aulaParaAcao.tipoRevisaoLabel || '',
                             }, 'excluir');
+                            await registrarLogExclusao(aulaParaAcao, userInfo);
                             await deleteDoc(doc(db, 'aulas', aulaParaAcao.id)); 
                             setIsDeleteModalOpen(false); 
                             fetchDados(); 

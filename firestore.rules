@@ -5,32 +5,23 @@ service cloud.firestore {
     // =====================================================================
     // Funções Auxiliares de Segurança
     // =====================================================================
+    function userDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
     function isSignedIn() {
       return request.auth != null;
     }
-
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
-
-    function getUserData(userId) {
-      return get(/databases/$(database)/documents/users/$(userId)).data;
-    }
-
-    function isCoordinator() {
-      return isSignedIn() && getUserData(request.auth.uid).role == 'coordenador';
-    }
-
-    function isTecnico() {
-      return isSignedIn() && getUserData(request.auth.uid).role == 'tecnico';
-    }
-
     function isUserApproved() {
-      return isSignedIn() && getUserData(request.auth.uid).approvalPending == false;
+      return isSignedIn() && (userDoc().status == 'aprovado' || userDoc().approvalPending == false);
     }
-
-    function isTecnicoApproved() {
-      return isTecnico() && isUserApproved();
+    function isCoordinator() {
+      return isUserApproved() && userDoc().role == 'coordenador';
+    }
+    function isTecnico() {
+      return isUserApproved() && userDoc().role == 'tecnico';
     }
 
     // =====================================================================
@@ -40,13 +31,8 @@ service cloud.firestore {
       allow read: if isSignedIn() && (isOwner(userId) || isCoordinator());
       allow create: if isSignedIn() &&
                        isOwner(userId) &&
-                       request.resource.data.email == request.auth.token.email &&
-                       request.resource.data.approvalPending == true &&
-                       request.resource.data.role == null;
+                       request.resource.data.email == request.auth.token.email;
       allow update: if isSignedIn() && (isOwner(userId) || isCoordinator());
-
-      // CORREÇÃO: coordenador pode excluir qualquer usuário
-      // Antes não havia regra de delete → Firestore bloqueava por padrão
       allow delete: if isCoordinator();
     }
 
@@ -54,11 +40,12 @@ service cloud.firestore {
     // Regras para a coleção 'aulas'
     // =====================================================================
     match /aulas/{aulaId} {
-      allow read: if true;
+      allow read: if isSignedIn() && isUserApproved();
 
       allow create: if isSignedIn() && isUserApproved() && (
         isCoordinator() ||
         (
+          isTecnico() &&
           (
             request.resource.data.propostoPorUid == request.auth.uid ||
             request.resource.data.professorUid == request.auth.uid
@@ -67,82 +54,82 @@ service cloud.firestore {
         )
       );
 
-      allow update, delete: if isSignedIn() && isUserApproved() && (
+      allow update: if isSignedIn() && isUserApproved() && (
         isCoordinator() ||
         (
-          (
-            resource.data.propostoPorUid == request.auth.uid ||
-            resource.data.professorUid == request.auth.uid
-          ) &&
-          resource.data.status == 'pendente'
+          isTecnico() &&
+          resource.data.propostoPorUid == request.auth.uid &&
+          resource.data.status == 'pendente' &&
+          request.resource.data.status == 'pendente'
         )
       );
+
+      allow delete: if isCoordinator();
     }
 
     // =====================================================================
     // Regras para a coleção 'revisoesTecnicos'
     // =====================================================================
     match /revisoesTecnicos/{revisaoId} {
-      allow read: if isTecnicoApproved();
+      allow read: if isUserApproved();
 
-      allow create: if isTecnicoApproved() &&
-                       request.resource.data.criadoPorUid == request.auth.uid;
+      allow create: if isTecnico() &&
+                       (request.resource.data.tecnicoUid == request.auth.uid || request.resource.data.criadoPorUid == request.auth.uid);
 
-      allow update: if isTecnicoApproved();
+      allow update: if isTecnico();
 
-      allow delete: if isTecnicoApproved() &&
-                       resource.data.criadoPorUid == request.auth.uid;
+      allow delete: if isTecnico() &&
+                       (resource.data.tecnicoUid == request.auth.uid || resource.data.criadoPorUid == request.auth.uid);
     }
 
     // =====================================================================
     // Regras para a coleção 'eventosManutencao'
     // =====================================================================
     match /eventosManutencao/{eventoId} {
-      allow read: if true;
-      allow write: if isCoordinator() && isUserApproved();
+      allow read: if isUserApproved();
+      allow write: if isCoordinator();
     }
 
     // =====================================================================
     // Regras para a coleção 'logs'
     // =====================================================================
     match /logs/{logId} {
-      allow read: if isSignedIn() && isUserApproved();
-      allow create: if isSignedIn() && isUserApproved();
-      allow update, delete: if false;
+      allow read: if isCoordinator();
+      allow create: if isUserApproved();
+      allow update, delete: if false; // Logs são imutáveis
     }
 
     // =====================================================================
     // Regras para a coleção 'avisos' e subcoleções
     // =====================================================================
     match /avisos/{avisoId} {
-      allow read: if true;
+      allow read: if isUserApproved();
       allow write: if isCoordinator();
     }
 
     match /avisos/{avisoId}/leituras/{userId} {
-      allow read: if isSignedIn();
-      allow create: if isOwner(userId);
-      allow update, delete: if false;
+      allow read: if isCoordinator() || isOwner(userId);
+      allow write: if isOwner(userId);
     }
 
     // =====================================================================
     // Outras Coleções
     // =====================================================================
     match /config/{docId} {
-      allow read: if true;
+      allow read: if isUserApproved();
       allow write: if isCoordinator();
     }
 
-    match /laboratorios/{docId} { allow read: if true; allow write: if isCoordinator(); }
-    match /cursos/{docId}       { allow read: if true; allow write: if isCoordinator(); }
-    match /periodosSemAtividade/{docId} { allow read: if true; allow write: if isCoordinator(); }
-    match /grupos/{docId}       { allow read: if true; allow write: if isCoordinator(); }
+    match /laboratorios/{docId} { allow read: if isUserApproved(); allow write: if isCoordinator(); }
+    match /cursos/{docId}       { allow read: if isUserApproved(); allow write: if isCoordinator(); }
+    match /periodosSemAtividade/{docId} { allow read: if isUserApproved(); allow write: if isCoordinator(); }
+    match /grupos/{docId}       { allow read: if isUserApproved(); allow write: if isCoordinator(); }
 
     match /userTokens/{userId}  { allow read, write: if isOwner(userId); }
     match /pushTokens/{userId}  { allow read, write: if isOwner(userId); }
 
     match /system/{docId} {
-      allow read: if isSignedIn();
+      allow read: if isUserApproved();
       allow write: if isCoordinator();
     }
   }

@@ -21,7 +21,7 @@ import isBetween from 'dayjs/plugin/isBetween';
 import { LISTA_LABORATORIOS, TIPOS_LABORATORIO } from './constants/laboratorios';
 import PropTypes from 'prop-types';
 import DialogConfirmacao from './components/DialogConfirmacao';
-import { notificadorTelegram } from './ia-estruturada/NotificadorTelegram';
+import { notificadorTelegram } from './services/NotificadorTelegram';
 
 dayjs.locale('pt-br');
 dayjs.extend(isBetween);
@@ -415,7 +415,7 @@ function ProporEventoForm({ userInfo, currentUser, initialDate, onSuccess, onCan
                         <Grid item xs={12} md={6}>
                             <Paper elevation={3} sx={{ p: 3, borderLeft: '5px solid #1976d2', height: '100%' }}>
                                 <Typography variant="h6" gutterBottom>1. Detalhes do Evento</Typography>
-                                <FormControl sx={{ minWidth: 120 }} sx={{ mb: 2 }}>
+                                <FormControl sx={{ minWidth: 120, mb: 2 }}>
                                     <InputLabel shrink>Tipo *</InputLabel>
                                     <Select name="tipo" value={formData.tipo} label="Tipo *" onChange={handleChange}>
                                         {EVENT_TYPES.map(t => <MenuItem key={t} value={t}>{t}</MenuItem>)}

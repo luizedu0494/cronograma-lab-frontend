@@ -4,7 +4,7 @@ import {
 } from 'firebase/firestore';
 import dayjs from 'dayjs';
 import 'dayjs/locale/pt-br';
-import { notificadorTelegram } from './NotificadorTelegram';
+import { notificadorTelegram } from '../services/NotificadorTelegram';
 // Importante: Lista de labs para calcular ociosidade e normalizar nomes
 import { LISTA_LABORATORIOS } from '../constants/laboratorios'; 
 

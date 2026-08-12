@@ -21,7 +21,7 @@ import {
 import dayjs from 'dayjs';
 import 'dayjs/locale/pt-br';
 import { LISTA_CURSOS } from './constants/cursos';
-import { notificadorTelegram } from './ia-estruturada/NotificadorTelegram';
+import { notificadorTelegram } from './services/NotificadorTelegram';
 
 const TELEGRAM_CHAT_ID = import.meta.env.VITE_TELEGRAM_CHAT_ID;
 
@@ -155,7 +155,7 @@ function GerenciarAprovacoes() {
     }, []);
 
     // ── Aprovadas/Rejeitadas: filtradas por mês/ano ───────────────────────
-    const fetchAulasDoMes = useCallback(() => {
+    useEffect(() => {
         setLoadingMes(true);
         const start = dayjs().year(selectedYear).month(selectedMonth).startOf('month');
         const end   = dayjs().year(selectedYear).month(selectedMonth).endOf('month');
@@ -175,11 +175,6 @@ function GerenciarAprovacoes() {
         });
         return () => unsub();
     }, [selectedMonth, selectedYear]);
-
-    useEffect(() => {
-        const unsub = fetchAulasDoMes();
-        return () => unsub();
-    }, [fetchAulasDoMes]);
 
     // Abre o diálogo de confirmação ao clicar em Aprovar/Rejeitar
     const handleActionClick = (aula, acao) => {

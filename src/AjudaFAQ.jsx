@@ -96,8 +96,7 @@ const faqData = [
     resposta: 'Acesse "Minhas Designações" no menu. Lá estão listadas todas as aulas aprovadas nas quais o coordenador te designou como técnico responsável. Você pode filtrar por próximas ou passadas.',
   },
   {
-    id: 'faq-tecnico-propor-aula',
-    categoria: 'tecnico',
+    id: 'faq-coord-painel',
     categoria: 'coordenador',
     pergunta: 'O que aparece no painel inicial do coordenador?',
     resposta: 'O painel do coordenador exibe:\n\n• 6 KPIs: aulas hoje, revisões hoje, total de aulas no semestre, total de revisões, propostas pendentes (com alerta) e total de eventos de manutenção\n• Abas: Aulas Recentes e Eventos Recentes\n• Calendário Acadêmico (pode ativar/desativar para alunos)\n• Assistente IA para análises',

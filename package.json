@@ -35,6 +35,7 @@
     "xlsx": "^0.18.5"
   },
   "scripts": {
+    "dev": "vite",
     "start": "vite",
     "build": "vite build",
     "serve": "vite preview"

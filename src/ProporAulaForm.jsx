@@ -20,7 +20,7 @@ import { LISTA_LABORATORIOS, TIPOS_LABORATORIO } from './constants/laboratorios'
 import { LISTA_CURSOS as LISTA_CURSOS_CONSTANTS } from './constants/cursos';
 import PropTypes from 'prop-types';
 import DialogConfirmacao from './components/DialogConfirmacao';
-import { notificadorTelegram } from './ia-estruturada/NotificadorTelegram';
+import { notificadorTelegram } from './services/NotificadorTelegram';
 
 dayjs.locale('pt-br');
 

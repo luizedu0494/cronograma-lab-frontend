@@ -39,7 +39,6 @@ const HEADER_TO_FIELD_MAP = {
 };
 
 function UploadAulasForm() {
-  const [file, setFile] = useState(null); // Este estado não estava sendo usado, mas não causa o erro
   const [loading, setLoading] = useState(false);
   
   // --- Definição do estado de feedback ---
