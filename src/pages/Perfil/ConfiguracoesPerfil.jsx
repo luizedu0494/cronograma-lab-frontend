@@ -22,9 +22,15 @@ function ConfiguracoesPerfil() {
     const [snackbarSeverity, setSnackbarSeverity] = useState('success');
     
     const [telegramChatId, setTelegramChatId] = useState('');
-    const [pushLoading, setPushLoading] = useState(false);
+    const [pushAtivo, setPushAtivo] = useState(false);
 
     useEffect(() => {
+        if ('Notification' in window && Notification.permission === 'granted') {
+            setPushAtivo(true);
+        }
+    }, []);
+
+    const handleSaveProfile = async () => {
         const fetchProfile = async () => {
             setLoading(true);
             const user = auth.currentUser;
@@ -179,6 +185,7 @@ function ConfiguracoesPerfil() {
               console.log('[PUSH] Token salvo no Firestore (coleção userTokens)!');
             }
 
+            setPushAtivo(true);
             setSnackbarMessage('Notificações Push ativadas com sucesso neste dispositivo!');
             setSnackbarSeverity('success');
             setOpenSnackbar(true);
@@ -228,14 +235,26 @@ function ConfiguracoesPerfil() {
                     <Grid item xs={12}><TextField fullWidth label="Cargo" value={userProfile.role || 'Pendente'} disabled /></Grid>
                     
                     <Grid item xs={12}>
+                        <Alert severity={pushAtivo ? "success" : "info"} sx={{ mb: 1 }}>
+                            {pushAtivo 
+                              ? "As Notificações Push estão ativadas e autorizadas neste navegador."
+                              : "Clique abaixo para receber alertas instantâneos de aulas e avisos. Certifique-se de permitir as notificações na janela/pop-up do navegador (ícone 🔒 do lado da URL)."
+                            }
+                        </Alert>
                         <Button
-                            variant="outlined"
-                            startIcon={pushLoading ? <CircularProgress size={20} /> : <NotificationsIcon />}
+                            variant={pushAtivo ? "contained" : "outlined"}
+                            color={pushAtivo ? "success" : "primary"}
+                            startIcon={pushLoading ? <CircularProgress size={20} color="inherit" /> : <NotificationsIcon />}
                             onClick={handleAtivarPush}
                             disabled={pushLoading}
                             fullWidth
                         >
-                            {pushLoading ? 'Ativando Notificações...' : 'Ativar Notificações Push no Navegador'}
+                            {pushLoading 
+                              ? 'Ativando Notificações...' 
+                              : pushAtivo 
+                                ? 'Notificações Push Ativas neste Dispositivo' 
+                                : 'Ativar Notificações Push no Navegador'
+                            }
                         </Button>
                     </Grid>
 
