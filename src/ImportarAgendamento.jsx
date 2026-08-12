@@ -889,7 +889,7 @@ function ImportarAgendamento({ userInfo, currentUser }) {
                             ].map(({ label, count, color }) => (
                                 <Grid item xs={6} key={label}>
                                     <Paper variant="outlined" sx={{ p: 2.5, textAlign: 'center', borderColor: `${color}.main`, borderRadius: 2 }}>
-                                        <Typography variant="h3" color={`${color}.main`} fontWeight={800}>{count}</Typography>
+                                        <Typography variant="h3" color={`${color}.main`} fontWeight={700}>{count}</Typography>
                                         <Typography variant="body2" color="text.secondary">{label}</Typography>
                                     </Paper>
                                 </Grid>

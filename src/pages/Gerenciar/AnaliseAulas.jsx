@@ -31,19 +31,12 @@ import {
 } from 'chart.js';
 import { LISTA_CURSOS } from '../../constants/cursos';
 import { LISTA_LABORATORIOS } from '../../constants/laboratorios';
+import { CURSO_COLORS } from '../../constants/cursoColors';
 import dayjs from 'dayjs';
 import 'dayjs/locale/pt-br';
 
 dayjs.locale('pt-br');
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement);
-
-const CURSO_COLORS = {
-    'biomedicina': 'rgba(76, 175, 80, 0.7)', 'farmacia': 'rgba(244, 67, 54, 0.7)', 'enfermagem': 'rgba(33, 150, 243, 0.7)',
-    'odontologia': 'rgba(255, 152, 0, 0.7)', 'medicina': 'rgba(156, 39, 176, 0.7)', 'fisioterapia': 'rgba(255, 193, 7, 0.7)',
-    'nutricao': 'rgba(0, 188, 212, 0.7)', 'ed_fisica': 'rgba(121, 85, 72, 0.7)', 'psicologia': 'rgba(233, 30, 99, 0.7)',
-    'med_veterinaria': 'rgba(139, 195, 74, 0.7)', 'quimica_tecnologica': 'rgba(96, 125, 139, 0.7)', 'engenharia': 'rgba(158, 158, 158, 0.7)',
-    'tec_cosmetico': 'rgba(63, 81, 181, 0.7)', 'default': 'rgba(97, 97, 97, 0.7)'
-};
 
 const PIE_CHART_COLORS = ['#42a5f5', '#ab47bc', '#ffa726', '#66bb6a', '#ef5350', '#26c6da', '#78909c'];
 

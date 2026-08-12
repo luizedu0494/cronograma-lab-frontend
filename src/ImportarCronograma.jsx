@@ -1019,7 +1019,7 @@ function ImportarCronograma() {
               <Typography variant="h5" fontWeight={700} mt={2}>
                 {resultadoImportacao.erros.length === 0 ? 'Importação concluída!' : 'Importação com avisos'}
               </Typography>
-              <Typography variant="h3" fontWeight={800} color="success.main" mt={1}>
+              <Typography variant="h3" fontWeight={700} color="success.main" mt={1}>
                 {resultadoImportacao.salvos}
               </Typography>
               <Typography variant="body1" color="text.secondary">aulas importadas com sucesso</Typography>

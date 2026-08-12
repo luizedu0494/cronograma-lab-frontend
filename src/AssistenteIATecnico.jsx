@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
     Container, Typography, Box, Paper, TextField, Button, CircularProgress,
-    Alert, Snackbar, IconButton
+    Alert, Snackbar, IconButton, InputAdornment, Chip, Avatar
 } from '@mui/material';
-import { Send as SendIcon, SmartToy as AIIcon, Mic as MicIcon, Stop as StopIcon } from '@mui/icons-material';
+import { Send as SendIcon, SmartToy as AIIcon, Mic as MicIcon, Stop as StopIcon, Person as PersonIcon } from '@mui/icons-material';
 import { db } from './firebaseConfig';
 import {
     collection, query, where, getDocs, Timestamp
@@ -318,15 +318,6 @@ function AssistenteIATecnico({ userInfo, currentUser, mode }) {
 
     const renderMensagem = (mensagem, index) => {
         const isUsuario = mensagem.tipo === 'usuario';
-        const isIA = mensagem.tipo === 'ia';
-
-        const backgroundColor = isUsuario
-            ? (mode === 'dark' ? '#3f51b5' : '#3f51b5')
-            : (mode === 'dark' ? '#424242' : '#f0f0f0');
-
-        const color = isUsuario
-            ? '#ffffff'
-            : (mode === 'dark' ? '#ffffff' : '#000000');
 
         return (
             <Box
@@ -334,19 +325,29 @@ function AssistenteIATecnico({ userInfo, currentUser, mode }) {
                 sx={{ display: 'flex', justifyContent: isUsuario ? 'flex-end' : 'flex-start', mb: 2 }}
             >
                 <Paper
-                    elevation={3}
+                    elevation={2}
                     sx={{
                         p: 1.5,
                         maxWidth: '80%',
-                        borderRadius: isUsuario ? '20px 20px 5px 20px' : '20px 20px 20px 5px',
-                        backgroundColor: backgroundColor,
-                        color: color,
+                        borderRadius: isUsuario ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
+                        backgroundColor: isUsuario ? 'primary.main' : 'action.hover',
+                        color: isUsuario ? 'primary.contrastText' : 'text.primary',
                         wordBreak: 'break-word',
                         whiteSpace: 'pre-wrap',
+                        border: isUsuario ? 'none' : '1px solid',
+                        borderColor: 'divider'
                     }}
                 >
                     <Typography variant="body1">{mensagem.texto}</Typography>
-                    <Typography variant="caption" sx={{ display: 'block', textAlign: 'right', mt: 0.5, opacity: 0.7 }}>
+                    <Typography 
+                        variant="caption" 
+                        sx={{ 
+                            display: 'block', 
+                            textAlign: 'right', 
+                            mt: 0.5, 
+                            color: isUsuario ? 'rgba(255, 255, 255, 0.8)' : 'text.secondary' 
+                        }}
+                    >
                         {dayjs(mensagem.timestamp).format('HH:mm')}
                     </Typography>
                 </Paper>
@@ -364,50 +365,82 @@ function AssistenteIATecnico({ userInfo, currentUser, mode }) {
 
     return (
         <Container maxWidth="lg" sx={{ mt: 4, display: 'flex', flexDirection: 'column', height: 'calc(100vh - 100px)' }}>
-            <Paper elevation={5} sx={{ p: 2, mb: 2 }}>
-                <Box display="flex" alignItems="center">
-                    <AIIcon color="primary" sx={{ mr: 1.5, fontSize: 32 }} />
-                    <Typography variant="h5" component="h1" fontWeight="bold">
-                        Assistente IA de Consulta (Técnico)
-                    </Typography>
+            <Paper elevation={3} sx={{ p: 2.5, mb: 2, borderRadius: 2, borderLeft: '5px solid', borderColor: 'primary.main' }}>
+                <Box display="flex" alignItems="center" justifyContent="space-between" flexWrap="wrap" gap={1}>
+                    <Box display="flex" alignItems="center">
+                        <Avatar sx={{ bgcolor: 'primary.main', mr: 1.5 }}>
+                            <AIIcon />
+                        </Avatar>
+                        <Box>
+                            <Typography variant="h6" component="h1" fontWeight={700}>
+                                Assistente IA de Consulta
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                                CronoLab — CESMAC
+                            </Typography>
+                        </Box>
+                    </Box>
+                    <Chip 
+                        icon={<PersonIcon fontSize="small" />} 
+                        label={userInfo?.role === 'coordenador' ? 'Perfil Coordenador' : 'Perfil Técnico'} 
+                        color="primary" 
+                        variant="outlined" 
+                        size="small" 
+                    />
                 </Box>
-                <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                    Use texto ou voz para consultar o cronograma de aulas. Ex: "Quais aulas estão no Anatomia 1 amanhã?" ou "Existe alguma aula sobre bcmol este mês?".
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 1.5 }}>
+                    Use texto ou voz para consultar o cronograma de aulas. Ex: <em>"Quais aulas estão no Anatomia 1 amanhã?"</em> ou <em>"Existe alguma aula sobre bcmol este mês?"</em>.
                 </Typography>
             </Paper>
 
-            <Paper elevation={5} sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', p: 2, overflow: 'hidden' }}>
+            <Paper elevation={3} sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', p: 2.5, overflow: 'hidden', borderRadius: 2 }}>
                 <Box sx={{ flexGrow: 1, overflowY: 'auto', p: 1, mb: 2 }}>
                     {mensagens.map(renderMensagem)}
+                    {carregando && (
+                        <Box display="flex" alignItems="center" sx={{ mb: 2 }}>
+                            <Paper elevation={1} sx={{ p: 1.5, borderRadius: '16px 16px 16px 4px', bgcolor: 'action.hover', display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <CircularProgress size={16} />
+                                <Typography variant="body2" color="text.secondary">Assistente IA está pesquisando...</Typography>
+                            </Paper>
+                        </Box>
+                    )}
                     <div ref={messagesEndRef} />
                 </Box>
 
-                <Box display="flex" alignItems="center" sx={{ p: 1, mt: 1 }}>
+                <Box display="flex" alignItems="center" sx={{ gap: 1 }}>
                     <TextField
                         fullWidth
+                        size="small"
                         variant="outlined"
-                        placeholder={isRecording ? "Ouvindo..." : "Digite sua consulta..."}
+                        placeholder={isRecording ? "Ouvindo..." : "Digite sua mensagem..."}
                         value={inputUsuario}
                         onChange={(e) => setInputUsuario(e.target.value)}
                         onKeyPress={(e) => e.key === 'Enter' && handleSend()}
                         disabled={carregando || isRecording}
-                        sx={{ mr: 1 }}
+                        InputProps={{
+                            endAdornment: (
+                                <InputAdornment position="end">
+                                    <IconButton
+                                        color={isRecording ? "error" : "default"}
+                                        onClick={handleMicClick}
+                                        disabled={carregando}
+                                        size="small"
+                                        title={isRecording ? "Parar de ouvir" : "Falar por voz"}
+                                    >
+                                        {isRecording ? <StopIcon fontSize="small" /> : <MicIcon fontSize="small" />}
+                                    </IconButton>
+                                </InputAdornment>
+                            )
+                        }}
                     />
-                    <IconButton
-                        color={isRecording ? "error" : "primary"}
-                        onClick={handleMicClick}
-                        disabled={carregando}
-                        size="large"
-                    >
-                        {isRecording ? <StopIcon /> : <MicIcon />}
-                    </IconButton>
                     <Button
                         variant="contained"
+                        color="primary"
                         onClick={() => handleSend()}
                         disabled={!inputUsuario.trim() || carregando || isRecording}
-                        sx={{ ml: 1 }}
+                        sx={{ minWidth: 48, px: 2.5 }}
                     >
-                        {carregando ? <CircularProgress size={24} /> : <SendIcon />}
+                        {carregando ? <CircularProgress size={20} color="inherit" /> : <SendIcon fontSize="small" />}
                     </Button>
                 </Box>
             </Paper>

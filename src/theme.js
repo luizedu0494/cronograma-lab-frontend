@@ -37,6 +37,17 @@ const lightPalette = {
     background: { default: '#F2F4F8', paper: '#FFFFFF' },
     text:       { primary: '#0D1B2A', secondary: '#4A5568', disabled: '#94A3B8' },
     divider:    'rgba(0, 0, 0, 0.08)',
+    curso: {
+        biomedicina: '#4CAF50', farmacia: '#F44336', enfermagem: '#2196F3',
+        odontologia: '#FF9800', medicina: '#9C27B0', fisioterapia: '#FFC107',
+        nutricao: '#00BCD4', ed_fisica: '#795548', psicologia: '#E91E63',
+        med_veterinaria: '#8BC34A', quimica_tecnologica: '#607D8B', engenharia: '#9E9E9E',
+        tec_cosmetico: '#3F51B5', default: '#616161',
+    },
+    evento: {
+        manutencao: '#F44336', feriado: '#FF9800', evento: CESMAC_BLUE_MAIN,
+        giro: '#9C27B0', outro: '#607D8B',
+    },
 };
 
 // ─── Paleta dark ──────────────────────────────────────────────────────────────
@@ -51,6 +62,17 @@ const darkPalette = {
     background: { default: '#0B0F18', paper: '#131826' },
     text:       { primary: '#E8EDF5', secondary: '#8898B8', disabled: '#485880' },
     divider:    'rgba(255, 255, 255, 0.08)',
+    curso: {
+        biomedicina: '#4CAF50', farmacia: '#F44336', enfermagem: '#2196F3',
+        odontologia: '#FF9800', medicina: '#9C27B0', fisioterapia: '#FFC107',
+        nutricao: '#00BCD4', ed_fisica: '#795548', psicologia: '#E91E63',
+        med_veterinaria: '#8BC34A', quimica_tecnologica: '#607D8B', engenharia: '#9E9E9E',
+        tec_cosmetico: '#3F51B5', default: '#616161',
+    },
+    evento: {
+        manutencao: '#F44336', feriado: '#FF9800', evento: CESMAC_BLUE_LIGHT,
+        giro: '#9C27B0', outro: '#607D8B',
+    },
 };
 
 // ─── Tema ─────────────────────────────────────────────────────────────────────
@@ -63,15 +85,15 @@ const getAppTheme = (mode) => createTheme({
 
     typography: {
         fontFamily: '"Sora", "Inter", "Roboto", "Helvetica", "Arial", sans-serif',
-        h1: { fontWeight: 700, fontSize: '2.5rem',    lineHeight: 1.2 },
-        h2: { fontWeight: 600, fontSize: '2rem',      lineHeight: 1.3 },
-        h3: { fontWeight: 600, fontSize: '1.75rem',   lineHeight: 1.3 },
-        h4: { fontWeight: 600, fontSize: '1.5rem',    lineHeight: 1.4 },
-        h5: { fontWeight: 600, fontSize: '1.25rem',   lineHeight: 1.4 },
-        h6: { fontWeight: 600, fontSize: '1.125rem',  lineHeight: 1.4 },
-        body1:   { fontSize: '1rem',     lineHeight: 1.6 },
-        body2:   { fontSize: '0.875rem', lineHeight: 1.6 },
-        caption: { fontSize: '0.75rem',  lineHeight: 1.5 },
+        h1: { fontWeight: 700, fontSize: '2.25rem', lineHeight: 1.2, letterSpacing: '-0.02em' },
+        h2: { fontWeight: 700, fontSize: '1.75rem', lineHeight: 1.3, letterSpacing: '-0.01em' },
+        h3: { fontWeight: 600, fontSize: '1.4rem',  lineHeight: 1.3 },
+        h4: { fontWeight: 600, fontSize: '1.2rem',  lineHeight: 1.4 },
+        h5: { fontWeight: 600, fontSize: '1.05rem', lineHeight: 1.4 },
+        h6: { fontWeight: 600, fontSize: '0.925rem',lineHeight: 1.4 },
+        body1:   { fontSize: '0.925rem', lineHeight: 1.6 },
+        body2:   { fontSize: '0.825rem', lineHeight: 1.5 },
+        caption: { fontSize: '0.78rem',  lineHeight: 1.5, letterSpacing: '0.01em' },
         button:  { textTransform: 'none', fontWeight: 500 },
     },
 
@@ -90,6 +112,12 @@ const getAppTheme = (mode) => createTheme({
     ],
 
     components: {
+        MuiSnackbar: {
+            defaultProps: {
+                anchorOrigin: { vertical: 'bottom', horizontal: 'center' },
+            },
+        },
+
         MuiCssBaseline: {
             styleOverrides: {
                 body: {
@@ -174,12 +202,16 @@ const getAppTheme = (mode) => createTheme({
                     borderRadius: 8,
                     textTransform: 'none',
                     fontWeight: 500,
+                    minHeight: 40,
                     padding: '8px 20px',
-                    transition: 'all 0.18s ease',
-                    '&:hover': { transform: 'translateY(-1px)' },
-                    '&:active': { transform: 'translateY(0)' },
+                    transition: 'transform 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease',
+                    '&:hover': { 
+                        transform: 'translateY(-1px)',
+                        boxShadow: mode === 'light' ? '0 4px 12px rgba(30,126,200,0.25)' : '0 4px 12px rgba(0,0,0,0.4)',
+                    },
+                    '&:active': { transform: 'translateY(0)', boxShadow: 'none' },
                 },
-                contained: { boxShadow: 'none', '&:hover': { boxShadow: 'none' } },
+                contained: { boxShadow: 'none' },
                 containedPrimary: {
                     background: mode === 'light' ? CESMAC_BLUE_MAIN : CESMAC_BLUE_LIGHT,
                     color: mode === 'light' ? '#ffffff' : '#0B0F18',

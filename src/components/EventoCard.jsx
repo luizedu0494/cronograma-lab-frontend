@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
-import { Paper, Box, Typography, Collapse, Divider, Tooltip, IconButton, Menu, MenuItem, Chip } from '@mui/material';
+import { Paper, Box, Typography, Collapse, Divider, Tooltip, IconButton, Menu, MenuItem, Chip, ButtonBase } from '@mui/material';
 import { MoreVert as MoreVertIcon, Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import dayjs from 'dayjs';
 
 const EVENT_COLORS = {
     'Manutenção': '#f44336',
     'Feriado': '#ff9800',
-    'Evento': '#2196f3',
+    'Evento': '#1E7EC8', // Azul CESMAC institucional
     'Giro': '#9c27b0',
     'Outro': '#607d8b',
     'default': '#757575'
@@ -52,8 +52,8 @@ const EventoCard = ({ evento, onEdit, onDelete, isCoordenador }) => {
                 mb: 1, 
                 position: 'relative',
                 borderLeft: `4px solid ${color}`,
-                transition: 'all 0.2s ease-in-out',
-                bgcolor: 'rgba(0,0,0,0.02)'
+                transition: 'box-shadow 0.2s ease-in-out, transform 0.15s ease-in-out',
+                bgcolor: 'background.paper'
             }}
         >
             {isCoordenador && (
@@ -69,10 +69,19 @@ const EventoCard = ({ evento, onEdit, onDelete, isCoordenador }) => {
                     </Menu>
                 </>
             )}
-            <Box onClick={() => setExpanded(!expanded)} sx={{ p: 1.5, cursor: 'pointer' }}>
+            <ButtonBase 
+                onClick={() => setExpanded(!expanded)} 
+                sx={{ 
+                    p: 1.5, 
+                    width: '100%', 
+                    display: 'block', 
+                    textAlign: 'left', 
+                    borderRadius: 1 
+                }}
+            >
                 <Box>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
-                        <Chip label={evento.tipo} size="small" sx={{ height: 16, fontSize: '0.6rem', bgcolor: color, color: 'white' }} />
+                        <Chip label={evento.tipo} size="small" sx={{ fontSize: '0.75rem', bgcolor: color, color: 'white', fontWeight: 600 }} />
                     </Box>
                     <Typography variant="subtitle2" fontWeight="bold" sx={{ pr: '30px', lineHeight: 1.2 }}>{evento.titulo}</Typography>
                     <Typography variant="caption" color="text.secondary">
@@ -86,7 +95,7 @@ const EventoCard = ({ evento, onEdit, onDelete, isCoordenador }) => {
                         {evento.descricao && <Typography variant="body2"><strong>Descrição:</strong> {evento.descricao}</Typography>}
                     </Box>
                 </Collapse>
-            </Box>
+            </ButtonBase>
         </Paper>
     );
 };

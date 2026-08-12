@@ -2,8 +2,10 @@ import React, { useMemo, useState } from 'react';
 import {
   Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, Paper, Chip, Tooltip, Typography, Box,
-  Dialog, DialogTitle, DialogContent, DialogActions, Button, Divider
+  Dialog, DialogTitle, DialogContent, DialogActions, Button, Divider,
+  Accordion, AccordionSummary, AccordionDetails, useMediaQuery, useTheme
 } from '@mui/material';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { LISTA_LABORATORIOS } from '../constants/laboratorios';
 import { toDataLocal, toHorariosArray } from '../utils/dateHelper';
 
@@ -26,6 +28,8 @@ const BLOCOS = [
  */
 export default function GradeDisponibilidade({ aulas = [], dataFoco, tiposLab = [], onCelulaClick }) {
   const [modalDetalhes, setModalDetalhes] = useState(null); // { lab, bloco, ocupado, aulas: [...] }
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   // Labs filtrados por tipo (se filtro aplicado)
   const labsVisiveis = useMemo(() => {
@@ -90,54 +94,102 @@ export default function GradeDisponibilidade({ aulas = [], dataFoco, tiposLab = 
   };
 
   return (
-    <Box sx={{ overflowX: 'auto' }}>
+    <Box>
       <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
-        Clique em qualquer célula para visualizar os detalhes de ocupação ou disponibilidade.
+        Clique em qualquer {isMobile ? 'bloco' : 'célula'} para visualizar os detalhes de ocupação ou disponibilidade.
       </Typography>
-      <TableContainer component={Paper} variant="outlined">
-        <Table size="small" stickyHeader>
-          <TableHead>
-            <TableRow>
-              <TableCell sx={{ fontWeight: 700, minWidth: 140 }}>Laboratório</TableCell>
-              {BLOCOS.map(b => (
-                <TableCell key={b.value} align="center" sx={{ fontWeight: 600, fontSize: '0.75rem' }}>
-                  {b.label}<br />
-                  <Typography variant="caption" color="text.secondary">{b.value}</Typography>
-                </TableCell>
-              ))}
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {labsVisiveis.map(lab => (
-              <TableRow key={lab.id} hover>
-                <TableCell sx={{ fontSize: '0.8rem', fontWeight: 500 }}>
-                  {lab.name}
-                </TableCell>
-                {BLOCOS.map(b => {
-                  const ocupado = isOcupado(lab, b.value);
-                  const cor = ocupado ? 'error' : 'success';
-                  const labelText = ocupado ? 'Ocupado' : 'Livre';
-                  return (
-                    <TableCell key={b.value} align="center" sx={{ p: 0.5 }}>
-                      <Tooltip title={`${lab.name} - ${b.label} (${b.value}): clique para detalhes`}>
+
+      {isMobile ? (
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+          {labsVisiveis.map(lab => (
+            <Accordion key={lab.id} variant="outlined" sx={{ borderRadius: 1 }}>
+              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Typography variant="subtitle2" fontWeight={600}>{lab.name}</Typography>
+              </AccordionSummary>
+              <AccordionDetails sx={{ pt: 0 }}>
+                <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
+                  {BLOCOS.map(b => {
+                    const ocupado = isOcupado(lab, b.value);
+                    return (
+                      <Paper
+                        key={b.value}
+                        variant="outlined"
+                        onClick={() => handleCellClick(lab, b)}
+                        sx={{
+                          p: 1,
+                          textAlign: 'center',
+                          cursor: 'pointer',
+                          bgcolor: ocupado ? 'rgba(239, 83, 80, 0.08)' : 'rgba(76, 175, 80, 0.08)',
+                          borderColor: ocupado ? 'error.light' : 'success.light',
+                          '&:hover': { bgcolor: ocupado ? 'rgba(239, 83, 80, 0.16)' : 'rgba(76, 175, 80, 0.16)' }
+                        }}
+                      >
+                        <Typography variant="caption" display="block" fontWeight={600}>
+                          {b.label}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary" display="block" sx={{ fontSize: '0.68rem', mb: 0.5 }}>
+                          {b.value}
+                        </Typography>
                         <Chip
-                          label={labelText}
-                          color={cor}
+                          label={ocupado ? 'Ocupado' : 'Livre'}
+                          color={ocupado ? 'error' : 'success'}
                           size="small"
-                          variant={ocupado ? 'outlined' : 'filled'}
-                          clickable
-                          onClick={() => handleCellClick(lab, b)}
-                          sx={{ fontSize: '0.65rem', minWidth: 58, cursor: 'pointer' }}
+                          sx={{ height: 18, fontSize: '0.65rem' }}
                         />
-                      </Tooltip>
-                    </TableCell>
-                  );
-                })}
+                      </Paper>
+                    );
+                  })}
+                </Box>
+              </AccordionDetails>
+            </Accordion>
+          ))}
+        </Box>
+      ) : (
+        <TableContainer component={Paper} variant="outlined">
+          <Table size="small" stickyHeader>
+            <TableHead>
+              <TableRow>
+                <TableCell sx={{ fontWeight: 700, minWidth: 140 }}>Laboratório</TableCell>
+                {BLOCOS.map(b => (
+                  <TableCell key={b.value} align="center" sx={{ fontWeight: 600, fontSize: '0.75rem' }}>
+                    {b.label}<br />
+                    <Typography variant="caption" color="text.secondary">{b.value}</Typography>
+                  </TableCell>
+                ))}
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+            </TableHead>
+            <TableBody>
+              {labsVisiveis.map(lab => (
+                <TableRow key={lab.id} hover>
+                  <TableCell sx={{ fontSize: '0.8rem', fontWeight: 500 }}>
+                    {lab.name}
+                  </TableCell>
+                  {BLOCOS.map(b => {
+                    const ocupado = isOcupado(lab, b.value);
+                    const cor = ocupado ? 'error' : 'success';
+                    const labelText = ocupado ? 'Ocupado' : 'Livre';
+                    return (
+                      <TableCell key={b.value} align="center" sx={{ p: 0.5 }}>
+                        <Tooltip title={`${lab.name} - ${b.label} (${b.value}): clique para detalhes`}>
+                          <Chip
+                            label={labelText}
+                            color={cor}
+                            size="small"
+                            variant={ocupado ? 'outlined' : 'filled'}
+                            clickable
+                            onClick={() => handleCellClick(lab, b)}
+                            sx={{ fontSize: '0.65rem', minWidth: 58, cursor: 'pointer' }}
+                          />
+                        </Tooltip>
+                      </TableCell>
+                    );
+                  })}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
 
       {/* Modal de Detalhes da Célula */}
       <Dialog

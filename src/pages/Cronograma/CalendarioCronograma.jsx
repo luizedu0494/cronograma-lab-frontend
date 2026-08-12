@@ -29,6 +29,7 @@ import ProporAulaForm from '../../ProporAulaForm';
 import ProporEventoForm from '../../ProporEventoForm';
 import DialogConfirmacao from '../../components/DialogConfirmacao';
 import { LISTA_CURSOS } from '../../constants/cursos';
+import { CURSO_COLORS } from '../../constants/cursoColors';
 import EventoCard from '../../components/EventoCard';
 import GradeDisponibilidade from '../../components/GradeDisponibilidade';
 import { useSearchParams, useNavigate } from 'react-router-dom';
@@ -48,13 +49,6 @@ dayjs.locale('pt-br');
 dayjs.extend(isBetween);
 
 const TURNOS = ['Manhã', 'Tarde', 'Noite'];
-const CURSO_COLORS = {
-    'biomedicina': '#4CAF50', 'farmacia': '#F44336', 'enfermagem': '#2196F3',
-    'odontologia': '#FF9800', 'medicina': '#9C27B0', 'fisioterapia': '#FFC107',
-    'nutricao': '#00BCD4', 'ed_fisica': '#795548', 'psicologia': '#E91E63',
-    'med_veterinaria': '#8BC34A', 'quimica_tecnologica': '#607D8B', 'engenharia': '#9E9E9E',
-    'tec_cosmetico': '#3F51B5', 'default': '#616161'
-};
 
 const STORAGE_KEY_FILTROS = 'cronograma_filtros_v1';
 

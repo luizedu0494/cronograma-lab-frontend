@@ -12,6 +12,7 @@ import dayjs from 'dayjs';
 
 import { LISTA_CURSOS } from './constants/cursos';
 import { LISTA_LABORATORIOS } from './constants/laboratorios';
+import { CURSO_COLORS } from './constants/cursoColors';
 
 // É uma boa prática ter as constantes em um só lugar.
 // Se você não tiver este arquivo, pode copiar o array para cá.
@@ -23,14 +24,6 @@ const BLOCOS_HORARIO = [
     {"value": "18:30-20:10", "label": "18:30 - 20:10", "turno": "Noturno"},
     {"value": "20:30-22:00", "label": "20:30 - 22:00", "turno": "Noturno"},
 ];
-
-const CURSO_COLORS = {
-    'biomedicina': '#4CAF50', 'farmacia': '#F44336', 'enfermagem': '#2196F3',
-    'odontologia': '#FF9800', 'medicina': '#9C27B0', 'fisioterapia': '#FFC107',
-    'nutricao': '#00BCD4', 'ed_fisica': '#795548', 'psicologia': '#E91E63',
-    'med_veterinaria': '#8BC34A', 'quimica_tecnologica': '#607D8B', 'engenharia': '#9E9E9E',
-    'tec_cosmetico': '#3F51B5', 'default': '#616161'
-};
 
 function AulaCard({ aula, onOpenMenu, onSave, isCoordenador }) {
     const [isEditing, setIsEditing] = useState(false);
@@ -69,7 +62,7 @@ function AulaCard({ aula, onOpenMenu, onSave, isCoordenador }) {
 
     if (isEditing) {
         return (
-            <ListItem divider sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', p: 2, bgcolor: 'action.hover' }}>
+            <ListItem divider sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', p: 2, bgcolor: 'action.hover', borderLeft: '4px solid', borderColor: 'primary.main', borderRadius: 1 }}>
                 <Grid container spacing={2} alignItems="center">
                     <Grid item xs={12}>
                         <TextField
@@ -81,7 +74,7 @@ function AulaCard({ aula, onOpenMenu, onSave, isCoordenador }) {
                         />
                     </Grid>
                     <Grid item xs={12} sm={6}>
-                        <FormControl sx={{ minWidth: 160 }} size="small">
+                        <FormControl fullWidth size="small">
                             <InputLabel shrink>Laboratório</InputLabel>
                             <Select
                                 defaultValue={editData.laboratorioSelecionado}
@@ -93,7 +86,7 @@ function AulaCard({ aula, onOpenMenu, onSave, isCoordenador }) {
                         </FormControl>
                     </Grid>
                     <Grid item xs={12} sm={6}>
-                        <FormControl sx={{ minWidth: 150 }} size="small">
+                        <FormControl fullWidth size="small">
                             <InputLabel shrink>Horário</InputLabel>
                             <Select
                                 defaultValue={editData.horarioSlotString}
