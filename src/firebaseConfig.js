@@ -4,14 +4,14 @@ import { getAuth, GoogleAuthProvider, connectAuthEmulator } from "firebase/auth"
 import { getFirestore, connectFirestoreEmulator } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
-// --- IMPORTANTE: SUAS CONFIGURAÇÕES REAIS DO FIREBASE DEVEM ESTAR AQUI ---
+// Configurações do Firebase carregadas a partir das variáveis de ambiente (.env)
 const firebaseConfig = {
-  apiKey: "AIzaSyATwNg81vq-nBJTWB_0cnhMDBuhfxYmWJA",
-  authDomain: "cronolab-novo.firebaseapp.com",
-  projectId: "cronolab-novo",
-  storageBucket: "cronolab-novo.firebasestorage.app",
-  messagingSenderId: "386849385604",
-  appId: "1:386849385604:web:8c76bd4ca86d3d2ea926d1"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
 // Inicializa o Firebase

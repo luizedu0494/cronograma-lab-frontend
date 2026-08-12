@@ -10,7 +10,7 @@
 
 <p align="center">
   <a href="#sobre">Sobre</a> •
-  <a href="#novidades-v2">Novidades v2</a> •
+  <a href="#novidades-v2">Novidades v2 & Arquitetura</a> •
   <a href="#demonstrações">Demonstrações</a> •
   <a href="#perfis-de-acesso">Perfis</a> •
   <a href="#funcionalidades">Funcionalidades</a> •
@@ -20,10 +20,12 @@
 
 <p align="center">
   <img alt="Deploy" src="https://img.shields.io/badge/Deploy-Firebase%20Hosting-FFCA28?style=flat&logo=firebase&logoColor=black"/>
+  <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5.x-3178C6?style=flat&logo=typescript&logoColor=white"/>
   <img alt="React" src="https://img.shields.io/badge/React-19-61DAFB?style=flat&logo=react&logoColor=black"/>
   <img alt="MUI" src="https://img.shields.io/badge/MUI-v7-1E7EC8?style=flat&logo=mui&logoColor=white"/>
   <img alt="Vite" src="https://img.shields.io/badge/Vite-7-646CFF?style=flat&logo=vite&logoColor=white"/>
-  <img alt="Firebase" src="https://img.shields.io/badge/Firestore-Spark%20%28gratuito%29-FF6F00?style=flat&logo=firebase&logoColor=white"/>
+  <img alt="ESLint" src="https://img.shields.io/badge/ESLint-configured-4B32C3?style=flat&logo=eslint&logoColor=white"/>
+  <img alt="Prettier" src="https://img.shields.io/badge/Prettier-configured-F7B93E?style=flat&logo=prettier&logoColor=black"/>
 </p>
 
 <p align="center">
@@ -44,44 +46,44 @@ O sistema centraliza o cronograma de todos os laboratórios em uma única plataf
 - 📱 Responsivo para desktop e celular
 - 🌙 Dark mode com identidade visual da instituição
 - 🤖 Assistente IA para consultas em linguagem natural sobre o cronograma
+- 🛡️ Infraestrutura segura em variáveis de ambiente e código tipado em TypeScript
 
 ---
 
-## Novidades v2
+## Novidades v2 & Reestruturação Técnica
 
-> Resumo das melhorias implementadas nesta versão.
+> Resumo das melhorias de arquitetura, limpeza de arquivos, segurança e UX/UI implementadas nesta versão com base na análise técnica.
 
-### 🔄 Novo Fluxo de Agendamento e Seleção Múltipla de Laboratórios
+### 🛡️ 1. Segurança e Variáveis de Ambiente
+- **Ambiente Isolado**: Remoção de chaves hardcoded e introdução dos arquivos `.env` e `.env.example`.
+- **Firebase & Groq**: Configuração dinâmica via `import.meta.env` com prefixos `VITE_`.
 
-O formulário de **Propor Aula** (`ProporAulaForm.jsx`) teve a ordem de suas etapas reestruturada para garantir maior praticidade e precisão no agendamento:
+### 📂 2. Reorganização Arquitetural & Limpeza de Arquivos Mortos
+- **Roteamento de Telas (`src/pages/`)**:
+  - `src/pages/Cronograma/`: `PaginaInicial`, `CalendarioCronograma`, `HistoricoAulas`, `CalendarioRevisoesTecnico`.
+  - `src/pages/Gerenciar/`: `GerenciarAprovacoes`, `GerenciarUsuarios`, `GerenciarAvisos`, `GerenciarPeriodos`, `AnaliseAulas`, `AnaliseEventos`, `VerificarIntegridadeDados`.
+  - `src/pages/IA/`: `AssistenteIA`.
+  - `src/pages/Perfil/`: `ConfiguracoesPerfil`.
+- **Limpeza de Arquivos Desnecessários**:
+  - Removidos arquivos mortos do template inicial (`App.css`, `logo.svg`).
+  - Movidos os 11 arquivos de documentação Markdown soltos na raiz para a pasta [docs/](./docs/).
+  - Isolamento de suíte e testes manuais na pasta dedicada `src/__tests__/` (`App.test.jsx`, `NotificadorTelegram.test.js`, `testes_ia_manual.js`, `setupTests.js`).
+  - Correção de extensões: `vite.config.js`, `public/firebase-messaging-sw.js`, `index.js`, `theme.js`, `api/*.js`.
 
-1. **Etapa 1 — Dados da Aula**: Preenchimento inicial do Assunto, Curso(s), Observações e Tipo de Atividade.
-2. **Etapa 2 — Data e Horário**: Seleção da Data e Horários com o painel sanfona **Consulta de Grade de Disponibilidade** integrado para verificação dos slots livres/ocupados do dia.
-3. **Etapa 3 — Laboratório(s)**: Seleção múltipla em `Select multiple` que lê a data/horário da Etapa 2 e **desabilita automaticamente os laboratórios ocupados**, impedindo conflitos.
+### ⚙️ 3. Adoção Incremental do TypeScript & Qualidade
+- **Tipagem Estática**: Introdução do `tsconfig.json` (com suporte gradual a arquivos JS/TS) e [src/types/index.ts](./src/types/index.ts).
+- **Módulos Migrados**:
+  - **Constantes**: `cursos.ts` e `laboratorios.ts`.
+  - **Motor de IA**: `ClassificadorIntencao.ts`, `ExtratorParametros.ts`, `ProcessadorConsultas.ts` e `ExecutorAcoes.ts`.
+  - **Serviços & Hooks**: `loggerService.ts`, `NotificadorTelegram.ts` e `useFetchAulas.tsx`.
+  - **UI Base**: `DialogConfirmacao.tsx`, `EmptyState.tsx` e `UsageMonitor.tsx`.
+- **Padronização**: Configuração do ESLint ([eslint.config.js](./eslint.config.js)) e Prettier ([.prettierrc](./.prettierrc)), com scripts `npm run lint` e `npm run format`.
 
 ---
 
-### 🎨 Molduras de Modo com Efeito Glow e Suporte Completo ao Dark Mode
+## 🎨 Identidade Visual CESMAC
 
-Para eliminar qualquer ambiguidade durante o preenchimento, os modos de agendamento agora contam com identidade visual marcante:
-
-- **📅 Modo Aula Normal**: Moldura limpa institucional com chip e explicação padrão.
-- **📖 Modo Revisão / Reforço**: Moldura envolvente de `3px` em tom Roxo (`#7b1fa2` / `#ce93d8`) com efeito *glow* ao redor da tela, barra de topo afixada, card explicativo de revisão e campos dedicados a tipo de revisão (Pré-Prova, Reforço, Prática Extra, Monitoria) e professor condutor.
-- **📝 Modo Prova / Avaliação**: Moldura envolvente de `3px` em Laranja/Vermelho (`#e65100` / `#ff9800`) com *glow* brilhante, sinalizando alta prioridade nos relatórios e no Telegram.
-- **🌙 Suporte ao Dark Mode**: Todas as superfícies e cores utilizam transparência adaptativa (`alpha`), garantindo contraste harmonioso no tema azul-marinho institucional (`#0B0F18`).
-
----
-
-### 📅 Trava de Células Ocupadas na Grade do Calendário
-
-- No **Calendário** (`CalendarioCronograma.jsx`), o clique em células **ocupadas** da Grade de Disponibilidade foi travado para apenas exibir o modal com os detalhes da aula/evento existente, sem redirecionar indevidamente para a proposta.
-- Clicar em células **livres** encaminha normalmente para `/propor-aula` com data, horário e laboratório pré-preenchidos.
-
----
-
-### 🎨 Identidade Visual CESMAC
-
-O sistema agora usa as cores institucionais do CESMAC extraídas diretamente do logo oficial:
+O sistema usa as cores institucionais do CESMAC extraídas diretamente do logo oficial:
 
 | Token | Cor | Uso |
 | :--- | :--- | :--- |
@@ -89,486 +91,46 @@ O sistema agora usa as cores institucionais do CESMAC extraídas diretamente do 
 | **Azul claro** | `#4AADE8` | Destaques, chips, dark mode |
 | **Dourado** | `#F5C518` / `#D4940A` | Revisões, alertas, avisos |
 
-A fonte foi atualizada de **Inter** para **Sora** — mais legível no mobile e com personalidade mais acadêmica.
-
-O dark mode usa fundo **azul-marinho profundo** (`#0B0F18`) que conversa com a identidade da instituição.
-
----
-
-### 🧭 Onboarding Guiado do Técnico
-
-Técnicos que acessam o sistema pela primeira vez em um dispositivo passam por um fluxo guiado de 3 passos antes de ver o painel:
-
-```
-Passo 1 — Boas-vindas
-  Explica o que o sistema faz e como o painel vai ajudar no dia a dia.
-
-Passo 2 — Escolha dos laboratórios
-  31 labs agrupados por tipo. Seleção individual ou por grupo inteiro.
-  Pensado para toque no celular (chips grandes, scroll natural).
-
-Passo 3 — Confirmação
-  Revisão dos labs escolhidos com chips removíveis.
-  Pode voltar e alterar antes de confirmar.
-```
-
-> **Aparece apenas uma vez por dispositivo/navegador.** Após concluir, nunca mais aparece — salvo em `localStorage` por `uid`. Cada dispositivo tem sua própria configuração independente, sem conflito entre técnicos que compartilham contas.
-
-Para alterar os laboratórios depois, basta clicar no ícone de funil no painel "Cronograma Oficial — Hoje".
+A fonte utilizada é **Sora** — legível no mobile e com personalidade acadêmica.
+O dark mode usa fundo **azul-marinho profundo** (`#0B0F18`).
 
 ---
 
-### 🔥 Correções Firebase (plano Spark)
+## 🛠️ Tecnologias
 
-Esta versão resolve problemas críticos que poderiam forçar upgrade para o plano pago:
-
-| Problema | Impacto | Correção |
-| :--- | :--- | :--- |
-| **Cloud Functions ativas** | Exige plano Blaze obrigatoriamente | Código comentado, `firebase.json` sem bloco `functions` |
-| **`onSnapshot` aninhado em `PainelAvisos`** | Criava N listeners sem cleanup, esgotando leituras/dia | Substituído por `getDocs` pontual por uid |
-| **`Promise.all` por aviso em `PaginaInicial`** | 1 leitura por aviso a cada atualização do feed | Substituído por `getDocs` único + cache em `localStorage` |
-| **`firebase-admin` no frontend** | Não funciona no browser, aumentava bundle, risco de segurança | Removido do `package.json` |
-| **`FieldValue` inexistente no SDK v9+** | Crash em runtime ao incrementar contador | Corrigido para `increment()` do SDK modular |
+- **Frontend**: React 19, TypeScript 5, Vite 7, Material UI (MUI v7), DayJS, Lucide React, Chart.js.
+- **Backend / Serverless**: Firebase Firestore, Firebase Auth, Firebase Hosting, Vercel Serverless Functions (`/api/groq.js`).
+- **IA**: Groq API (`llama-3.3-70b-versatile`) + Módulo local de IA Estruturada.
+- **Qualidade & Tooling**: ESLint, Prettier, TypeScript Compiler (`tsc`).
 
 ---
 
-### 🗂️ Estrutura de `localStorage` por usuário
-
-Todas as preferências do técnico ficam salvas localmente por `uid`, sem custo de leitura no Firestore:
-
-| Chave | Conteúdo |
-| :--- | :--- |
-| `labsFavoritos_<uid>` | Array de nomes dos labs filtrados |
-| `onboardingConcluido_<uid>` | `"true"` após concluir o onboarding |
-| `labHintVisto_<uid>` | `"true"` após dispensar o hint pós-onboarding |
-| `avisosLidos_<uid>` | Array de IDs de avisos já lidos |
-
----
-
-## 🚀 Novidades da Atualização de UX/UI & Arquitetura
-
-> Atualização baseada no diagnóstico técnico [`analise_melhorias_cronolab.md`](file:///c:/Windows/System32/cronograma-lab-frontend/analise_melhorias_cronolab.md).
-
-### 👨‍💼 Para o Coordenador
-- **Layout Master-Detail em 2 Colunas (`GerenciarAprovacoes.jsx`)**: Painel de triagem otimizado com listagem de propostas à esquerda e inspeção com ações imediatas à direita.
-- **Motivo Obrigatório de Rejeição**: Ao rejeitar propostas, é exigida uma justificativa textual. O motivo é transmitido ao Telegram e exibido em `MinhasPropostas.jsx`.
-- **Moldura Visual por Tipo de Proposta**: Cores de destaque distintas (Azul para Aula, Roxo para Revisão e Laranja para Prova).
-
-### 🔬 Para o Técnico
-- **Painel do Dia Ordenado e Agrupado (`PaginaInicial.jsx`)**: Aulas organizadas cronologicamente por horário.
-- **Alerta "Aula em Breve"**: Banner destacado em tom dourado institucional (`#F5C518`) notificando aulas nos próximos 30 minutos em laboratórios favoritos.
-- **Sinalização "Lab Preparado ✓"**: Botão de confirmação de preparo de laboratório salvo localmente via `localStorage`.
-- **Status Pills de Tempo**: Indicadores relativos ("em andamento", "em 2h") nos cards de aula.
-- **Bordas Laterais de Hierarquia Visual**: Borda azul (`#1E7EC8`) no Cronograma Oficial e dourada (`#F5C518`) na Agenda Privada.
-
-### 🤖 Assistente IA
-- **Chips de Sugestão de Consulta (`AssistenteIA.jsx`)**: Atalhos de 1 clique para perguntas comuns ("Aulas de hoje nos meus labs", "Labs disponíveis agora").
-- **Histórico de Pesquisas Recentes**: Armazenamento automático das 5 pesquisas mais recentes no `localStorage`.
-
-### 🛠️ Padronização Técnica
-- **Renomeação de arquivos sem JSX**: `firebaseConfig.js`, `reportWebVitals.js` e `setupTests.js` ajustados de `.jsx` para `.js`.
-
----
-
-## Demonstrações
-
-### 🔐 Login
-
-![Login](./docs/login.gif)
-
----
-
-### 🔬 Técnico
-
-**Onboarding — configuração guiada na primeira visita**
-
-![Onboarding do técnico](./docs/tecnico-onboarding.gif)
-
-**Cronograma — visão semanal pelo técnico**
-
-![Cronograma do técnico](./docs/tecnico-cronograma.gif)
-
-**Filtro de laboratórios — cronograma personalizado**
-
-![Filtro de laboratórios](./docs/tecnico-filtro-labs.gif)
-
-**Propor aula**
-
-![Propor aula](./docs/tecnico-propor-aula.gif)
-
-**Agenda privada do técnico**
-
-![Agenda privada](./docs/tecnico-agenda-privada.gif)
-
----
-
-### 👨‍💼 Coordenador
-
-**Painel principal — visão geral do dia e do semestre**
-
-![Painel do coordenador](./docs/coord-painel.gif)
-
-**Calendário — visualização semanal do cronograma**
-
-![Calendário](./docs/coord-calendario.gif)
-
-**Aprovar propostas**
-
-![Aprovar proposta](./docs/coord-aprovacoes.gif)
-
-**Análise de aulas — gráficos e métricas**
-
-![Análise de aulas](./docs/coord-analise-aulas.gif)
-
-**Análise de eventos**
-
-![Análise de eventos](./docs/coord-analise-eventos.gif)
-
-**Gerenciar avisos**
-
-![Gerenciar avisos](./docs/coord-gerenciar-avisos.gif)
-
-**Propor evento de manutenção**
-
-![Propor evento](./docs/coord-propor-evento.gif)
-
----
-
-### 📋 Compartilhado
-
-**Assistente IA — consultas em linguagem natural**
-
-![Assistente IA](./docs/assistente-ia.gif)
-
-**Baixar cronograma — Excel e calendário .ics**
-
-![Baixar cronograma](./docs/download-cronograma.gif)
-
-**Histórico de aulas**
-
-![Histórico de aulas](./docs/historico-aulas.gif)
-
-**Ajuda / FAQ**
-
-![Ajuda FAQ](./docs/ajuda-faq.gif)
-
----
-
-
-
-O sistema tem três perfis com experiências completamente diferentes.
-
-### 👨‍💼 Coordenador
-
-Visão estratégica e gestão completa do sistema.
-
-**Painel inicial:**
-
-| KPI | O que mostra |
-| :--- | :--- |
-| Aulas hoje | Total de aulas aprovadas no dia |
-| Revisões hoje | Total de revisões no cronograma do dia |
-| Aulas 2026 | Total de aulas cadastradas no ano |
-| Revisões 2026 | Total de revisões no ano |
-| Pendentes | Propostas aguardando aprovação (com badge de alerta) |
-| Eventos 2026 | Total de eventos de manutenção no ano |
-
-**Funcionalidades exclusivas:**
-
-- ✅ Aprovar, editar e rejeitar propostas de aula e evento
-- ✅ Gerenciar usuários (aprovar novos cadastros, alterar cargos)
-- ✅ Gerenciar grupos e períodos
-- ✅ Criar e gerenciar avisos para todos os usuários
-- ✅ Análise de aulas — gráficos de ocupação por laboratório, curso, turno e mês
-- ✅ Análise de eventos — métricas de manutenção
-- ✅ Verificar integridade dos dados
-- ✅ Abas "Aulas Recentes" e "Eventos Recentes" no painel
-
-**Menu exclusivo do coordenador:**
-
-```
-Aprovações (com contador de pendentes)
-Análise de Aulas
-Análise de Eventos
-Integridade de Dados
-Usuários
-Eventos de Manutenção
-Gerenciar Avisos
-```
-
----
-
-### 🔬 Técnico
-
-Visão operacional focada no dia a dia dos laboratórios.
-
-**Onboarding na primeira visita:**
-
-Ao abrir o sistema pela primeira vez em um dispositivo, o técnico passa por um fluxo guiado de 3 passos para configurar quais laboratórios quer monitorar. Depois disso, nunca mais aparece — salvo por navegador.
-
-**Painel inicial:**
-
-| KPI | O que mostra |
-| :--- | :--- |
-| Aulas hoje | Aulas no cronograma oficial do dia |
-| Revisões cronograma | Revisões oficiais do dia |
-| Agenda técnico hoje | Revisões na agenda privada do técnico |
-| Minhas propostas | Total de propostas que o técnico criou |
-
-**Painel do dia — dois painéis lado a lado:**
-
-| Painel | O que mostra |
-| :--- | :--- |
-| Cronograma Oficial — Hoje | Aulas e revisões aprovadas, filtradas pelos laboratórios favoritos do técnico. Ícone de funil para alterar o filtro a qualquer momento. |
-| Agenda do Técnico — Hoje | Revisões e preparações registradas na agenda privada do técnico (separadas do cronograma oficial). |
-
-**Funcionalidades exclusivas:**
-
-- ✅ Agenda privada de revisões (calendário pessoal separado do cronograma oficial)
-- ✅ Filtro de laboratórios favoritos — salvo por dispositivo no `localStorage`
-- ✅ Onboarding guiado na primeira visita
-- ✅ Minhas propostas — acompanhar status das propostas enviadas
-- ✅ Minhas designações — ver labs atribuídos pela coordenação
-
-**Menu exclusivo do técnico:**
-
-```
-Propor Aula
-Designações
-Minhas Propostas
-Revisões (agenda privada)
-```
-
----
-
-### 👨‍🎓 Aluno / Usuário comum
-
-Visão somente leitura do cronograma.
-
-- ✅ Visualizar calendário de aulas aprovadas
-- ✅ Histórico de aulas
-- ✅ Mural de avisos
-- ✅ Calendário acadêmico (quando ativado pelo coordenador)
-- ✅ Baixar cronograma em PDF/Excel
-- ❌ Sem acesso a formulários, gestão ou análises
-
----
-
-### Comparativo rápido
-
-| Funcionalidade | Coordenador | Técnico | Aluno |
-| :--- | :---: | :---: | :---: |
-| Ver calendário | ✅ | ✅ | ✅ |
-| Mural de avisos | ✅ | ✅ | ✅ |
-| Baixar cronograma | ✅ | ✅ | ✅ |
-| Propor aula | ✅ | ✅ | ❌ |
-| Aprovar propostas | ✅ | ❌ | ❌ |
-| Onboarding de labs | ❌ | ✅ | ❌ |
-| Agenda privada | ❌ | ✅ | ❌ |
-| Filtro de labs favoritos | ❌ | ✅ | ❌ |
-| Análise de dados | ✅ | ❌ | ❌ |
-| Gerenciar usuários | ✅ | ❌ | ❌ |
-| Gerenciar avisos | ✅ | ❌ | ❌ |
-| Verificar integridade | ✅ | ❌ | ❌ |
-
----
-
-| Funcionalidade | Descrição | Status |
-| :--- | :--- | :--- |
-| **Controle de Acesso** | Autenticação via Google (Firebase Auth) com perfis: Coordenador, Técnico e Aluno | ✅ |
-| **Proposta de Aula** | Formulário completo com seleção de laboratório, curso, horário e verificação de conflito | ✅ |
-| **Proposta de Evento** | Agendamento de eventos de manutenção e outros com bloqueio de laboratório | ✅ |
-| **Verificação de Conflito** | Detecta conflitos de horário e laboratório automaticamente | ✅ |
-| **Calendário** | Visualização semanal do cronograma com navegação e filtros | ✅ |
-| **Painel do Técnico** | Cronograma do dia filtrado por laboratórios favoritos + agenda privada | ✅ |
-| **Onboarding Guiado** | Fluxo de 3 passos na primeira visita para configurar laboratórios — mobile-first | ✅ **novo** |
-| **Tema CESMAC** | Identidade visual com cores do logo institucional, dark mode com marinho profundo | ✅ **novo** |
-| **Gestão de Aprovações** | Coordenador aprova, edita ou rejeita propostas pendentes | ✅ |
-| **Mural de Avisos** | Comunicados da coordenação com status de leitura por usuário | ✅ |
-| **Análise de Dados** | Gráficos de ocupação por laboratório, curso, turno e mês | ✅ |
-| **Exportação** | Download do cronograma em PDF e Excel | ✅ |
-| **Notificações Telegram** | Alertas automáticos para ações de agendamento | ✅ |
-| **Assistente IA** | Consultas em linguagem natural sobre o cronograma (sem API externa) | ✅ |
-
----
-
-## Roadmap
-
-### ✅ Fase 1 — Base e Agendamento (Concluída)
-
-Agendamento, controle de acesso, calendário e verificação de conflitos.
-
-### ✅ Fase 2 — UX e Interface (Concluída)
-
-Filtros dinâmicos, contador de pendências, agenda do técnico, dark mode.
-
-### ✅ Fase 3 — Identidade Visual e Onboarding (Concluída — v2)
-
-| Entrega | Descrição |
-| :--- | :--- |
-| **Tema CESMAC** | Paleta baseada no logo oficial, fonte Sora, dark mode marinho |
-| **Onboarding do técnico** | Fluxo guiado de 3 passos, mobile-first, salvo por dispositivo |
-| **Correções Firebase Spark** | Remoção de Cloud Functions, fix de listeners e contadores |
-| **Segurança** | Remoção de `firebase-admin` do frontend |
-
-### 🔮 Fase 4 — Próximos Passos
-
-| Funcionalidade | Descrição |
-| :--- | :--- |
-| **GIFs no README** | Demonstrações animadas do onboarding e do tema |
-| **PWA** | Instalação como app no celular (manifesto + service worker) |
-| **Notificações push** | Avisos urgentes direto no celular via FCM (requer plano Blaze) |
-| **Predição de ociosidade** | IA identifica laboratórios subutilizados |
-
----
-
-## Tecnologias
-
-| Categoria | Tecnologia | Versão | Para que serve |
-| :--- | :--- | :--- | :--- |
-| **UI Framework** | React | 19 | Componentes e estado da interface |
-| **Build Tool** | Vite | 7 | Build e servidor de desenvolvimento |
-| **Componentes** | Material-UI (MUI) | 7 | Design system e componentes visuais |
-| **Roteamento** | React Router | 7 | Navegação entre páginas |
-| **Banco de Dados** | Firebase Firestore | 11 | Dados em tempo real, plano Spark |
-| **Autenticação** | Firebase Auth | 11 | Login com conta Google |
-| **Hospedagem** | Firebase Hosting | — | Deploy estático, plano Spark (gratuito) |
-| **Tipografia** | Sora (Google Fonts) | — | Fonte principal, identidade CESMAC |
-| **Gráficos** | Chart.js + React-Chartjs-2 | 4/5 | Dashboards de análise |
-| **Animações** | Framer Motion | 12 | Transições e animações de UI |
-| **Datas** | Day.js | 1.11 | Manipulação e formatação de datas |
-| **Drag & Drop** | @dnd-kit | 6/9/10 | Arrastar e reorganizar elementos |
-| **Exportação** | ExcelJS + File-saver | — | Download de relatórios Excel |
-| **IA** | Groq API (Llama 3.3) | — | Assistente de consultas em linguagem natural |
-| **Notificações** | Telegram Bot API | — | Alertas de agendamento |
-
-> **Por que não TypeScript?** O projeto foi iniciado em JavaScript para priorizar velocidade de entrega. A migração para TS é um item do roadmap futuro.
-
----
-
-## Instalação
-
-### Pré-requisitos
-
-- [Node.js](https://nodejs.org/) 18 ou superior
-- [Firebase CLI](https://firebase.google.com/docs/cli) (apenas para deploy)
-- Conta Google com acesso ao projeto Firebase `cronolab-novo`
-
-### Passo a passo
+## 📦 Instalação e Execução Local
 
 ```bash
-# 1. Clone o repositório
+# 1. Clonar o repositório
 git clone https://github.com/luizedu0494/cronograma-lab-frontend.git
 cd cronograma-lab-frontend
 
-# 2. Instale as dependências
+# 2. Instalar dependências
 npm install
 
-# 3. Execute localmente
+# 3. Configurar variáveis de ambiente
+cp .env.example .env
+# Preencha suas chaves do Firebase e Groq no arquivo .env
+
+# 4. Rodar servidor de desenvolvimento
 npm run dev
-# Acesse: http://localhost:5173
-```
 
-### Variáveis de ambiente
-
-Crie um arquivo `.env` na raiz (opcional — apenas para integrações externas):
-
-```env
-# Assistente IA (Groq)
-VITE_GROQ_API_KEY=sua_chave_groq
-
-# Notificações Telegram (opcional)
-VITE_TELEGRAM_BOT_TOKEN=seu_token
-VITE_TELEGRAM_CHAT_ID=id_do_chat
-```
-
-> As configurações do Firebase já estão em `src/firebaseConfig.jsx` — não é necessário `.env` para rodar o sistema localmente.
-
-### Estrutura do projeto
-
-```
-cronograma-lab-frontend/
-├── docs/                    # GIFs de demonstração para o README
-├── public/                  # Assets estáticos
-├── src/
-│   ├── assets/              # Imagens e fontes
-│   ├── components/          # Componentes reutilizáveis
-│   ├── constants/           # Laboratórios e cursos cadastrados
-│   ├── hooks/               # Custom hooks
-│   ├── ia-estruturada/      # Motor do Assistente IA (sem API externa)
-│   ├── utils/               # Funções auxiliares
-│   ├── App.jsx              # Roteamento e layout principal
-│   ├── firebaseConfig.jsx   # Configuração do Firebase
-│   ├── theme.jsx            # Tema MUI com cores CESMAC
-│   └── [Telas].jsx          # Páginas da aplicação
-├── firestore.rules          # Regras de segurança do Firestore
-├── firebase.json            # Configuração do Firebase Hosting
-└── vite.config.jsx          # Configuração do Vite
+# 5. Outros Comandos Utilitários
+npm run build      # Compila o bundle para produção na pasta dist/
+npm run lint       # Executa verificação do ESLint
+npm run format     # Formata todo o código com Prettier
+npx tsc --noEmit   # Valida a tipagem estática sem emitir arquivos
 ```
 
 ---
 
-## Deploy
+## 📄 Licença
 
-```bash
-# Build de produção
-npm run build
-
-# Preview isolado — não afeta o site principal
-firebase hosting:channel:deploy preview-teste --expires 7d
-
-# Deploy para produção
-firebase deploy --only hosting
-
-# Publicar regras do Firestore
-firebase deploy --only firestore:rules
-```
-
----
-
-## Configuração do GitHub
-
-Para deixar o repositório mais profissional e fácil de encontrar, configure no GitHub:
-
-**Descrição (About)** — clique no ⚙️ ao lado de "About" no repositório e adicione:
-```
-Sistema web para gestão de cronogramas dos laboratórios do CESMAC · React 19 · Firebase · MUI
-```
-
-**Topics** — adicione as tags:
-```
-react  firebase  vite  material-ui  javascript  academic  scheduler  cesmac  laboratório  cronograma
-```
-
-**Website** — adicione o link do sistema:
-```
-https://cronolab-novo.web.app
-```
-
----
-
-## Contribuição
-
-1. Faça um **Fork** do projeto
-2. Crie uma **Branch** (`git checkout -b feature/MinhaFeature`)
-3. Faça o **Commit** (`git commit -m 'feat: MinhaFeature'`)
-4. Faça o **Push** (`git push origin feature/MinhaFeature`)
-5. Abra um **Pull Request**
-
----
-
-## Licença
-
-Este projeto está licenciado sob a [MIT License](./LICENSE).
-
-Você pode usar, copiar, modificar, distribuir e sublicenciar este software livremente, inclusive para fins comerciais, desde que o aviso de copyright original seja mantido.
-
-> **Nota:** Este sistema foi desenvolvido para uso institucional no CESMAC. O código é aberto para fins de estudo e referência, mas o sistema em produção ([cronolab-novo.web.app](https://cronolab-novo.web.app)) é mantido exclusivamente pela equipe do projeto.
-
----
-
-<div align="center">
-  Desenvolvido por <strong>Luiz Eduardo</strong> para o CESMAC — Centro Universitário de Maceió
-  <br/><br/>
-  <a href="https://github.com/luizedu0494">GitHub</a>
-</div>
+Distribuído sob a licença MIT. Veja `LICENSE` para mais informações.

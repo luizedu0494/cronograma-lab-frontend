@@ -38,7 +38,9 @@
     "dev": "vite",
     "start": "vite",
     "build": "vite build",
-    "serve": "vite preview"
+    "preview": "vite preview",
+    "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
+    "format": "prettier --write ."
   },
   "eslintConfig": {
     "extends": [
@@ -59,8 +61,18 @@
     ]
   },
   "devDependencies": {
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
+    "@typescript-eslint/eslint-plugin": "^8.67.0",
+    "@typescript-eslint/parser": "^8.67.0",
     "@vitejs/plugin-react": "^5.0.0",
+    "eslint": "^10.8.1",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "prettier": "^3.9.6",
     "rollup-plugin-visualizer": "^6.0.3",
+    "typescript": "^7.0.2",
     "vite": "^7.1.2"
   }
 }

@@ -448,7 +448,7 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
                             professorNome: userInfo?.name || currentUser.displayName || currentUser.email,
                             propostoPorUid: currentUser.uid,
                             propostoPorNome: userInfo?.name || currentUser.displayName || currentUser.email,
-                            status: isCoordenador ? 'aprovada' : 'pendente',
+                            status: (userInfo?.role === 'coordenador') ? 'aprovada' : 'pendente',
                             createdAt: serverTimestamp(),
                             // Campos de revisão
                             isRevisao: tipoEntrada === 'revisao',
@@ -533,7 +533,29 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
                 }
             }
 
-            await notificarTelegramBatch(finalizadas, isEditMode ? 'editar' : 'adicionar');
+            try {
+                await notificadorTelegramBatch(finalizadas, isEditMode ? 'editar' : 'adicionar');
+            } catch (errTelegram) {
+                console.warn('Alerta Telegram não enviado:', errTelegram);
+            }
+
+            // Atualiza imediatamente a ocupação local para refletir os novos agendamentos sem requerer navegação de data
+            if (formData.dataInicio && dayjs(formData.dataInicio).isValid()) {
+                const dataStr = dayjs(formData.dataInicio).format('YYYY-MM-DD');
+                const novasAulasFormatadas = finalizadas.map(a => ({
+                    ...a,
+                    dataInicio: a.dataInicio instanceof Timestamp ? a.dataInicio : Timestamp.fromDate(dayjs(a.dataInicio.toDate ? a.dataInicio.toDate() : a.dataInicio).toDate()),
+                    laboratorioSelecionado: a.laboratorioSelecionado || a.laboratorio,
+                    horarioSlotString: a.horarioSlotString
+                }));
+
+                setAulasDoMesState(prev => {
+                    const filtradas = prev.filter(a => toDataLocal(a.dataInicio) !== dataStr);
+                    return [...filtradas, ...novasAulasFormatadas];
+                });
+            }
+
+            setRefreshDisp(v => v + 1);
 
             setSnackbarMessage(isEditMode ? 'Aula atualizada com sucesso!' : 'Aula(s) proposta(s) com sucesso!');
             setSnackbarSeverity('success');
@@ -541,6 +563,7 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
             if (onSuccess) onSuccess();
             else if (!isEditMode) setOpenKeepDataDialog(true);
         } catch (error) {
+            console.error("Erro no envio do agendamento:", error);
             setSnackbarMessage('Erro ao salvar agendamento.');
             setSnackbarSeverity('error');
             setOpenSnackbar(true);
@@ -598,10 +621,7 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
                     )}
                 <Box sx={{ textAlign: 'center', mb: 3, mt: isModal ? 0 : 4 }}>
                     <Typography variant="h4" component="h1" gutterBottom sx={{ color: theme.palette.text.primary, fontWeight: 'bold', mb: 1 }}>
-                        {formTitle || (isEditMode
-                            ? (tipoEntrada === 'revisao' ? 'Editar Revisão' : tipoEntrada === 'prova' ? 'Editar Prova' : 'Editar Aula')
-                            : 'Propor Nova Aula'
-                        )}
+                        {formTitle || (isEditMode ? "Editar Atividade" : (isCoordenador ? "Agendar Atividade" : "Propor Atividade"))}
                     </Typography>
                     <Box sx={{ mt: 1 }}>
                         {tipoEntrada === 'revisao' && (
@@ -793,8 +813,9 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
                                     renderTags={(value, getTagProps) =>
                                         value.map((option, index) => {
                                             const label = option.label || option;
+                                            const { key, ...tagProps } = getTagProps({ index });
                                             return (
-                                                <Chip variant="outlined" label={label} {...getTagProps({ index })} size="small" />
+                                                <Chip key={key} variant="outlined" label={label} {...tagProps} size="small" />
                                             );
                                         })
                                     }
@@ -975,7 +996,7 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
                         </Grid>
 
                         {/* ── SEÇÃO 3: Seleção Múltipla de Laboratórios ── */}
-                        <Grid item xs={12}>
+                        <Grid xs={12}>
                             <Paper elevation={3} sx={{ p: 3, borderLeft: '5px solid #f50057', opacity: (!secao2Completa && !isEditMode) ? 0.8 : 1 }}>
                                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -984,9 +1005,11 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
                                     </Box>
                                     {!isEditMode && (
                                         <Tooltip title="Adicionar outro tipo de laboratório">
-                                            <IconButton onClick={handleAddLabField} color="primary" disabled={formData.dynamicLabs.length >= 5 || !secao2Completa}>
-                                                <AddIcon />
-                                            </IconButton>
+                                            <span>
+                                                <IconButton onClick={handleAddLabField} color="primary" disabled={formData.dynamicLabs.length >= 5 || !secao2Completa}>
+                                                    <AddIcon />
+                                                </IconButton>
+                                            </span>
                                         </Tooltip>
                                     )}
                                 </Box>

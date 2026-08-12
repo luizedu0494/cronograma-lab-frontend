@@ -433,9 +433,11 @@ function ProporEventoForm({ userInfo, currentUser, initialDate, onSuccess, onCan
                                         {!secao1Completa && !isEditMode && <LockIcon color="warning" />}
                                     </Box>
                                     <Tooltip title="Adicionar outro tipo de laboratório">
-                                        <IconButton onClick={handleAddLabField} color="primary" disabled={formData.dynamicLabs.length >= 5 || (!secao1Completa && !isEditMode)}>
-                                            <AddIcon />
-                                        </IconButton>
+                                        <span>
+                                            <IconButton onClick={handleAddLabField} color="primary" disabled={formData.dynamicLabs.length >= 5 || (!secao1Completa && !isEditMode)}>
+                                                <AddIcon />
+                                            </IconButton>
+                                        </span>
                                     </Tooltip>
                                 </Box>
                                 {!secao1Completa && !isEditMode && (

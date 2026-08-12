@@ -19,27 +19,27 @@ import {
     Menu as MenuIcon, Sun, Moon, LogOut, User, HelpCircle, UserCheck, Users, CalendarOff, Settings, Bell, ListTodo, Calendar, LayoutDashboard, ThumbsUp, PlusCircle, Download, BarChart, Bug, History, Bot, FlaskConical
 } from 'lucide-react';
 
-// --- LAZY LOADING ---
+// --- LAZY LOADING DE PÁGINAS ---
 const ProporAulaForm = lazy(() => import('./ProporAulaForm'));
 const ProporEventoForm = lazy(() => import('./ProporEventoForm'));
 const MinhasPropostas = lazy(() => import('./MinhasPropostas'));
-const GerenciarAprovacoes = lazy(() => import('./GerenciarAprovacoes'));
-const GerenciarUsuarios = lazy(() => import('./GerenciarUsuarios'));
-const CalendarioCronograma = lazy(() => import('./CalendarioCronograma'));
+const GerenciarAprovacoes = lazy(() => import('./pages/Gerenciar/GerenciarAprovacoes'));
+const GerenciarUsuarios = lazy(() => import('./pages/Gerenciar/GerenciarUsuarios'));
+const CalendarioCronograma = lazy(() => import('./pages/Cronograma/CalendarioCronograma'));
 const MinhasDesignacoes = lazy(() => import('./MinhasDesignacoes'));
 const PainelAvisos = lazy(() => import('./PainelAvisos'));
-const GerenciarAvisos = lazy(() => import('./GerenciarAvisos'));
+const GerenciarAvisos = lazy(() => import('./pages/Gerenciar/GerenciarAvisos'));
 const AjudaFAQ = lazy(() => import('./AjudaFAQ'));
-const ConfiguracoesPerfil = lazy(() => import('./ConfiguracoesPerfil'));
-const PaginaInicial = lazy(() => import('./PaginaInicial'));
-const GerenciarPeriodos = lazy(() => import('./GerenciarPeriodos'));
+const ConfiguracoesPerfil = lazy(() => import('./pages/Perfil/ConfiguracoesPerfil'));
+const PaginaInicial = lazy(() => import('./pages/Cronograma/PaginaInicial'));
+const GerenciarPeriodos = lazy(() => import('./pages/Gerenciar/GerenciarPeriodos'));
 const DownloadCronograma = lazy(() => import('./DownloadCronograma'));
-const AnaliseAulas = lazy(() => import('./AnaliseAulas'));
-const AnaliseEventos = lazy(() => import('./AnaliseEventos'));
-const VerificarIntegridadeDados = lazy(() => import('./VerificarIntegridadeDados'));
-const HistoricoAulas = lazy(() => import('./HistoricoAulas'));
-const AssistenteIA = lazy(() => import('./AssistenteIA'));
-const CalendarioRevisoesTecnico = lazy(() => import('./CalendarioRevisoesTecnico'));
+const AnaliseAulas = lazy(() => import('./pages/Gerenciar/AnaliseAulas'));
+const AnaliseEventos = lazy(() => import('./pages/Gerenciar/AnaliseEventos'));
+const VerificarIntegridadeDados = lazy(() => import('./pages/Gerenciar/VerificarIntegridadeDados'));
+const HistoricoAulas = lazy(() => import('./pages/Cronograma/HistoricoAulas'));
+const AssistenteIA = lazy(() => import('./pages/IA/AssistenteIA'));
+const CalendarioRevisoesTecnico = lazy(() => import('./pages/Cronograma/CalendarioRevisoesTecnico'));
 
 const LoadingFallback = () => (<Box display="flex" justifyContent="center" alignItems="center" height="80vh"><CircularProgress /></Box>);
 const MainLayout = () => (<Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}><Outlet /></Container>);
@@ -145,7 +145,7 @@ function App() {
             <MenuItem key="gerenciar-avisos" component={Link} to="/gerenciar-avisos" onClick={handleMenuClose}><Settings size={18} style={menuIconStyle}/> Gerenciar Avisos</MenuItem>,
         ] : []),
         ...(role === 'tecnico' && !approvalPending ? [
-            <MenuItem key="aula" component={Link} to="/propor-aula" onClick={handleMenuClose}><PlusCircle size={18} style={menuIconStyle}/> Propor Aula</MenuItem>,
+            <MenuItem key="aula" component={Link} to="/propor-aula" onClick={handleMenuClose}><PlusCircle size={18} style={menuIconStyle}/> Propor Atividade</MenuItem>,
             <MenuItem key="design" component={Link} to="/minhas-designacoes" onClick={handleMenuClose}><UserCheck size={18} style={menuIconStyle}/> Designações</MenuItem>,
             <MenuItem key="prop" component={Link} to="/minhas-propostas" onClick={handleMenuClose}><ListTodo size={18} style={menuIconStyle}/> Minhas Propostas</MenuItem>,
             <MenuItem key="revisoes" component={Link} to="/revisoes" onClick={handleMenuClose}><FlaskConical size={18} style={menuIconStyle}/> Revisões</MenuItem>,
