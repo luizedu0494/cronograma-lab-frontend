@@ -638,6 +638,8 @@ const PaginaInicial = ({ userInfo }) => {
                                                         {i > 0 && <Divider />}
                                                         <ListItem sx={{ py: 1, px: 2, opacity: isPreparado ? 0.75 : 1, bgcolor: isPreparado ? 'action.hover' : 'transparent' }}>
                                                             <ListItemText
+                                                                primaryTypographyProps={{ component: 'div' }}
+                                                                secondaryTypographyProps={{ component: 'div' }}
                                                                 primary={
                                                                     <Box display="flex" alignItems="center" gap={1}>
                                                                         <Typography variant="body2" fontWeight="medium" sx={{ textDecoration: isPreparado ? 'line-through' : 'none' }}>

@@ -3,10 +3,12 @@ import { auth, db } from '../../firebaseConfig';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import {
     Container, Typography, Box, Paper, CircularProgress, Alert, Button, Grid,
-    TextField, Dialog, DialogTitle, DialogContent, DialogActions, Snackbar
+    TextField, Dialog, DialogTitle, DialogContent, DialogActions, Snackbar, Avatar
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
+import NotificationsIcon from '@mui/icons-material/Notifications';
 import dayjs from 'dayjs';
+import UploadImagem from '../../componentes/comuns/UploadImagem';
 
 function ConfiguracoesPerfil() {
     const [userProfile, setUserProfile] = useState(null);
@@ -14,11 +16,13 @@ function ConfiguracoesPerfil() {
     const [error, setError] = useState(null);
     const [isEditMode, setIsEditMode] = useState(false);
     const [editedName, setEditedName] = useState('');
+    const [photoURL, setPhotoURL] = useState('');
     const [openSnackbar, setOpenSnackbar] = useState(false);
     const [snackbarMessage, setSnackbarMessage] = useState('');
     const [snackbarSeverity, setSnackbarSeverity] = useState('success');
     
     const [telegramChatId, setTelegramChatId] = useState('');
+    const [pushLoading, setPushLoading] = useState(false);
 
     useEffect(() => {
         const fetchProfile = async () => {
@@ -32,6 +36,7 @@ function ConfiguracoesPerfil() {
                     setUserProfile(data);
                     setEditedName(data.name || user.displayName);
                     setTelegramChatId(data.telegramChatId || '');
+                    setPhotoURL(data.photoURL || user.photoURL || '');
                 } else {
                     setError("Perfil não encontrado.");
                 }
@@ -49,9 +54,10 @@ function ConfiguracoesPerfil() {
                 const userDocRef = doc(db, 'users', user.uid);
                 await updateDoc(userDocRef, {
                     name: editedName,
-                    telegramChatId: telegramChatId
+                    telegramChatId: telegramChatId,
+                    photoURL: photoURL
                 });
-                setUserProfile(prev => ({ ...prev, name: editedName, telegramChatId: telegramChatId }));
+                setUserProfile(prev => ({ ...prev, name: editedName, telegramChatId, photoURL }));
                 setSnackbarMessage('Perfil atualizado com sucesso!');
                 setSnackbarSeverity('success');
                 setOpenSnackbar(true);
@@ -67,6 +73,75 @@ function ConfiguracoesPerfil() {
         }
     };
 
+    const handleUploadFotoSucesso = async (url) => {
+        setPhotoURL(url);
+        try {
+            const user = auth.currentUser;
+            if (user) {
+                const userDocRef = doc(db, 'users', user.uid);
+                await updateDoc(userDocRef, { photoURL: url });
+                setUserProfile(prev => ({ ...prev, photoURL: url }));
+                setSnackbarMessage('Foto de perfil atualizada com sucesso!');
+                setSnackbarSeverity('success');
+                setOpenSnackbar(true);
+            }
+        } catch (err) {
+            console.error('Erro ao atualizar foto de perfil:', err);
+        }
+    };
+
+    const handleAtivarPush = async () => {
+        setPushLoading(true);
+        try {
+            if (!('Notification' in window)) {
+                throw new Error('Navegador não suporta notificações Push.');
+            }
+
+            const permission = await Notification.requestPermission();
+            if (permission !== 'granted') {
+                throw new Error('Permissão de notificação negada pelo usuário.');
+            }
+
+            const { getMessaging, getToken } = await import('firebase/messaging');
+            const { app } = await import('../../firebaseConfig');
+            const messaging = getMessaging(app);
+
+            const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY;
+            const token = await getToken(messaging, { vapidKey });
+
+            if (!token) {
+                throw new Error('Não foi possível obter o token do FCM.');
+            }
+
+            const user = auth.currentUser;
+            const idToken = await user.getIdToken();
+
+            const response = await fetch('/api/save-push-token', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${idToken}`
+                },
+                body: JSON.stringify({ token })
+            });
+
+            if (!response.ok) {
+                throw new Error('Falha ao salvar token no servidor.');
+            }
+
+            setSnackbarMessage('Notificações Push ativadas com sucesso neste dispositivo!');
+            setSnackbarSeverity('success');
+            setOpenSnackbar(true);
+        } catch (err) {
+            console.error('Erro ao ativar Push:', err);
+            setSnackbarMessage(err.message || 'Erro ao ativar notificações Push.');
+            setSnackbarSeverity('error');
+            setOpenSnackbar(true);
+        } finally {
+            setPushLoading(false);
+        }
+    };
+
     const handleCloseSnackbar = (event, reason) => { if (reason === 'clickaway') return; setOpenSnackbar(false); };
 
     if (loading) return <Container sx={{ textAlign: 'center', mt: 4 }}><CircularProgress /></Container>;
@@ -77,6 +152,16 @@ function ConfiguracoesPerfil() {
         <Container maxWidth="md">
             <Paper elevation={3} sx={{ p: 4, mt: 4 }}>
                 <Typography variant="h5" gutterBottom align="center" sx={{ mb: 3 }}>Configurações do Perfil</Typography>
+                
+                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 3, gap: 2 }}>
+                    <Avatar src={photoURL} sx={{ width: 100, height: 100 }} />
+                    <UploadImagem
+                        onUploadSucesso={handleUploadFotoSucesso}
+                        pasta="cronolab/avatars"
+                        rotulo="Alterar Foto de Perfil"
+                    />
+                </Box>
+
                 <Grid container spacing={2}>
                     <Grid item xs={12}>
                         <TextField fullWidth label="Nome" value={editedName} onChange={(e) => setEditedName(e.target.value)} disabled={!isEditMode} />
@@ -86,6 +171,19 @@ function ConfiguracoesPerfil() {
                     </Grid>
                     <Grid item xs={12}><TextField fullWidth label="Email" value={userProfile.email} disabled /></Grid>
                     <Grid item xs={12}><TextField fullWidth label="Cargo" value={userProfile.role || 'Pendente'} disabled /></Grid>
+                    
+                    <Grid item xs={12}>
+                        <Button
+                            variant="outlined"
+                            startIcon={pushLoading ? <CircularProgress size={20} /> : <NotificationsIcon />}
+                            onClick={handleAtivarPush}
+                            disabled={pushLoading}
+                            fullWidth
+                        >
+                            {pushLoading ? 'Ativando Notificações...' : 'Ativar Notificações Push no Navegador'}
+                        </Button>
+                    </Grid>
+
                     {isEditMode ? (
                         <Grid item xs={12} sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
                             <Button variant="outlined" onClick={() => setIsEditMode(false)}>Cancelar</Button>

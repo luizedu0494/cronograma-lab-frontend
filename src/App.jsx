@@ -19,6 +19,8 @@ import {
     Menu as MenuIcon, Sun, Moon, LogOut, User, HelpCircle, UserCheck, Users, CalendarOff, Settings, Bell, ListTodo, Calendar, LayoutDashboard, ThumbsUp, PlusCircle, Download, BarChart, Bug, History, Bot, FlaskConical
 } from 'lucide-react';
 
+import PromptInstalacaoPWA from './componentes/comuns/PromptInstalacaoPWA';
+
 // --- LAZY LOADING DE PÁGINAS ---
 const ProporAulaForm = lazy(() => import('./ProporAulaForm'));
 const ProporEventoForm = lazy(() => import('./ProporEventoForm'));
@@ -217,6 +219,7 @@ function App() {
                         </Routes>
                     </Suspense>
                     <Snackbar open={openSnackbar} autoHideDuration={6000} onClose={handleCloseSnackbar}><Alert onClose={handleCloseSnackbar} severity={snackbarSeverity}>{snackbarMessage}</Alert></Snackbar>
+                    <PromptInstalacaoPWA />
                 </LocalizationProvider>
             </Router>
         </ThemeProvider>

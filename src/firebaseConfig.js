@@ -2,7 +2,6 @@
 import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider, connectAuthEmulator } from "firebase/auth";
 import { getFirestore, connectFirestoreEmulator } from "firebase/firestore";
-import { getStorage } from "firebase/storage";
 
 // Configurações do Firebase carregadas a partir das variáveis de ambiente (.env)
 const firebaseConfig = {
@@ -34,7 +33,6 @@ googleProvider.addScope('profile');
 googleProvider.addScope('email');
 
 const db = getFirestore(app);
-const storage = getStorage(app);
 
 // Configurações de desenvolvimento (descomente se necessário para desenvolvimento local)
 // if (process.env.NODE_ENV === 'development' && !auth._delegate._config.emulator) {
@@ -43,4 +41,4 @@ const storage = getStorage(app);
 // }
 
 // Exporta os serviços para serem usados em outros lugares do seu app
-export { auth, googleProvider, db, storage, app };
+export { auth, googleProvider, db, app };
