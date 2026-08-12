@@ -28,9 +28,6 @@ function ConfiguracoesPerfil() {
         if ('Notification' in window && Notification.permission === 'granted') {
             setPushAtivo(true);
         }
-    }, []);
-
-    const handleSaveProfile = async () => {
         const fetchProfile = async () => {
             setLoading(true);
             const user = auth.currentUser;
