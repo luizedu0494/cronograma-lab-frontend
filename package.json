@@ -25,6 +25,8 @@
     "fontsource-inter": "^4.0.0",
     "framer-motion": "^12.23.12",
     "lucide-react": "^0.514.0",
+    "mammoth": "^1.12.1",
+    "papaparse": "^5.5.4",
     "prop-types": "^15.8.1",
     "react": "^19.1.0",
     "react-chartjs-2": "^5.3.1",

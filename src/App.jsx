@@ -42,6 +42,7 @@ const VerificarIntegridadeDados = lazy(() => import('./pages/Gerenciar/Verificar
 const HistoricoAulas = lazy(() => import('./pages/Cronograma/HistoricoAulas'));
 const AssistenteIA = lazy(() => import('./pages/IA/AssistenteIA'));
 const CalendarioRevisoesTecnico = lazy(() => import('./pages/Cronograma/CalendarioRevisoesTecnico'));
+const UploadCronogramaExterno = lazy(() => import('./UploadCronogramaExterno'));
 
 const LoadingFallback = () => (<Box display="flex" justifyContent="center" alignItems="center" height="80vh"><CircularProgress /></Box>);
 const MainLayout = () => (<Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}><Outlet /></Container>);
@@ -143,6 +144,7 @@ function App() {
             <MenuItem key="agend-evento" component={Link} to="/propor-evento" onClick={handleMenuClose}><PlusCircle size={18} style={menuIconStyle}/> Agendar Evento</MenuItem>,
             <MenuItem key="gerenciar-menu" onClick={handleCoordenadorMenuOpen}><ListTodo size={18} style={menuIconStyle}/> Gerenciar</MenuItem>,
             <MenuItem key="users" component={Link} to="/gerenciar-usuarios" onClick={handleMenuClose}><Users size={18} style={menuIconStyle}/> Usuários</MenuItem>,
+            <MenuItem key="importar-externo" component={Link} to="/importar-cronograma-externo" onClick={handleMenuClose}><Download size={18} style={menuIconStyle}/> Importar Cronograma Externo</MenuItem>,
             <MenuItem key="periodos" component={Link} to="/gerenciar-periodos" onClick={handleMenuClose}><CalendarOff size={18} style={menuIconStyle}/> Eventos</MenuItem>,
             <MenuItem key="gerenciar-avisos" component={Link} to="/gerenciar-avisos" onClick={handleMenuClose}><Settings size={18} style={menuIconStyle}/> Gerenciar Avisos</MenuItem>,
         ] : []),
@@ -210,6 +212,7 @@ function App() {
                                         <Route path="/analise-aulas" element={<AnaliseAulas />} />
                                         <Route path="/analise-eventos" element={<AnaliseEventos />} />
                                         <Route path="/verificar-integridade" element={<VerificarIntegridadeDados />} />
+                                        <Route path="/importar-cronograma-externo" element={<UploadCronogramaExterno />} />
                                     </>)}
                                     <Route path="/assistente-ia" element={<AssistenteIA userInfo={userProfileData} currentUser={user} mode={darkMode ? 'dark' : 'light'} />} />
                                     {isCoordenadorOrTecnico && (<Route path="/download-cronograma" element={<DownloadCronograma />} />)}
