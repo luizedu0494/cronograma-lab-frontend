@@ -50,34 +50,29 @@ O sistema centraliza o cronograma de todos os laboratórios em uma única plataf
 
 ---
 
-## Novidades v2 & Reestruturação Técnica
+## Novidades v2 & v2.1 (Atualizações Recentes)
 
-> Resumo das melhorias de arquitetura, limpeza de arquivos, segurança e UX/UI implementadas nesta versão com base na análise técnica.
+> Resumo das melhorias de arquitetura, limpeza de arquivos, segurança, UX/UI e recursos mobile/push implementados nesta versão.
 
-### 🛡️ 1. Segurança e Variáveis de Ambiente
-- **Ambiente Isolado**: Remoção de chaves hardcoded e introdução dos arquivos `.env` e `.env.example`.
-- **Firebase & Groq**: Configuração dinâmica via `import.meta.env` com prefixos `VITE_`.
+### 🖼️ 1. Upload Inteligente de Imagens via Cloudinary
+- **Componente Reutilizável (`UploadImagem.jsx`)**: Permite upload direto para CDN sem custo e sem depender do Firebase Storage (compatível 100% com plano Spark).
+- **Foto de Perfil**: Usuários podem alterar seu avatar na página de configurações do perfil.
+- **Calendário Acadêmico Editável**: O coordenador pode fazer upload de um novo banner do calendário ou editar a frase/título exibido na página inicial em tempo real.
 
-### 📂 2. Reorganização Arquitetural & Limpeza de Arquivos Mortos
-- **Roteamento de Telas (`src/pages/`)**:
-  - `src/pages/Cronograma/`: `PaginaInicial`, `CalendarioCronograma`, `HistoricoAulas`, `CalendarioRevisoesTecnico`.
-  - `src/pages/Gerenciar/`: `GerenciarAprovacoes`, `GerenciarUsuarios`, `GerenciarAvisos`, `GerenciarPeriodos`, `AnaliseAulas`, `AnaliseEventos`, `VerificarIntegridadeDados`.
-  - `src/pages/IA/`: `AssistenteIA`.
-  - `src/pages/Perfil/`: `ConfiguracoesPerfil`.
-- **Limpeza de Arquivos Desnecessários**:
-  - Removidos arquivos mortos do template inicial (`App.css`, `logo.svg`).
-  - Movidos os 11 arquivos de documentação Markdown soltos na raiz para a pasta [docs/](./docs/).
-  - Isolamento de suíte e testes manuais na pasta dedicada `src/__tests__/` (`App.test.jsx`, `NotificadorTelegram.test.js`, `testes_ia_manual.js`, `setupTests.js`).
-  - Correção de extensões: `vite.config.js`, `public/firebase-messaging-sw.js`, `index.js`, `theme.js`, `api/*.js`.
+### 🔔 2. Notificações Push Web (FCM - Firebase Cloud Messaging)
+- **Ativação no Perfil**: Botão dinâmico no perfil com indicação visual de status (verde quando autorizado).
+- **Alerta Informativo**: Instruções claras ao usuário sobre como permitir notificações no navegador (ícone 🔒 da URL).
+- **Service Worker Compatível (`firebase-messaging-sw.js`)**: Integração síncrona com SDK v10 compat, capaz de receber notificações mesmo com o navegador/aba fechada.
+- **Fallback Firestore Client-Side**: Armazenamento automático dos tokens na coleção `userTokens` / `fcmTokens` para envio de mensagens broadcast ou multicast via `firebase-admin`.
 
-### ⚙️ 3. Adoção Incremental do TypeScript & Qualidade
-- **Tipagem Estática**: Introdução do `tsconfig.json` (com suporte gradual a arquivos JS/TS) e [src/types/index.ts](./src/types/index.ts).
-- **Módulos Migrados**:
-  - **Constantes**: `cursos.ts` e `laboratorios.ts`.
-  - **Motor de IA**: `ClassificadorIntencao.ts`, `ExtratorParametros.ts`, `ProcessadorConsultas.ts` e `ExecutorAcoes.ts`.
-  - **Serviços & Hooks**: `loggerService.ts`, `NotificadorTelegram.ts` e `useFetchAulas.tsx`.
-  - **UI Base**: `DialogConfirmacao.tsx`, `EmptyState.tsx` e `UsageMonitor.tsx`.
-- **Padronização**: Configuração do ESLint ([eslint.config.js](./eslint.config.js)) e Prettier ([.prettierrc](./.prettierrc)), com scripts `npm run lint` e `npm run format`.
+### 📱 3. PWA (Progressive Web App) & Suporte Mobile
+- **Instalável no Celular**: Manifest atualizado (`manifest.json`) com ícones `maskable` e suporte a instalação como aplicativo nativo Android/iOS.
+- **Banner de Instalação (`PromptInstalacaoPWA.jsx`)**: Prompt amigável convidando o usuário a adicionar o CronoLab à tela inicial do celular.
+
+### 📅 4. Calendário Acadêmico Customizável (Coordenador)
+- **Título & Frase Customizável**: Altere a frase de destaque do calendário diretamente na interface.
+- **Permissão de Alunos (Switch)**: Chave liga/desliga funcional para liberar ou ocultar a visualização do calendário acadêmico para perfil de aluno.
+- **Visualizador em Tela Cheia**: Suporte a Modal Fullscreen para leitura detalhada em dispositivos móveis e desktops.
 
 ---
 
