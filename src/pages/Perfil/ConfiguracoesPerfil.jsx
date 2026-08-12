@@ -23,6 +23,7 @@ function ConfiguracoesPerfil() {
     
     const [telegramChatId, setTelegramChatId] = useState('');
     const [pushAtivo, setPushAtivo] = useState(false);
+    const [pushLoading, setPushLoading] = useState(false);
 
     useEffect(() => {
         if ('Notification' in window && Notification.permission === 'granted') {
