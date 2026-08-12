@@ -7,7 +7,7 @@ import {
     Select, MenuItem, OutlinedInput, Chip, TextField, Divider, Snackbar, Menu,
     Dialog, DialogTitle, DialogContent, DialogActions, DialogContentText,
     InputAdornment, Checkbox, Fade, useTheme,
-    useMediaQuery, SwipeableDrawer, Badge
+    useMediaQuery, SwipeableDrawer, Badge, ToggleButton, ToggleButtonGroup, Tabs, Tab
 } from '@mui/material';
 import {
     ChevronLeft, ChevronRight, FilterList as FilterListIcon, Edit as EditIcon,
@@ -30,7 +30,8 @@ import ProporEventoForm from './ProporEventoForm';
 import DialogConfirmacao from './components/DialogConfirmacao';
 import { LISTA_CURSOS } from './constants/cursos';
 import EventoCard from './components/EventoCard';
-import { useSearchParams } from 'react-router-dom';
+import GradeDisponibilidade from './components/GradeDisponibilidade';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { notificadorTelegram } from './services/NotificadorTelegram';
 import { registrarLogExclusao } from './services/loggerService';
 
@@ -521,6 +522,10 @@ function CalendarioCronograma({ userInfo }) {
 
     useEffect(() => { fetchDados(); }, [fetchDados]);
 
+    const navigate = useNavigate();
+    const [perspectiva, setPerspectiva] = useState('todos');
+    const [abaCalendario, setAbaCalendario] = useState('semana');
+
     useEffect(() => {
         const filtrar = (item, isEvento = false) => {
             const matchLab = filtros.laboratorio.length === 0 || filtros.laboratorio.includes(isEvento ? item.laboratorio : item.laboratorio);
@@ -539,11 +544,24 @@ function CalendarioCronograma({ userInfo }) {
                 if (filtros.tipoConteudo === 'prova')   matchTipo = !!item.isProva;
                 if (filtros.tipoConteudo === 'aula')    matchTipo = !item.isRevisao && !item.isProva;
             }
-            return matchLab && matchCurso && matchAssunto && matchTurno && matchTipo;
+
+            // Filtro de Perspectiva (livres / ocupados / todos)
+            let matchPerspectiva = true;
+            if (perspectiva !== 'todos') {
+                const labsOcupados = new Set(aulas.map(a => a.laboratorio || a.laboratorioSelecionado));
+                const labDoItem = item.laboratorio || item.laboratorioSelecionado;
+                if (perspectiva === 'ocupados') {
+                    matchPerspectiva = labsOcupados.has(labDoItem);
+                } else if (perspectiva === 'livres') {
+                    matchPerspectiva = !labsOcupados.has(labDoItem);
+                }
+            }
+
+            return matchLab && matchCurso && matchAssunto && matchTurno && matchTipo && matchPerspectiva;
         };
         setAulasFiltradas(aulas.filter(a => filtrar(a)));
         setEventosFiltrados(eventos.filter(e => filtrar(e, true)));
-    }, [aulas, eventos, filtros]);
+    }, [aulas, eventos, filtros, perspectiva]);
 
     // Navegação
     const handlePrev = () => {
@@ -785,6 +803,28 @@ function CalendarioCronograma({ userInfo }) {
 
                     <Collapse in={filtrosVisiveis}>
                         <Box sx={{ mt: 2, pt: 2, borderTop: '1px solid', borderColor: 'divider' }}>
+                            <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                                <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                                    Perspectiva de visão:
+                                </Typography>
+                                <ToggleButtonGroup
+                                    value={perspectiva}
+                                    exclusive
+                                    onChange={(_, novoValor) => novoValor && setPerspectiva(novoValor)}
+                                    size="small"
+                                >
+                                    <ToggleButton value="ocupados" color="error">
+                                        🔴 Ocupados
+                                    </ToggleButton>
+                                    <ToggleButton value="livres" color="success">
+                                        🟢 Livres
+                                    </ToggleButton>
+                                    <ToggleButton value="todos">
+                                        Todos
+                                    </ToggleButton>
+                                </ToggleButtonGroup>
+                            </Box>
+
                             <Grid container spacing={2}>
                                 <Grid item xs={12} md={3}>
                                     <TextField fullWidth size="small" label="Buscar Assunto" value={filtros.assunto} onChange={(e) => setFiltros({...filtros, assunto: e.target.value})} InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> }} />
@@ -838,7 +878,31 @@ function CalendarioCronograma({ userInfo }) {
                     </Collapse>
                 </Paper>
 
-                {loading ? (
+                <Tabs
+                    value={abaCalendario}
+                    onChange={(_, v) => setAbaCalendario(v)}
+                    sx={{ mb: 2 }}
+                >
+                    <Tab value="semana" label="Visão Cronograma" />
+                    <Tab value="grade" label="🟢 Grade de Disponibilidade" />
+                </Tabs>
+
+                {abaCalendario === 'grade' && (
+                    <Box sx={{ mb: 3 }}>
+                        <GradeDisponibilidade
+                            aulas={aulas}
+                            dataFoco={currentDate.format('YYYY-MM-DD')}
+                            tiposLab={[]}
+                            onCelulaClick={({ labId, labNome, horario }) => {
+                                navigate('/propor-aula', {
+                                    state: { labIdPreSelecionado: labId, horarioPreSelecionado: horario, dataPreSelecionada: currentDate.format('YYYY-MM-DD') }
+                                });
+                            }}
+                        />
+                    </Box>
+                )}
+
+                {abaCalendario === 'semana' && (loading ? (
                     <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}><CircularProgress /></Box>
                 ) : (() => {
                     const filtroAtivo = filtros.laboratorio.length > 0 || filtros.cursos.length > 0
@@ -872,7 +936,7 @@ function CalendarioCronograma({ userInfo }) {
                             ))}
                         </Grid>
                     );
-                })()}
+                })())}
 
                 {/* MODAIS */}
                 <Dialog open={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} maxWidth="md" fullWidth>
