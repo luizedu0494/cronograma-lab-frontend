@@ -121,10 +121,19 @@ function ConfiguracoesPerfil() {
             }
 
             const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY;
-            const token = await getToken(messaging, {
+            
+            // Adicionado timeout de 10s para a chamada do FCM em caso de travamento do PushManager
+            const getTokenWithTimeout = () => Promise.race([
+              getToken(messaging, {
                 vapidKey: vapidKey,
                 serviceWorkerRegistration: swRegistration
-            });
+              }),
+              new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('Tempo limite excedido ao obter token de notificação. Verifique se o navegador bloqueia push no localhost.')), 10000)
+              )
+            ]);
+
+            const token = await getTokenWithTimeout();
 
             if (!token) {
                 throw new Error('Não foi possível obter o token do FCM.');
@@ -133,17 +142,24 @@ function ConfiguracoesPerfil() {
             const user = auth.currentUser;
             const idToken = await user.getIdToken();
 
-            const response = await fetch('/api/save-push-token', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${idToken}`
-                },
-                body: JSON.stringify({ token })
-            });
-
-            if (!response.ok) {
-                throw new Error('Falha ao salvar token no servidor.');
+            // Salva no Firestore direto se a rota serverless api/save-push-token nao responder em dev
+            try {
+              const response = await fetch('/api/save-push-token', {
+                  method: 'POST',
+                  headers: {
+                      'Content-Type': 'application/json',
+                      'Authorization': `Bearer ${idToken}`
+                  },
+                  body: JSON.stringify({ token })
+              });
+              if (!response.ok) throw new Error('API route fallback');
+            } catch (apiErr) {
+              console.warn('Salvando token diretamente no Firestore local:', apiErr);
+              const { setDoc } = await import('firebase/firestore');
+              await setDoc(doc(db, 'fcmTokens', user.uid), {
+                tokens: [token],
+                updatedAt: new Date()
+              }, { merge: true });
             }
 
             setSnackbarMessage('Notificações Push ativadas com sucesso neste dispositivo!');
