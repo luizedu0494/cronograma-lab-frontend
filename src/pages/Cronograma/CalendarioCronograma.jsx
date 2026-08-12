@@ -122,7 +122,7 @@ const AulaCard = ({ aula, onEdit, onDelete, isCoordenador, isSelectionMode, isSe
                     </Box>
                 )}
 
-                {!isSelectionMode && (
+                {isCoordenador && !isSelectionMode && (
                     <>
                         <IconButton size="small" onClick={handleMenuClick} sx={{ position: 'absolute', top: 4, right: 4, zIndex: 2 }}><MoreVertIcon fontSize="small" /></IconButton>
                         <Menu anchorEl={anchorEl} open={openMenu} onClose={() => setAnchorEl(null)}>
@@ -793,16 +793,18 @@ function CalendarioCronograma({ userInfo }) {
 
                             <Button variant={filtrosVisiveis ? "contained" : "outlined"} startIcon={<FilterListIcon />} onClick={() => setFiltrosVisiveis(!filtrosVisiveis)}>Outros Filtros</Button>
                             
-                            <Tooltip title="Gerenciamento em Massa">
-                                <Button 
-                                    onClick={() => setIsSelectionMode(!isSelectionMode)} 
-                                    variant={isSelectionMode ? "contained" : "outlined"} 
-                                    color="secondary" 
-                                    startIcon={isSelectionMode ? <CloseIcon /> : <CheckBoxIcon />}
-                                >
-                                    {isSelectionMode ? "Cancelar" : "Selecionar"}
-                                </Button>
-                            </Tooltip>
+                            {userInfo?.role === 'coordenador' && (
+                                <Tooltip title="Gerenciamento em Massa">
+                                    <Button 
+                                        onClick={() => setIsSelectionMode(!isSelectionMode)} 
+                                        variant={isSelectionMode ? "contained" : "outlined"} 
+                                        color="secondary" 
+                                        startIcon={isSelectionMode ? <CloseIcon /> : <CheckBoxIcon />}
+                                    >
+                                        {isSelectionMode ? "Cancelar" : "Selecionar"}
+                                    </Button>
+                                </Tooltip>
+                            )}
                             
                             <Button 
                                 variant="contained" 
