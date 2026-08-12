@@ -106,8 +106,13 @@ function ConfiguracoesPerfil() {
             const { app } = await import('../../firebaseConfig');
             const messaging = getMessaging(app);
 
+            const swRegistration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+
             const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY;
-            const token = await getToken(messaging, { vapidKey });
+            const token = await getToken(messaging, {
+                vapidKey: vapidKey,
+                serviceWorkerRegistration: swRegistration
+            });
 
             if (!token) {
                 throw new Error('Não foi possível obter o token do FCM.');
