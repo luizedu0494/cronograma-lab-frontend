@@ -127,6 +127,7 @@ service cloud.firestore {
 
     match /userTokens/{userId}  { allow read, write: if isOwner(userId); }
     match /pushTokens/{userId}  { allow read, write: if isOwner(userId); }
+    match /fcmTokens/{userId}   { allow read, write: if isOwner(userId); }
 
     match /system/{docId} {
       allow read: if isUserApproved();
