@@ -893,7 +893,8 @@ function CalendarioCronograma({ userInfo }) {
                             aulas={aulas}
                             dataFoco={currentDate.format('YYYY-MM-DD')}
                             tiposLab={[]}
-                            onCelulaClick={({ labId, labNome, horario }) => {
+                            onCelulaClick={({ labId, labNome, horario, ocupado }) => {
+                                if (ocupado) return;
                                 navigate('/propor-aula', {
                                     state: { labIdPreSelecionado: labId, horarioPreSelecionado: horario, dataPreSelecionada: currentDate.format('YYYY-MM-DD') }
                                 });
