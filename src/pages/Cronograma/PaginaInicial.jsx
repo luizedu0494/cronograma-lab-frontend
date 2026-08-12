@@ -14,7 +14,8 @@ import { useMediaQuery } from '@mui/material';
 import { 
     Close as CloseIcon, ExpandMore as ExpandMoreIcon, 
     CalendarMonth as CalendarIcon,
-    FilterList as FilterListIcon
+    FilterList as FilterListIcon,
+    Edit as EditIcon
 } from '@mui/icons-material';
 import { 
     Clock, FileText, Bell, UserCheck, CalendarOff, 
@@ -31,6 +32,7 @@ import calendarioAcademico from '../../assets/images/destaque-calendario.jpeg';
 import UltimasAulasCard from '../../components/UltimasAulasCard';
 import UltimasExclusoesCard from '../../components/UltimasExclusoesCard';
 import AssistenteIA from '../IA/AssistenteIA'; 
+import UploadImagem from '../../componentes/comuns/UploadImagem'; 
 
 const PaginaInicial = ({ userInfo }) => {
 
@@ -59,6 +61,11 @@ const PaginaInicial = ({ userInfo }) => {
 
     // Estados de UI
     const [isCalendarEnabled, setIsCalendarEnabled] = useState(false);
+    const [calendarTitle, setCalendarTitle] = useState('Calendário Acadêmico 2026');
+    const [calendarImageURL, setCalendarImageURL] = useState('');
+    const [isEditCalendarOpen, setIsEditCalendarOpen] = useState(false);
+    const [editedTitle, setEditedTitle] = useState('');
+    const [editedImageURL, setEditedImageURL] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [tabValue, setTabValue] = useState(0);
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -160,7 +167,12 @@ const PaginaInicial = ({ userInfo }) => {
             setRevisoesOficiaisHoje(aulasHojeDocs.filter(a => a.isRevisao === true));
 
             const configDoc = results[1];
-            if (configDoc.exists()) setIsCalendarEnabled(configDoc.data().isCalendarEnabled || false);
+            if (configDoc.exists()) {
+                const cData = configDoc.data();
+                setIsCalendarEnabled(cData.isCalendarEnabled || false);
+                if (cData.calendarTitle) setCalendarTitle(cData.calendarTitle);
+                if (cData.calendarImageURL) setCalendarImageURL(cData.calendarImageURL);
+            }
 
             let idx = 2;
             if (userInfo?.role === 'coordenador') {
@@ -193,11 +205,35 @@ const PaginaInicial = ({ userInfo }) => {
         else setLoading(false);
     }, [fetchData, userInfo]);
 
-    const handleUpdateCalendarStatus = async (event) => {
+    const handleToggleCalendarStatus = async (checked) => {
         try {
-            await setDoc(doc(db, 'config', 'geral'), { isCalendarEnabled: event.target.checked }, { merge: true });
-            setIsCalendarEnabled(event.target.checked);
-        } catch (error) { alert("Erro ao atualizar."); }
+            await setDoc(doc(db, 'config', 'geral'), { isCalendarEnabled: checked }, { merge: true });
+            setIsCalendarEnabled(checked);
+        } catch (error) {
+            console.error("Erro ao atualizar status do calendário:", error);
+            alert("Erro ao atualizar permissão do calendário: " + error.message);
+        }
+    };
+
+    const handleOpenEditCalendar = () => {
+        setEditedTitle(calendarTitle);
+        setEditedImageURL(calendarImageURL);
+        setIsEditCalendarOpen(true);
+    };
+
+    const handleSaveCalendarConfig = async () => {
+        try {
+            await setDoc(doc(db, 'config', 'geral'), {
+                calendarTitle: editedTitle,
+                calendarImageURL: editedImageURL
+            }, { merge: true });
+            setCalendarTitle(editedTitle);
+            setCalendarImageURL(editedImageURL);
+            setIsEditCalendarOpen(false);
+        } catch (error) {
+            console.error("Erro ao salvar configurações do calendário:", error);
+            alert("Erro ao salvar: " + error.message);
+        }
     };
 
     const handleTabChange = (event, newValue) => setTabValue(newValue);
@@ -968,30 +1004,105 @@ const PaginaInicial = ({ userInfo }) => {
             {/* 6. CALENDÁRIO ACADÊMICO */}
             <Accordion elevation={2}>
                 <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                    <Box display="flex" alignItems="center" gap={1}>
-                        <CalendarIcon color="action" />
-                        <Typography fontWeight="medium">Calendário Acadêmico 2026</Typography>
+                    <Box display="flex" alignItems="center" justifyContent="space-between" width="100%" pr={1}>
+                        <Box display="flex" alignItems="center" gap={1}>
+                            <CalendarIcon color="action" />
+                            <Typography fontWeight="medium">{calendarTitle}</Typography>
+                        </Box>
+                        {userInfo?.role === 'coordenador' && (
+                            <Button
+                                size="small"
+                                variant="outlined"
+                                startIcon={<EditIcon />}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleOpenEditCalendar();
+                                }}
+                            >
+                                Editar Calendário
+                            </Button>
+                        )}
                     </Box>
                 </AccordionSummary>
                 <AccordionDetails sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                    <img src={calendarioAcademico} alt="Calendário Acadêmico"
+                    <img
+                        src={calendarImageURL || calendarioAcademico}
+                        alt="Calendário Acadêmico"
                         style={{ maxWidth: '100%', maxHeight: '400px', objectFit: 'contain', cursor: 'pointer', borderRadius: 8 }}
-                        onClick={() => setIsModalOpen(true)} />
+                        onClick={() => setIsModalOpen(true)}
+                    />
                     <Button size="small" onClick={() => setIsModalOpen(true)} sx={{ mt: 1 }}>Ver em Tela Cheia</Button>
+                    
                     {userInfo?.role === 'coordenador' && (
-                        <Box sx={{ mt: 2, width: '100%', pt: 1, borderTop: 1, borderColor: 'divider' }}>
+                        <Box sx={{ mt: 2, width: '100%', pt: 1, borderTop: 1, borderColor: 'divider', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                             <FormControlLabel
-                                control={<Switch checked={isCalendarEnabled} onChange={handleUpdateCalendarStatus} size="small" />}
-                                label={<Typography variant="caption">Disponível para alunos</Typography>} />
+                                control={
+                                    <Switch
+                                        checked={isCalendarEnabled}
+                                        onChange={(e) => handleToggleCalendarStatus(e.target.checked)}
+                                        color="primary"
+                                    />
+                                }
+                                label={<Typography variant="body2" fontWeight="bold">Disponível para alunos</Typography>}
+                            />
                         </Box>
                     )}
                 </AccordionDetails>
             </Accordion>
 
+            {/* Modal: Edição do Calendário Acadêmico (Título e Imagem via Cloudinary) */}
+            <Dialog open={isEditCalendarOpen} onClose={() => setIsEditCalendarOpen(false)} maxWidth="sm" fullWidth>
+                <DialogTitle>
+                    <Box display="flex" justifyContent="space-between" alignItems="center">
+                        <Typography variant="h6" fontWeight="bold">Editar Calendário Acadêmico</Typography>
+                        <IconButton onClick={() => setIsEditCalendarOpen(false)} size="small"><CloseIcon /></IconButton>
+                    </Box>
+                </DialogTitle>
+                <DialogContent dividers>
+                    <Box display="flex" flexDirection="column" gap={3} pt={1}>
+                        <TextField
+                            fullWidth
+                            label="Título / Frase do Calendário"
+                            value={editedTitle}
+                            onChange={(e) => setEditedTitle(e.target.value)}
+                            placeholder="Ex: Calendário Acadêmico 2026.1 - Medicina"
+                            helperText="Esta frase aparecerá como título do bloco."
+                        />
+
+                        <Box display="flex" flexDirection="column" alignItems="center" gap={2}>
+                            <Typography variant="subtitle2" fontWeight="bold" align="left" width="100%">
+                                Imagem do Calendário:
+                            </Typography>
+                            {editedImageURL ? (
+                                <img
+                                    src={editedImageURL}
+                                    alt="Prévia do Calendário"
+                                    style={{ maxWidth: '100%', maxHeight: 200, objectFit: 'contain', borderRadius: 8 }}
+                                />
+                            ) : (
+                                <Typography variant="caption" color="text.secondary">
+                                    Utilizando imagem padrão do sistema.
+                                </Typography>
+                            )}
+
+                            <UploadImagem
+                                onUploadSucesso={(url) => setEditedImageURL(url)}
+                                pasta="cronolab/calendarios"
+                                rotulo="Enviar Nova Imagem do Calendário"
+                            />
+                        </Box>
+                    </Box>
+                </DialogContent>
+                <DialogActions sx={{ px: 3, py: 2 }}>
+                    <Button onClick={() => setIsEditCalendarOpen(false)} color="inherit">Cancelar</Button>
+                    <Button onClick={handleSaveCalendarConfig} variant="contained" color="primary">Salvar Alterações</Button>
+                </DialogActions>
+            </Dialog>
+
             {/* Modal Fullscreen */}
             <Dialog open={isModalOpen} onClose={() => setIsModalOpen(false)} maxWidth="lg" fullWidth>
                 <DialogContent sx={{ p: 0, position: 'relative', bgcolor: 'black' }}>
-                    <img src={calendarioAcademico} alt="Calendário Full" style={{ width: '100%', display: 'block' }} />
+                    <img src={calendarImageURL || calendarioAcademico} alt="Calendário Full" style={{ width: '100%', display: 'block' }} />
                     <IconButton onClick={() => setIsModalOpen(false)} sx={{ position: 'absolute', right: 8, top: 8, color: 'white', bgcolor: 'rgba(0,0,0,0.5)' }}>
                         <CloseIcon />
                     </IconButton>
