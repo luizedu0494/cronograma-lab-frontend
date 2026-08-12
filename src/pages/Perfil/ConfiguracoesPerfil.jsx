@@ -108,14 +108,15 @@ function ConfiguracoesPerfil() {
 
             let swRegistration;
             try {
+              // Força a limpeza de registros anteriores travados
+              const existingRegistrations = await navigator.serviceWorker.getRegistrations();
+              for (let reg of existingRegistrations) {
+                await reg.unregister();
+              }
               swRegistration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
               await navigator.serviceWorker.ready;
             } catch (swErr) {
-              console.warn('Tentando recriar o Service Worker...', swErr);
-              const registrations = await navigator.serviceWorker.getRegistrations();
-              for (let reg of registrations) {
-                await reg.unregister();
-              }
+              console.warn('Erro ao registrar Service Worker:', swErr);
               swRegistration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
               await navigator.serviceWorker.ready;
             }
