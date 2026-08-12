@@ -88,11 +88,13 @@ const AulaCard = ({ aula, onEdit, onDelete, isCoordenador, isSelectionMode, isSe
         else setExpanded(!expanded);
     };
 
-    const corBorda = aula.isProva
-        ? '#f44336'  // vermelho para provas
-        : aula.isRevisao
-            ? '#9c27b0'  // roxo para revisões
-            : (CURSO_COLORS[aula.cursos?.[0]] || CURSO_COLORS.default);
+    const corBorda = aula.status === 'pendente'
+        ? '#ff9800'  // laranja para pendentes
+        : aula.isProva
+            ? '#f44336'  // vermelho para provas
+            : aula.isRevisao
+                ? '#9c27b0'  // roxo para revisões
+                : (CURSO_COLORS[aula.cursos?.[0]] || CURSO_COLORS.default);
 
     const tipoRevisaoLabel = aula.tipoRevisaoLabel || 'Revisão';
 
@@ -107,11 +109,13 @@ const AulaCard = ({ aula, onEdit, onDelete, isCoordenador, isSelectionMode, isSe
                     transform: isSelected ? 'scale(0.98)' : 'scale(1)',
                     bgcolor: isSelected
                         ? (theme.palette.mode === 'dark' ? 'rgba(25, 118, 210, 0.2)' : 'rgba(25, 118, 210, 0.08)')
-                        : aula.isProva
-                            ? (theme.palette.mode === 'dark' ? 'rgba(244, 67, 54, 0.07)' : 'rgba(244, 67, 54, 0.04)')
-                            : aula.isRevisao
-                                ? (theme.palette.mode === 'dark' ? 'rgba(156, 39, 176, 0.07)' : 'rgba(156, 39, 176, 0.04)')
-                                : 'background.paper',
+                        : aula.status === 'pendente'
+                            ? (theme.palette.mode === 'dark' ? 'rgba(255, 152, 0, 0.12)' : 'rgba(255, 152, 0, 0.08)')
+                            : aula.isProva
+                                ? (theme.palette.mode === 'dark' ? 'rgba(244, 67, 54, 0.07)' : 'rgba(244, 67, 54, 0.04)')
+                                : aula.isRevisao
+                                    ? (theme.palette.mode === 'dark' ? 'rgba(156, 39, 176, 0.07)' : 'rgba(156, 39, 176, 0.04)')
+                                    : 'background.paper',
                     border: isSelected ? '1px solid #1976d2' : undefined,
                     color: 'text.primary'
                 }}
@@ -133,8 +137,20 @@ const AulaCard = ({ aula, onEdit, onDelete, isCoordenador, isSelectionMode, isSe
                 )}
 
                 <Box onClick={handleCardClick} sx={{ p: 1.5, pl: isSelectionMode ? 5 : 1.5, cursor: 'pointer' }}>
+                    {/* Badge de pendente para o coordenador */}
+                    {aula.status === 'pendente' && (
+                        <Chip
+                            label="⏳ Aguardando Aprovação"
+                            size="small"
+                            sx={{
+                                mb: 0.5, height: 18, fontSize: '0.6rem',
+                                bgcolor: 'rgba(255,152,0,0.2)', color: '#ed6c02',
+                                fontWeight: 'bold'
+                            }}
+                        />
+                    )}
                     {/* Badge de prova */}
-                    {aula.isProva && (
+                    {aula.status !== 'pendente' && aula.isProva && (
                         <Chip
                             label="📝 Prova"
                             size="small"
@@ -503,7 +519,12 @@ function CalendarioCronograma({ userInfo }) {
                     const data = doc.data();
                     return { id: doc.id, ...data, start: data.dataInicio?.toDate() || new Date(), end: data.dataFim?.toDate() || new Date(), title: data.assunto || 'Sem Título', laboratorio: data.laboratorioSelecionado };
                 })
-                .filter(aula => !aula.status || aula.status === 'aprovada')
+                .filter(aula => {
+                    if (!aula.status || aula.status === 'aprovada') return true;
+                    // Se for pendente, exibe no calendário EXCLUSIVAMENTE para o Coordenador
+                    if (aula.status === 'pendente') return userInfo?.role === 'coordenador';
+                    return false;
+                })
             );
 
             setEventos(eventosSnap.docs.map(doc => {
@@ -539,9 +560,10 @@ function CalendarioCronograma({ userInfo }) {
             // Filtro de tipo: aulas normais vs revisões
             let matchTipo = true;
             if (!isEvento && filtros.tipoConteudo && filtros.tipoConteudo !== 'todos') {
-                if (filtros.tipoConteudo === 'revisao') matchTipo = !!item.isRevisao && !item.isProva;
-                if (filtros.tipoConteudo === 'prova')   matchTipo = !!item.isProva;
-                if (filtros.tipoConteudo === 'aula')    matchTipo = !item.isRevisao && !item.isProva;
+                if (filtros.tipoConteudo === 'revisao')  matchTipo = !!item.isRevisao && !item.isProva;
+                if (filtros.tipoConteudo === 'prova')    matchTipo = !!item.isProva;
+                if (filtros.tipoConteudo === 'aula')     matchTipo = !item.isRevisao && !item.isProva;
+                if (filtros.tipoConteudo === 'pendente') matchTipo = item.status === 'pendente';
             }
 
             // Filtro de Perspectiva (livres / ocupados / todos)
@@ -788,6 +810,9 @@ function CalendarioCronograma({ userInfo }) {
                                     <MenuItem value="aula">🎓 Aulas</MenuItem>
                                     <MenuItem value="revisao">📖 Revisões</MenuItem>
                                     <MenuItem value="prova">📝 Provas</MenuItem>
+                                    {userInfo?.role === 'coordenador' && (
+                                        <MenuItem value="pendente">⏳ Pendentes de Aprovação</MenuItem>
+                                    )}
                                 </Select>
                             </FormControl>
 
@@ -806,13 +831,15 @@ function CalendarioCronograma({ userInfo }) {
                                 </Tooltip>
                             )}
                             
-                            <Button 
-                                variant="contained" 
-                                startIcon={<AddIcon />} 
-                                onClick={() => setIsAddModalOpen(true)}
-                            >
-                                {userInfo?.role === 'coordenador' ? "Nova Aula" : "Propor Atividade"}
-                            </Button>
+                            {userInfo?.role === 'coordenador' && (
+                                <Button 
+                                    variant="contained" 
+                                    startIcon={<AddIcon />} 
+                                    onClick={() => setIsAddModalOpen(true)}
+                                >
+                                    Nova Aula
+                                </Button>
+                            )}
                         </Grid>
                     </Grid>
 

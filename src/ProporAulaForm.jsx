@@ -128,7 +128,7 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
     const { aulaId: paramAulaId } = useParams();
     const aulaId = propAulaId || paramAulaId;
 
-    const notificarTelegramBatch = async (aulas, tipoAcao) => {
+    const notificarTelegramBatch = useCallback(async (aulas, tipoAcao) => {
         if (!TELEGRAM_CHAT_ID) return;
         for (const aula of aulas) {
             let dataFormatada = 'N/A';
@@ -167,7 +167,7 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
 
             await notificadorTelegram.enviarNotificacao(TELEGRAM_CHAT_ID, dadosNotificacao, tipoFinal);
         }
-    };
+    }, [isCoordenador]);
 
     useEffect(() => {
         if (aulaId) {
@@ -534,7 +534,26 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
             }
 
             try {
-                await notificadorTelegramBatch(finalizadas, isEditMode ? 'editar' : 'adicionar');
+                if (TELEGRAM_CHAT_ID) {
+                    for (const aula of finalizadas) {
+                        const dateObj = dayjs(aula.dataInicio.toDate ? aula.dataInicio.toDate() : aula.dataInicio);
+                        const dadosNotificacao = {
+                            assunto: aula.assunto,
+                            data: dateObj.isValid() ? dateObj.format('DD/MM/YYYY') : 'N/A',
+                            dataISO: dateObj.isValid() ? dateObj.format('YYYY-MM-DD') : null,
+                            horario: aula.horarioSlotString,
+                            laboratorio: aula.laboratorioSelecionado,
+                            cursos: aula.cursos,
+                            observacoes: aula.observacoes,
+                            propostoPorNome: aula.propostoPorNome || '',
+                            isRevisao: aula.isRevisao || false,
+                            tipoRevisaoLabel: aula.tipoRevisaoLabel || '',
+                            isProva: aula.isProva || false,
+                        };
+                        const tipoFinal = isEditMode ? 'editar' : (!isCoordenador ? 'pendente' : 'adicionar');
+                        await notificadorTelegram.enviarNotificacao(TELEGRAM_CHAT_ID, dadosNotificacao, tipoFinal);
+                    }
+                }
             } catch (errTelegram) {
                 console.warn('Alerta Telegram não enviado:', errTelegram);
             }

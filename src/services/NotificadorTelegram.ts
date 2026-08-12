@@ -83,6 +83,9 @@ class NotificadorTelegram {
     mensagem: string,
     threadId?: number | null
   ): Promise<boolean> {
+    console.log(`📡 [Telegram] Iniciando envio para Chat ID: "${chatId}" (Thread: ${threadId || 'Sem tópico/Geral'})...`);
+    console.log(`🔑 [Telegram] Bot Token presente: ${this.botToken ? 'SIM (' + this.botToken.substring(0, 8) + '...)' : 'NÃO (indefinido)'}`);
+
     const url = `${this.apiUrl}/bot${this.botToken}/sendMessage`;
     const payload: Record<string, any> = {
       chat_id: chatId,
@@ -92,18 +95,48 @@ class NotificadorTelegram {
     };
     if (threadId) payload.message_thread_id = Number(threadId);
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    const resData = await response.json();
-    if (!resData.ok) {
-      console.error(`❌ Erro Telegram (Tópico ${threadId || 'Geral'}):`, resData.description);
-    } else {
-      console.log(`✅ Sucesso (Tópico ${threadId || 'Geral'})!`);
+    console.log(`📤 [Telegram Payload]:`, JSON.stringify(payload, null, 2));
+
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const resData = await response.json();
+
+      console.log(`📥 [Telegram Response Status]: ${response.status}`, resData);
+
+      if (!resData.ok) {
+        console.warn(`⚠️ [Telegram Warning]: Falha ao enviar para tópico ${threadId || 'Geral'}: "${resData.description}" (Code: ${resData.error_code}). Tentando fallback para Chat Geral...`);
+        if (threadId) {
+          const fallbackPayload = { ...payload };
+          delete fallbackPayload.message_thread_id;
+          console.log(`📤 [Telegram Fallback Payload]:`, JSON.stringify(fallbackPayload, null, 2));
+
+          const fallbackRes = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(fallbackPayload),
+          });
+          const fallbackData = await fallbackRes.json();
+          console.log(`📥 [Telegram Fallback Response Status]: ${fallbackRes.status}`, fallbackData);
+
+          if (fallbackData.ok) {
+            console.log(`✅ [Telegram Success]: Entregue com sucesso via Fallback (Chat Geral)!`);
+            return true;
+          }
+          console.error(`❌ [Telegram Error Fallback]:`, fallbackData);
+        }
+        return false;
+      } else {
+        console.log(`✅ [Telegram Success]: Entregue no tópico ${threadId || 'Geral'}! Message ID: ${resData.result?.message_id}`);
+        return true;
+      }
+    } catch (err) {
+      console.error(`❌ [Telegram Network Error]: Falha na requisição HTTP:`, err);
+      return false;
     }
-    return resData.ok;
   }
 
   async enviarNotificacao(
@@ -111,12 +144,15 @@ class NotificadorTelegram {
     dados: DadosNotificacaoTelegram,
     tipoNotificacao: string
   ): Promise<boolean> {
+    console.log(`🚀 [NotificadorTelegram] Chamado enviarNotificacao. Tipo: "${tipoNotificacao}", ChatId: "${chatId}"`);
+    console.log(`📦 [NotificadorTelegram] Dados:`, dados);
+
     if (!this.botToken) {
-      console.error('❌ Token do Bot não encontrado no .env');
+      console.error('❌ [NotificadorTelegram Error]: Token do Bot (VITE_TELEGRAM_BOT_TOKEN) não encontrado no .env!');
       return false;
     }
     if (!chatId) {
-      console.error('❌ Chat ID não fornecido.');
+      console.error('❌ [NotificadorTelegram Error]: Chat ID (VITE_TELEGRAM_CHAT_ID) não fornecido ou indefinido!');
       return false;
     }
 
