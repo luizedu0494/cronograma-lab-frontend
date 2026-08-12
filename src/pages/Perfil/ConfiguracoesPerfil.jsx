@@ -108,17 +108,16 @@ function ConfiguracoesPerfil() {
 
             let swRegistration;
             try {
-              // Força a limpeza de registros anteriores travados
-              const existingRegistrations = await navigator.serviceWorker.getRegistrations();
-              for (let reg of existingRegistrations) {
-                await reg.unregister();
-              }
               swRegistration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
-              await navigator.serviceWorker.ready;
+              // Se já houver uma requisição pronta ou em andamento
+              if (swRegistration.active) {
+                console.log('Service Worker já ativo:', swRegistration);
+              } else {
+                await navigator.serviceWorker.ready;
+              }
             } catch (swErr) {
               console.warn('Erro ao registrar Service Worker:', swErr);
-              swRegistration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
-              await navigator.serviceWorker.ready;
+              swRegistration = await navigator.serviceWorker.getRegistration('/firebase-messaging-sw.js');
             }
 
             const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY;
