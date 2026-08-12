@@ -51,6 +51,34 @@ O sistema centraliza o cronograma de todos os laboratórios em uma única plataf
 
 > Resumo das melhorias implementadas nesta versão.
 
+### 🔄 Novo Fluxo de Agendamento e Seleção Múltipla de Laboratórios
+
+O formulário de **Propor Aula** (`ProporAulaForm.jsx`) teve a ordem de suas etapas reestruturada para garantir maior praticidade e precisão no agendamento:
+
+1. **Etapa 1 — Dados da Aula**: Preenchimento inicial do Assunto, Curso(s), Observações e Tipo de Atividade.
+2. **Etapa 2 — Data e Horário**: Seleção da Data e Horários com o painel sanfona **Consulta de Grade de Disponibilidade** integrado para verificação dos slots livres/ocupados do dia.
+3. **Etapa 3 — Laboratório(s)**: Seleção múltipla em `Select multiple` que lê a data/horário da Etapa 2 e **desabilita automaticamente os laboratórios ocupados**, impedindo conflitos.
+
+---
+
+### 🎨 Molduras de Modo com Efeito Glow e Suporte Completo ao Dark Mode
+
+Para eliminar qualquer ambiguidade durante o preenchimento, os modos de agendamento agora contam com identidade visual marcante:
+
+- **📅 Modo Aula Normal**: Moldura limpa institucional com chip e explicação padrão.
+- **📖 Modo Revisão / Reforço**: Moldura envolvente de `3px` em tom Roxo (`#7b1fa2` / `#ce93d8`) com efeito *glow* ao redor da tela, barra de topo afixada, card explicativo de revisão e campos dedicados a tipo de revisão (Pré-Prova, Reforço, Prática Extra, Monitoria) e professor condutor.
+- **📝 Modo Prova / Avaliação**: Moldura envolvente de `3px` em Laranja/Vermelho (`#e65100` / `#ff9800`) com *glow* brilhante, sinalizando alta prioridade nos relatórios e no Telegram.
+- **🌙 Suporte ao Dark Mode**: Todas as superfícies e cores utilizam transparência adaptativa (`alpha`), garantindo contraste harmonioso no tema azul-marinho institucional (`#0B0F18`).
+
+---
+
+### 📅 Trava de Células Ocupadas na Grade do Calendário
+
+- No **Calendário** (`CalendarioCronograma.jsx`), o clique em células **ocupadas** da Grade de Disponibilidade foi travado para apenas exibir o modal com os detalhes da aula/evento existente, sem redirecionar indevidamente para a proposta.
+- Clicar em células **livres** encaminha normalmente para `/propor-aula` com data, horário e laboratório pré-preenchidos.
+
+---
+
 ### 🎨 Identidade Visual CESMAC
 
 O sistema agora usa as cores institucionais do CESMAC extraídas diretamente do logo oficial:

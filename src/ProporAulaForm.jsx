@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useTheme, alpha } from '@mui/material/styles';
 import {
     Container, Typography, TextField, Button, Grid, MenuItem, FormControl, InputLabel,
     Select, Box, Paper, Snackbar, Alert, CircularProgress, OutlinedInput, Chip, IconButton, Tooltip,
@@ -48,7 +49,10 @@ const TIPOS_REVISAO = [
 const TELEGRAM_CHAT_ID = import.meta.env.VITE_TELEGRAM_CHAT_ID;
 
 function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCancel, isModal, formTitle, aulaId: propAulaId }) {
-    // 'aula' | 'revisao' — escolha antes de preencher o resto
+    const theme = useTheme();
+    const isDarkMode = theme.palette.mode === 'dark';
+
+    // 'aula' | 'revisao' | 'prova' — escolha antes de preencher o resto
     const [tipoEntrada, setTipoEntrada] = useState('aula');
 
     const [formData, setFormData] = useState({
@@ -561,55 +565,207 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
     return (
         <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="pt-br">
             <Container maxWidth="md">
-                <Typography variant="h4" component="h1" gutterBottom align="center" sx={{ mb: 3, color: '#3f51b5', fontWeight: 'bold', mt: isModal ? 0 : 4 }}>
-                    {formTitle || (isEditMode
-                        ? (tipoEntrada === 'revisao' ? 'Editar Revisão' : tipoEntrada === 'prova' ? 'Editar Prova' : 'Editar Aula')
-                        : 'Propor Nova Aula'
+                <Paper
+                    elevation={isDarkMode ? 4 : 2}
+                    sx={{
+                        p: { xs: 2.5, sm: 4 },
+                        my: isModal ? 0 : 3,
+                        borderRadius: 3,
+                        bgcolor: theme.palette.background.paper,
+                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                        border: tipoEntrada === 'revisao'
+                            ? `3px solid ${isDarkMode ? '#ce93d8' : '#7b1fa2'}`
+                            : tipoEntrada === 'prova'
+                            ? `3px solid ${isDarkMode ? '#ff9800' : '#e65100'}`
+                            : `1px solid ${theme.palette.divider}`,
+                        boxShadow: tipoEntrada === 'revisao'
+                            ? `0 0 24px ${alpha('#7b1fa2', isDarkMode ? 0.5 : 0.25)}`
+                            : tipoEntrada === 'prova'
+                            ? `0 0 24px ${alpha('#e65100', isDarkMode ? 0.5 : 0.25)}`
+                            : undefined
+                    }}
+                >
+                    {/* Barra de destaque no topo da moldura */}
+                    {tipoEntrada === 'revisao' && (
+                        <Box sx={{ bgcolor: isDarkMode ? '#7b1fa2' : '#7b1fa2', color: '#fff', py: 0.75, px: 2, borderRadius: 2, textAlign: 'center', fontWeight: 'bold', fontSize: '0.85rem', letterSpacing: 0.5, textTransform: 'uppercase', mb: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1, boxShadow: 2 }}>
+                            <MenuBookIcon fontSize="small" /> MODO REVISÃO / REFORÇO ATIVO
+                        </Box>
                     )}
-                </Typography>
+                    {tipoEntrada === 'prova' && (
+                        <Box sx={{ bgcolor: isDarkMode ? '#e65100' : '#d32f2f', color: '#fff', py: 0.75, px: 2, borderRadius: 2, textAlign: 'center', fontWeight: 'bold', fontSize: '0.85rem', letterSpacing: 0.5, textTransform: 'uppercase', mb: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1, boxShadow: 2 }}>
+                            <AssignmentIcon fontSize="small" /> MODO PROVA / AVALIAÇÃO ATIVO
+                        </Box>
+                    )}
+                <Box sx={{ textAlign: 'center', mb: 3, mt: isModal ? 0 : 4 }}>
+                    <Typography variant="h4" component="h1" gutterBottom sx={{ color: theme.palette.text.primary, fontWeight: 'bold', mb: 1 }}>
+                        {formTitle || (isEditMode
+                            ? (tipoEntrada === 'revisao' ? 'Editar Revisão' : tipoEntrada === 'prova' ? 'Editar Prova' : 'Editar Aula')
+                            : 'Propor Nova Aula'
+                        )}
+                    </Typography>
+                    <Box sx={{ mt: 1 }}>
+                        {tipoEntrada === 'revisao' && (
+                            <Chip icon={<MenuBookIcon />} label="MODO REVISÃO / REFORÇO ATIVO" color="secondary" sx={{ fontWeight: 'bold', fontSize: '0.8rem', py: 1.5, px: 1, boxShadow: 1 }} />
+                        )}
+                        {tipoEntrada === 'prova' && (
+                            <Chip icon={<AssignmentIcon />} label="MODO PROVA / AVALIAÇÃO ATIVO" color="error" sx={{ fontWeight: 'bold', fontSize: '0.8rem', py: 1.5, px: 1, boxShadow: 1 }} />
+                        )}
+                        {tipoEntrada === 'aula' && (
+                            <Chip label="📅 MODO AULA NORMAL" color="primary" variant="outlined" sx={{ fontWeight: 'bold', fontSize: '0.8rem' }} />
+                        )}
+                    </Box>
+                </Box>
 
-                {/* ── Seletor de tipo ── */}
+                {/* ── Seletor de tipo de agendamento ── */}
                 <Box sx={{ display: 'flex', justifyContent: 'center', mb: 3 }}>
                     <ToggleButtonGroup
                         value={tipoEntrada}
                         exclusive
                         onChange={(_, v) => { if (v) setTipoEntrada(v); }}
                         size="large"
+                        sx={{ bgcolor: theme.palette.background.paper, boxShadow: 1, borderRadius: 2 }}
                     >
-                        <ToggleButton value="aula" sx={{ px: 3, gap: 1 }}>
+                        <ToggleButton
+                            value="aula"
+                            sx={{
+                                px: 3, gap: 1, fontWeight: 'bold',
+                                color: theme.palette.text.secondary,
+                                '&.Mui-selected': {
+                                    bgcolor: isDarkMode ? alpha(theme.palette.primary.main, 0.25) : '#e3f2fd',
+                                    color: isDarkMode ? theme.palette.primary.light : '#1976d2',
+                                    borderColor: theme.palette.primary.main
+                                }
+                            }}
+                        >
                             📅 Aula Normal
                         </ToggleButton>
-                        <ToggleButton value="revisao" sx={{ px: 3, gap: 1 }}>
+                        <ToggleButton
+                            value="revisao"
+                            sx={{
+                                px: 3, gap: 1, fontWeight: 'bold',
+                                color: theme.palette.text.secondary,
+                                '&.Mui-selected': {
+                                    bgcolor: isDarkMode ? alpha('#ab47bc', 0.25) : '#f3e5f5',
+                                    color: isDarkMode ? '#ce93d8' : '#7b1fa2',
+                                    borderColor: isDarkMode ? '#ce93d8' : '#7b1fa2'
+                                }
+                            }}
+                        >
                             <MenuBookIcon fontSize="small" /> Revisão / Reforço
                         </ToggleButton>
-                        <ToggleButton value="prova" sx={{ px: 3, gap: 1 }}>
+                        <ToggleButton
+                            value="prova"
+                            sx={{
+                                px: 3, gap: 1, fontWeight: 'bold',
+                                color: theme.palette.text.secondary,
+                                '&.Mui-selected': {
+                                    bgcolor: isDarkMode ? alpha('#f44336', 0.25) : '#ffebee',
+                                    color: isDarkMode ? '#ef5350' : '#c62828',
+                                    borderColor: isDarkMode ? '#ef5350' : '#c62828'
+                                }
+                            }}
+                        >
                             <AssignmentIcon fontSize="small" /> Prova
                         </ToggleButton>
                     </ToggleButtonGroup>
                 </Box>
 
-                {/* Banner revisão */}
+                {/* Card Informativo do Modo Selecionado */}
                 {tipoEntrada === 'revisao' && (
-                    <Alert severity="info" icon={<MenuBookIcon />} sx={{ mb: 3 }}>
-                        <strong>Modo Revisão</strong> — Esta proposta será identificada como revisão/reforço.
-                        {!isCoordenador && !isEditMode && ' Após enviar, o coordenador será notificado no Telegram.'}
-                        {isEditMode && ' Alterações nesta revisão serão notificadas no Telegram.'}
-                    </Alert>
+                    <Paper
+                        elevation={2}
+                        sx={{
+                            p: 2.5, mb: 3,
+                            background: isDarkMode
+                                ? 'linear-gradient(135deg, rgba(123, 31, 162, 0.25) 0%, rgba(94, 53, 177, 0.25) 100%)'
+                                : 'linear-gradient(135deg, #f3e5f5 0%, #ede7f6 100%)',
+                            borderLeft: `6px solid ${isDarkMode ? '#ce93d8' : '#7b1fa2'}`,
+                            borderRadius: 2
+                        }}
+                    >
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
+                            <MenuBookIcon sx={{ color: isDarkMode ? '#ce93d8' : '#7b1fa2', fontSize: 28 }} />
+                            <Typography variant="h6" sx={{ color: isDarkMode ? '#e1bee7' : '#4a148c', fontWeight: 'bold' }}>
+                                Modo Revisão / Reforço Ativo
+                            </Typography>
+                        </Box>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                            Este agendamento é específico para sessões de estudo, revisão de conteúdos ou aulas práticas extras.
+                        </Typography>
+                        <Box component="ul" sx={{ m: 0, pl: 2.5, fontSize: '0.85rem', color: isDarkMode ? '#e1bee7' : '#4a148c' }}>
+                            <li>Permite classificar o tipo de revisão (Pré-Prova, Reforço, Prática Extra, Monitoria).</li>
+                            <li>Permite registrar o professor/monitor responsável pela condução.</li>
+                            <li>{!isCoordenador && !isEditMode ? 'Envia notificação via Telegram identificando a proposta como Revisão.' : 'Notificação no Telegram parametrizada para Revisão.'}</li>
+                        </Box>
+                    </Paper>
                 )}
 
-                {/* Banner prova */}
                 {tipoEntrada === 'prova' && (
-                    <Alert severity="warning" icon={<AssignmentIcon />} sx={{ mb: 3 }}>
-                        <strong>Modo Prova</strong> — Esta proposta será marcada como prova e aparecerá destacada no cronograma.
-                        {!isCoordenador && !isEditMode && ' O coordenador será notificado no Telegram como uma prova.'}
-                    </Alert>
+                    <Paper
+                        elevation={2}
+                        sx={{
+                            p: 2.5, mb: 3,
+                            background: isDarkMode
+                                ? 'linear-gradient(135deg, rgba(230, 81, 0, 0.25) 0%, rgba(198, 40, 40, 0.25) 100%)'
+                                : 'linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%)',
+                            borderLeft: `6px solid ${isDarkMode ? '#ff9800' : '#e65100'}`,
+                            borderRadius: 2
+                        }}
+                    >
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
+                            <AssignmentIcon sx={{ color: isDarkMode ? '#ff9800' : '#e65100', fontSize: 28 }} />
+                            <Typography variant="h6" sx={{ color: isDarkMode ? '#ffb74d' : '#e65100', fontWeight: 'bold' }}>
+                                Modo Prova / Avaliação Ativo
+                            </Typography>
+                        </Box>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                            Este agendamento é sinalizado como avaliação presencial oficial no laboratório.
+                        </Typography>
+                        <Box component="ul" sx={{ m: 0, pl: 2.5, fontSize: '0.85rem', color: isDarkMode ? '#ffcc80' : '#bf360c' }}>
+                            <li>Agendamento com destaque de prioridade no cronograma geral dos laboratórios.</li>
+                            <li>Identificado em relatórios para alocação preferencial de equipamentos e insumos.</li>
+                            <li>Notificação de alta prioridade enviada ao Telegram da equipe.</li>
+                        </Box>
+                    </Paper>
+                )}
+
+                {tipoEntrada === 'aula' && (
+                    <Paper
+                        elevation={0}
+                        sx={{
+                            p: 2, mb: 3,
+                            bgcolor: isDarkMode ? alpha(theme.palette.primary.main, 0.15) : '#f4f6f8',
+                            borderLeft: `4px solid ${theme.palette.primary.main}`,
+                            borderRadius: 2
+                        }}
+                    >
+                        <Typography variant="subtitle2" color="primary" fontWeight="bold">
+                            📅 Modo Aula Normal
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                            Agendamento padrão de aula regular de disciplinas da grade curricular.
+                        </Typography>
+                    </Paper>
                 )}
 
                 <form onSubmit={(e) => { e.preventDefault(); prepareAndConfirm(); }}>
                     <Grid container spacing={3} justifyContent="center">
                         <Grid item xs={12} md={6}>
-                            <Paper elevation={3} sx={{ p: 3, borderLeft: '5px solid #3f51b5', height: '100%' }}>
-                                <Typography variant="h6" gutterBottom>1. Detalhes da {tipoEntrada === 'revisao' ? 'Revisão' : 'Atividade'}</Typography>
+                            <Paper
+                                elevation={3}
+                                sx={{
+                                    p: 3,
+                                    borderLeft: `5px solid ${
+                                        tipoEntrada === 'revisao'
+                                            ? (isDarkMode ? '#ce93d8' : '#7b1fa2')
+                                            : tipoEntrada === 'prova'
+                                            ? (isDarkMode ? '#ff9800' : '#e65100')
+                                            : theme.palette.primary.main
+                                    }`,
+                                    height: '100%'
+                                }}
+                            >
+                                <Typography variant="h6" gutterBottom>1. Detalhes da {tipoEntrada === 'revisao' ? 'Revisão' : (tipoEntrada === 'prova' ? 'Prova / Avaliação' : 'Atividade')}</Typography>
                                 <TextField fullWidth label="Assunto da Aula *" name="assunto" value={formData.assunto} onChange={handleChange} error={!!errors.assunto} helperText={errors.assunto} sx={{ mb: 2 }} />
                                 
                                 <Autocomplete
@@ -649,9 +805,16 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
 
                                 {/* Campos extras — só aparecem quando for revisão */}
                                 <Collapse in={tipoEntrada === 'revisao'}>
-                                    <Box sx={{ mt: 2, pt: 2, borderTop: '1px dashed', borderColor: 'divider' }}>
-                                        <Typography variant="caption" color="primary" fontWeight="bold" display="block" sx={{ mb: 1.5 }}>
-                                            📖 Classificação da Revisão
+                                    <Box
+                                        sx={{
+                                            mt: 2.5, p: 2,
+                                            bgcolor: isDarkMode ? alpha('#ab47bc', 0.15) : '#faf5fb',
+                                            border: `1px solid ${isDarkMode ? 'rgba(206, 147, 216, 0.3)' : '#ce93d8'}`,
+                                            borderRadius: 2
+                                        }}
+                                    >
+                                        <Typography variant="subtitle2" sx={{ color: isDarkMode ? '#ce93d8' : '#7b1fa2', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 0.5, mb: 1.5 }}>
+                                            <MenuBookIcon fontSize="small" /> Classificação da Revisão
                                         </Typography>
                                         <FormControl fullWidth sx={{ mb: 2 }}>
                                             <InputLabel>Tipo de Revisão</InputLabel>
@@ -941,6 +1104,7 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
                     <DialogActions><Button onClick={() => handleKeepData(false)}>Não, ir para o calendário</Button><Button onClick={() => handleKeepData(true)} variant="contained">Sim, manter dados</Button></DialogActions>
                 </Dialog>
                 <Snackbar open={openSnackbar} autoHideDuration={6000} onClose={handleCloseSnackbar}><Alert onClose={handleCloseSnackbar} severity={snackbarSeverity} sx={{ width: '100%' }}>{snackbarMessage}</Alert></Snackbar>
+                </Paper>
             </Container>
         </LocalizationProvider>
     );
