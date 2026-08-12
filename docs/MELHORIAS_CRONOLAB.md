@@ -246,6 +246,7 @@ messaging.onBackgroundMessage(function(payload) {
 
 **Arquivo afetado:** `src/CalendarioCronograma.jsx`
 
+{% raw %}
 **Como localizar:** Procurar pela string `} item xs={12} sx={{ display: 'flex'` — ela está fora de um `<Grid>` válido.
 
 **Como resolver:** Remover a linha orphan e garantir que o fechamento dos `<Grid>` esteja correto:
@@ -256,6 +257,8 @@ messaging.onBackgroundMessage(function(payload) {
 //   <Button onClick={handleLimparFiltros}>Limpar Filtros</Button>
 // </Grid>
 // </Grid>
+```
+{% endraw %}
 
 // A estrutura correta após o Collapse deve ser apenas:
           </Grid>
@@ -467,6 +470,7 @@ const [file, setFile] = useState(null);
 
 **Arquivo afetado:** `src/ProporEventoForm.jsx`
 
+{% raw %}
 ```jsx
 // ANTES (prop sx duplicada — segunda sobrescreve a primeira):
 <FormControl sx={{ minWidth: 120 }} sx={{ mb: 2 }}>
@@ -474,6 +478,7 @@ const [file, setFile] = useState(null);
 // DEPOIS (combinar em um único objeto):
 <FormControl sx={{ minWidth: 120, mb: 2 }}>
 ```
+{% endraw %}
 
 ---
 

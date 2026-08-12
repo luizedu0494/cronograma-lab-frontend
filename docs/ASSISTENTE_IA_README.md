@@ -93,6 +93,7 @@ import {
 ```
 
 #### 4. Menu de navegação (linha 225):
+{% raw %}
 ```javascript
 ...(role === 'coordenador' && !approvalPending ? [
     <MenuItem key="agend" component={Link} to="/propor-aula" onClick={handleMenuClose}><PlusCircle size={18} style={{marginRight: 10}}/> Agendar Aula</MenuItem>,
@@ -101,6 +102,7 @@ import {
     // ... resto do menu
 ] : []),
 ```
+{% endraw %}
 
 ## 🧪 Testando a Instalação
 
