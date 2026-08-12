@@ -106,8 +106,19 @@ function ConfiguracoesPerfil() {
             const { app } = await import('../../firebaseConfig');
             const messaging = getMessaging(app);
 
-            await navigator.serviceWorker.register('/firebase-messaging-sw.js');
-            const swRegistration = await navigator.serviceWorker.ready;
+            let swRegistration;
+            try {
+              swRegistration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+              await navigator.serviceWorker.ready;
+            } catch (swErr) {
+              console.warn('Tentando recriar o Service Worker...', swErr);
+              const registrations = await navigator.serviceWorker.getRegistrations();
+              for (let reg of registrations) {
+                await reg.unregister();
+              }
+              swRegistration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+              await navigator.serviceWorker.ready;
+            }
 
             const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY;
             const token = await getToken(messaging, {
