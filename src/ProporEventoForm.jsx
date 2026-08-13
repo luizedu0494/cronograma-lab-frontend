@@ -74,6 +74,7 @@ function ProporEventoForm({ userInfo, currentUser, initialDate, onSuccess, onCan
     const [loadingCalendario, setLoadingCalendario] = useState(false);
 
     const [secao1Completa, setSecao1Completa] = useState(false);
+    const [secaoDataCompleta, setSecaoDataCompleta] = useState(false);
     const [secao2Completa, setSecao2Completa] = useState(false);
 
     const navigate = useNavigate();
@@ -91,12 +92,31 @@ function ProporEventoForm({ userInfo, currentUser, initialDate, onSuccess, onCan
 
     useEffect(() => {
         if (eventoId) {
+            setSecaoDataCompleta(true);
+            return;
+        }
+        setSecaoDataCompleta(Boolean(formData.dataInicio) && secao1Completa);
+    }, [formData.dataInicio, secao1Completa, eventoId]);
+
+    useEffect(() => {
+        if (eventoId) {
             setSecao2Completa(true);
             return;
         }
         const labsCompletos = formData.dynamicLabs.every(lab => lab && lab.tipo !== '' && lab.laboratorios.length > 0);
         setSecao2Completa(labsCompletos && secao1Completa);
     }, [formData.dynamicLabs, secao1Completa, eventoId]);
+
+    // Reseta seleção de laboratórios e horários ao mudar de data no modo de inclusão
+    useEffect(() => {
+        if (isEditMode || !formData.dataInicio) return;
+        setFormData(prev => ({
+            ...prev,
+            horarioSlotString: [],
+            dynamicLabs: [{ tipo: '', laboratorios: [] }],
+        }));
+        setHorariosOcupados([]);
+    }, [formData.dataInicio, isEditMode]);
 
     // Busca ocupação E BLOQUEIOS do mês
     useEffect(() => {
@@ -166,10 +186,6 @@ function ProporEventoForm({ userInfo, currentUser, initialDate, onSuccess, onCan
 
     useEffect(() => {
         const verificarDisponibilidade = async () => {
-            if (!secao2Completa && !eventoId) {
-                setHorariosOcupados([]);
-                return;
-            }
             const laboratoriosParaVerificar = formData.dynamicLabs.flatMap(lab => lab.laboratorios).filter(Boolean);
             if (!formData.dataInicio || laboratoriosParaVerificar.length === 0) {
                 setHorariosOcupados([]);
@@ -198,7 +214,7 @@ function ProporEventoForm({ userInfo, currentUser, initialDate, onSuccess, onCan
             }
         };
         verificarDisponibilidade();
-    }, [formData.dataInicio, formData.dynamicLabs, secao2Completa, eventoId]);
+    }, [formData.dataInicio, formData.dynamicLabs, eventoId]);
 
     // Função auxiliar para bloquear o dia
     const isDayBlocked = (day) => {

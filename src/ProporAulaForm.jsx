@@ -86,6 +86,7 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
     const [loadingCalendario, setLoadingCalendario] = useState(false);
 
     const [secao1Completa, setSecao1Completa] = useState(false);
+    const [secaoDataCompleta, setSecaoDataCompleta] = useState(false);
     const [secao2Completa, setSecao2Completa] = useState(false);
     const [refreshDisp, setRefreshDisp] = useState(0);
 
@@ -115,18 +116,56 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
             Array.isArray(a.horarioSlotString) ? a.horarioSlotString : [a.horarioSlotString]
         );
 
-        if (horariosForm.length === 0) return 'parcial';
+        if (horariosForm.length === 0) {
+            // Se nenhum horário foi selecionado no formulário ainda, indica que o lab tem reservas no dia ('parcial')
+            return 'parcial';
+        }
 
         const temConflito = horariosForm.some(h => horariosOcupadosLab.includes(h));
-        return temConflito ? 'ocupado' : 'parcial';
+        return temConflito ? 'ocupado' : 'livre';
     }, [formData.dataInicio, formData.horarioSlotString, aulasDoMesState]);
-
-
 
     const navigate = useNavigate();
     const location = useLocation();
     const { aulaId: paramAulaId } = useParams();
     const aulaId = propAulaId || paramAulaId;
+
+    useEffect(() => {
+        if (aulaId) {
+            setSecao1Completa(true);
+            return;
+        }
+        const completa = formData.assunto.trim() !== '' && formData.cursos.length > 0;
+        setSecao1Completa(completa);
+    }, [formData.assunto, formData.cursos, aulaId]);
+
+    useEffect(() => {
+        if (aulaId) {
+            setSecaoDataCompleta(true);
+            return;
+        }
+        setSecaoDataCompleta(Boolean(formData.dataInicio) && secao1Completa);
+    }, [formData.dataInicio, secao1Completa, aulaId]);
+
+    useEffect(() => {
+        if (aulaId) {
+            setSecao2Completa(true);
+            return;
+        }
+        const dataEHorarioValidos = Boolean(formData.dataInicio) && (formData.horarioSlotString || []).length > 0;
+        setSecao2Completa(secao1Completa && dataEHorarioValidos);
+    }, [formData.dataInicio, formData.horarioSlotString, secao1Completa, aulaId]);
+
+    // Reseta seleção de laboratórios e horários ao mudar de data no modo de inclusão
+    useEffect(() => {
+        if (isEditMode || !formData.dataInicio) return;
+        setFormData(prev => ({
+            ...prev,
+            horarioSlotString: [],
+            dynamicLabs: [{ tipo: '', laboratorios: [] }],
+        }));
+        setInfoOcupacao({});
+    }, [formData.dataInicio, isEditMode]);
 
     const notificarTelegramBatch = useCallback(async (aulas, tipoAcao) => {
         if (!TELEGRAM_CHAT_ID) return;
@@ -264,10 +303,6 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
     // --- VERIFICAÇÃO COM DETALHES DE QUEM OCUPA ---
     useEffect(() => {
         const verificarDisponibilidadeHorarios = async () => {
-            if (!secao2Completa && !aulaId) {
-                setInfoOcupacao({});
-                return;
-            }
             const laboratoriosParaVerificar = formData.dynamicLabs.flatMap(lab => lab.laboratorios).filter(Boolean);
             if (!formData.dataInicio || laboratoriosParaVerificar.length === 0) {
                 setInfoOcupacao({});
@@ -315,7 +350,7 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
             }
         };
         verificarDisponibilidadeHorarios();
-    }, [formData.dataInicio, formData.dynamicLabs, secao2Completa, aulaId, refreshDisp]);
+    }, [formData.dataInicio, formData.dynamicLabs, aulaId, refreshDisp]);
 
     useEffect(() => {
         const loadAulaData = async () => {
@@ -560,7 +595,6 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
 
             // Atualiza imediatamente a ocupação local para refletir os novos agendamentos sem requerer navegação de data
             if (formData.dataInicio && dayjs(formData.dataInicio).isValid()) {
-                const dataStr = dayjs(formData.dataInicio).format('YYYY-MM-DD');
                 const novasAulasFormatadas = finalizadas.map(a => ({
                     ...a,
                     dataInicio: a.dataInicio instanceof Timestamp ? a.dataInicio : Timestamp.fromDate(dayjs(a.dataInicio.toDate ? a.dataInicio.toDate() : a.dataInicio).toDate()),
@@ -568,10 +602,7 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
                     horarioSlotString: a.horarioSlotString
                 }));
 
-                setAulasDoMesState(prev => {
-                    const filtradas = prev.filter(a => toDataLocal(a.dataInicio) !== dataStr);
-                    return [...filtradas, ...novasAulasFormatadas];
-                });
+                setAulasDoMesState(prev => [...prev, ...novasAulasFormatadas]);
             }
 
             setRefreshDisp(v => v + 1);
@@ -596,8 +627,15 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
         if (!keep) {
             navigate('/calendario');
         } else {
-            // Limpa horário e força re-verificação de disponibilidade para a mesma data/lab
-            setFormData(prev => ({ ...prev, horarioSlotString: [] }));
+            // Limpa o horário e os laboratórios específicos selecionados, mantendo o tipo do laboratório para nova escolha
+            setFormData(prev => ({
+                ...prev,
+                horarioSlotString: [],
+                dynamicLabs: prev.dynamicLabs.map(lab => ({
+                    ...lab,
+                    laboratorios: []
+                }))
+            }));
             setRefreshDisp(v => v + 1);
         }
     };
@@ -1016,25 +1054,25 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
 
                         {/* ── SEÇÃO 3: Seleção Múltipla de Laboratórios ── */}
                         <Grid xs={12}>
-                            <Paper elevation={3} sx={{ p: 3, borderLeft: '5px solid #f50057', opacity: (!secao2Completa && !isEditMode) ? 0.8 : 1 }}>
+                            <Paper elevation={3} sx={{ p: 3, borderLeft: '5px solid #f50057', opacity: (!secaoDataCompleta && !isEditMode) ? 0.8 : 1 }}>
                                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                         <Typography variant="h6" gutterBottom sx={{ mb: 0 }}>3. Laboratório(s)</Typography>
-                                        {!secao2Completa && !isEditMode && <LockIcon color="warning" />}
+                                        {!secaoDataCompleta && !isEditMode && <LockIcon color="warning" />}
                                     </Box>
                                     {!isEditMode && (
                                         <Tooltip title="Adicionar outro tipo de laboratório">
                                             <span>
-                                                <IconButton onClick={handleAddLabField} color="primary" disabled={formData.dynamicLabs.length >= 5 || !secao2Completa}>
+                                                <IconButton onClick={handleAddLabField} color="primary" disabled={formData.dynamicLabs.length >= 5 || !secaoDataCompleta}>
                                                     <AddIcon />
                                                 </IconButton>
                                             </span>
                                         </Tooltip>
                                     )}
                                 </Box>
-                                {!secao2Completa && !isEditMode && (
+                                {!secaoDataCompleta && !isEditMode && (
                                     <Alert severity="warning" sx={{ mb: 2, mt: 1 }}>
-                                        <strong>Seção bloqueada!</strong> Complete a Seção 2 (Data e Horário) para desbloquear a seleção de laboratórios.
+                                        <strong>Seção bloqueada!</strong> Selecione uma data na Seção 2 para desbloquear a seleção de laboratórios.
                                     </Alert>
                                 )}
 
@@ -1063,7 +1101,7 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
                                     formData.dynamicLabs.map((labSelection, index) => (
                                         <Grid container spacing={1} key={index} alignItems="center" sx={{ mb: 2 }}>
                                             <Grid item xs={5}>
-                                                <FormControl fullWidth size="small" disabled={!secao2Completa}>
+                                                <FormControl fullWidth size="small" disabled={!secaoDataCompleta}>
                                                     <InputLabel>Tipo *</InputLabel>
                                                     <Select value={labSelection.tipo} onChange={(e) => handleLabTipoChange(index, e.target.value)}>
                                                         {TIPOS_LABORATORIO.map(t => <MenuItem key={t.id} value={t.id}>{t.name}</MenuItem>)}
@@ -1071,7 +1109,7 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
                                                 </FormControl>
                                             </Grid>
                                             <Grid item xs={6}>
-                                                <FormControl fullWidth size="small" disabled={!labSelection.tipo || !secao2Completa}>
+                                                <FormControl fullWidth size="small" disabled={!labSelection.tipo || !secaoDataCompleta}>
                                                     <InputLabel>Laboratório(s) *</InputLabel>
                                                     <Select
                                                         multiple
@@ -1105,7 +1143,7 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
                                                 </FormControl>
                                             </Grid>
                                             <Grid item xs={1}>
-                                                <IconButton size="small" onClick={() => handleRemoveLabField(index)} disabled={formData.dynamicLabs.length === 1 || !secao2Completa}>
+                                                <IconButton size="small" onClick={() => handleRemoveLabField(index)} disabled={formData.dynamicLabs.length === 1 || !secaoDataCompleta}>
                                                     <DeleteIcon fontSize="small" />
                                                 </IconButton>
                                             </Grid>
