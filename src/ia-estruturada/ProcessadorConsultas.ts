@@ -3,7 +3,7 @@ import ExtratorParametros, { ParametrosExtraidos } from './ExtratorParametros';
 import dayjs from 'dayjs';
 
 const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY;
-const GROQ_MODEL = 'llama-3.3-70b-versatile';
+const GROQ_MODEL = import.meta.env.VITE_GROQ_MODEL || 'llama-3.3-70b-versatile';
 
 export interface CriteriosBusca {
   data?: string | null;

@@ -26,7 +26,7 @@ const BLOCOS_HORARIO = [
 ];
 
 const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY;
-const GROQ_MODEL = 'llama-3.1-8b-instant';
+const GROQ_MODEL = import.meta.env.VITE_GROQ_MODEL_LIGHT || 'llama-3.2-3b-preview';
 
 import { addDoc, serverTimestamp } from 'firebase/firestore';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
