@@ -150,7 +150,23 @@ Perfil de leitura, liberado pelo coordenador:
 
 ## Novidades Recentes
 
-> Resumo das últimas melhorias de arquitetura, segurança, UX/UI e recursos mobile/push.
+> Resumo das últimas melhorias de arquitetura, segurança, UX/UI e recursos de IA.
+
+### 🧠 Evolução da Arquitetura de IA com LangChain.js
+- **Orquestração com LangChain.js v0.3 (`langchainService.js`)**: integração do `ChatGroq` (`llama-3.3-70b-versatile`) com streaming em tempo real de respostas e gerenciamento leve de memória de sessão de conversação.
+- **Ferramentas Dinâmicas (`langchainTools.ts`)**: inclusão de `DynamicStructuredTool` com esquemas Zod para a IA montar propostas de agendamento (`proporAulaTool`), consultar disponibilidades (`buscarDisponibilidadeTool`) e filtrar propostas pendentes (`consultarPropostasPendentesTool`).
+- **Busca Semântica RAG Client-Side (`ragService.js`)**: utilização do `MemoryVectorStore` do LangChain para busca semântica em memória de aulas e dados de laboratórios sem custo de infraestrutura.
+- **Análise Preditiva de Ocupação (`predictionService.js`)**: modelo de predição para cálculo de taxas esperadas de uso dos laboratórios, classificação de níveis de risco de sobreposição e identificação de horários de pico.
+
+### 📄 OCR Client-Side & Exportação em PDF
+- **Reconhecimento de Imagens com Tesseract.js (`ocrService.js`)**: extração de texto de tabelas ou fotos de cronogramas impressos diretamente no navegador.
+- **Exportação em PDF (`DownloadCronograma.jsx`)**: inclusão do botão e gerador em PDF (`jsPDF`) para download de relatórios mensais/anuais formatados, alinhado com o FAQ.
+
+### 🟢 Reformulação da Grade de Disponibilidade & Filtros de Perspectiva
+- **Seletor de Dias da Semana (`GradeDisponibilidade.jsx`)**: matriz diária por laboratório e horário com seletor interativo para alternar rapidamente entre Segunda e Sábado.
+- **Filtro por Perspectiva (`🔴 Ocupados`, `🟢 Livres`, `Todos`)**: aplicação visual na matriz com esmaecimento de células irrelevantes e alternância automática da visão semanal para a Grade ao selecionar `🟢 Livres` em [`CalendarioCronograma.jsx`](file:///c:/Windows/System32/cronograma-lab-frontend/src/pages/Cronograma/CalendarioCronograma.jsx).
+
+---
 
 ### 🖼️ Upload Inteligente de Imagens via Cloudinary
 - **Componente Reutilizável (`UploadImagem.jsx`)**: upload direto para CDN sem custo e sem depender do Firebase Storage (100% compatível com o plano Spark)
@@ -197,22 +213,23 @@ A fonte utilizada é **Sora** — legível no mobile e com personalidade acadêm
 
 ## Arquitetura e IA
 
-O CronoLab combina um **motor de IA híbrido** para reduzir dependência de APIs pagas e manter respostas rápidas:
+O CronoLab combina um **motor de IA híbrido** de última geração para reduzir dependência de APIs pagas e manter respostas rápidas:
 
+- **LangChain.js + Groq API** (`src/services/langchainService.js`): orquestração declarativa com `ChatGroq` (`llama-3.3-70b-versatile`), streaming em tempo real, memória de conversação e ferramentas executáveis (`DynamicTools`) para ações assistidas do técnico e coordenador (`langchainTools.ts`).
 - **Motor local estruturado** (`src/ia-estruturada/`): classifica a intenção da pergunta (`ClassificadorIntencao.ts`), extrai parâmetros (`ExtratorParametros.ts`), executa a consulta/ação (`ExecutorAcoes.ts`) e formata o resultado (`FormatadorResultados.jsx`) — tudo sem custo de API.
-- **Groq API** (`llama-3.3-70b-versatile`, via `/api/groq.js`, uma função serverless da Vercel): usada para perguntas em linguagem natural mais abertas, quando o motor local não é suficiente.
-- **Backend serverless**: Firebase Firestore (banco de dados), Firebase Auth (login com Google) e Firebase Hosting, tudo dentro do plano gratuito Spark. As funções de notificação (`/api/save-push-token.js`, `/api/send-notification.js`, `/api/send-push-notification.js`) rodam como funções serverless na Vercel.
+- **RAG & Predição Client-Side**: busca semântica em memória (`MemoryVectorStore` via `ragService.js`) e análise preditiva de taxa de ocupação e risco de conflitos (`predictionService.js`).
+- **Backend serverless**: Firebase Firestore (banco de dados), Firebase Auth (login com Google) e Firebase Hosting, tudo dentro do plano gratuito Spark. As funções de notificação (`/api/save-push-token.js`, `/api/send-notification.js`, `/api/send-push-notification.js`, `/api/groq.js`) rodam como funções serverless na Vercel.
 
 ---
 
 ## Tecnologias
 
 - **Frontend**: React 19, TypeScript 5, Vite 7, Material UI (MUI v7), MUI X Date Pickers, DayJS, Lucide React
-- **Dados & Importação**: ExcelJS, SheetJS (`xlsx`), PapaParse (CSV), Mammoth (leitura de `.docx`), file-saver
+- **IA & RAG**: LangChain.js (`langchain`, `@langchain/core`, `@langchain/groq`, `@langchain/community`), Groq API (`llama-3.3-70b-versatile`), `@xenova/transformers`, `brain.js`
+- **OCR & Documentos**: `Tesseract.js` (OCR no browser), `jsPDF` (relatórios PDF), ExcelJS, SheetJS (`xlsx`), PapaParse (CSV), Mammoth (leitura de `.docx`), file-saver
 - **UI/UX**: Framer Motion (animações), `@dnd-kit` (drag and drop), React Hot Toast (notificações em tela)
 - **Gráficos**: Chart.js + React-Chartjs-2
 - **Backend / Serverless**: Firebase Firestore, Firebase Auth, Firebase Hosting, Firebase Cloud Messaging (Web Push), Vercel Serverless Functions (`/api`)
-- **IA**: Groq API (`llama-3.3-70b-versatile`) + módulo local de IA estruturada
 - **Notificações externas**: Bot do Telegram, e-mail transacional via Brevo (`@getbrevo/brevo`)
 - **Qualidade & Tooling**: ESLint, Prettier, TypeScript Compiler (`tsc`), Testing Library (Jest DOM)
 
@@ -231,13 +248,13 @@ cronograma-lab-frontend/
 │   ├── componentes/comuns/  # Componentes de upload de imagem e prompt de instalação PWA
 │   ├── constants/           # Cursos, laboratórios e cores por curso
 │   ├── hooks/                # Hooks customizados (ex.: busca de aulas)
-│   ├── ia-estruturada/       # Motor local de IA (classificação, extração, execução)
+│   ├── ia-estruturada/       # Motor local de IA e ferramentas LangChain (langchainTools.ts)
 │   ├── pages/
 │   │   ├── Cronograma/       # Página inicial, calendário, histórico
 │   │   ├── Gerenciar/        # Telas administrativas do coordenador
 │   │   ├── IA/                # Assistente de IA
 │   │   └── Perfil/            # Configurações de perfil
-│   ├── services/              # Logger e integração com Telegram
+│   ├── services/              # LangChain, RAG, OCR, Predição, Telegram e Logger
 │   ├── types/                 # Tipos TypeScript compartilhados
 │   └── utils/                  # Parsers de cronograma, helpers de data/download, feriados
 └── .github/workflows/          # Deploy automático no Firebase Hosting via PR

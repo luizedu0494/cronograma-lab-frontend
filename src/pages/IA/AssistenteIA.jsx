@@ -10,6 +10,7 @@ import { useNavigate } from 'react-router-dom';
 import ProcessadorConsultas from '../../ia-estruturada/ProcessadorConsultas';
 import ExecutorAcoes from '../../ia-estruturada/ExecutorAcoes';
 import FormatadorResultados from '../../ia-estruturada/FormatadorResultados';
+import { langchainService } from '../../services/langchainService';
 
 const SUGESTOES = [
     "🎓 Aulas de hoje nos meus labs",

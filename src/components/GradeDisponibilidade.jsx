@@ -3,9 +3,12 @@ import {
   Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, Paper, Chip, Tooltip, Typography, Box,
   Dialog, DialogTitle, DialogContent, DialogActions, Button, Divider,
-  Accordion, AccordionSummary, AccordionDetails, useMediaQuery, useTheme
+  Accordion, AccordionSummary, AccordionDetails, useMediaQuery, useTheme,
+  ToggleButtonGroup, ToggleButton
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
+import dayjs from 'dayjs';
 import { LISTA_LABORATORIOS } from '../constants/laboratorios';
 import { toDataLocal, toHorariosArray } from '../utils/dateHelper';
 
@@ -21,15 +24,41 @@ const BLOCOS = [
 
 /**
  * GradeDisponibilidade
- * @param {Array}  aulas      - Aulas do dia/semana já carregadas (mesmo array do calendário)
- * @param {string} dataFoco   - Data no formato 'YYYY-MM-DD' para filtrar as aulas
- * @param {Array}  tiposLab   - Filtro opcional de tipos de laboratório (ex: ['anatomia'])
- * @param {Function} onCelulaClick - Callback opcional quando o usuário clica em uma célula
+ * @param {Array}  aulas      - Aulas do dia/semana já carregadas
+ * @param {string} dataFoco   - Data inicial foco ('YYYY-MM-DD')
+ * @param {Array}  tiposLab   - Filtro opcional de tipos de laboratório
+ * @param {string} perspectivaFiltro - 'todos' | 'livres' | 'ocupados'
+ * @param {Function} onCelulaClick - Callback quando o usuário clica em uma célula
  */
-export default function GradeDisponibilidade({ aulas = [], dataFoco, tiposLab = [], onCelulaClick }) {
-  const [modalDetalhes, setModalDetalhes] = useState(null); // { lab, bloco, ocupado, aulas: [...] }
+export default function GradeDisponibilidade({
+  aulas = [],
+  dataFoco = dayjs().format('YYYY-MM-DD'),
+  tiposLab = [],
+  perspectivaFiltro = 'todos',
+  onCelulaClick
+}) {
+  const [modalDetalhes, setModalDetalhes] = useState(null);
+  const [dataSelecionada, setDataSelecionada] = useState(dataFoco);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
+  // Gerar os 6 dias da semana (Segunda a Sábado) baseados na data foco
+  const diasDaSemana = useMemo(() => {
+    const base = dayjs(dataFoco, 'YYYY-MM-DD').startOf('week').add(1, 'day'); // Segunda
+    return Array.from({ length: 6 }, (_, i) => {
+      const d = base.add(i, 'day');
+      return {
+        iso: d.format('YYYY-MM-DD'),
+        label: d.format('ddd, DD/MM'),
+        diaNome: d.format('dddd')
+      };
+    });
+  }, [dataFoco]);
+
+  // Se dataFoco mudar externamente, atualiza a seleção local
+  React.useEffect(() => {
+    if (dataFoco) setDataSelecionada(dataFoco);
+  }, [dataFoco]);
 
   // Labs filtrados por tipo (se filtro aplicado)
   const labsVisiveis = useMemo(() => {
@@ -37,14 +66,14 @@ export default function GradeDisponibilidade({ aulas = [], dataFoco, tiposLab = 
     return LISTA_LABORATORIOS.filter(l => tiposLab.includes(l.tipo));
   }, [tiposLab]);
 
-  // Mapa de ocupação e detalhes: laboratorio -> horario -> Array de aulas
+  // Mapa de ocupação e detalhes para o dia selecionado
   const mapaDetalhes = useMemo(() => {
     const mapa = {};
     aulas
       .filter(a => {
-        if (!dataFoco) return true;
+        if (!dataSelecionada) return true;
         const dataAula = toDataLocal(a.dataInicio);
-        return dataAula === dataFoco;
+        return dataAula === dataSelecionada;
       })
       .forEach(a => {
         const rawLab = a.laboratorioSelecionado || a.laboratorio;
@@ -67,7 +96,7 @@ export default function GradeDisponibilidade({ aulas = [], dataFoco, tiposLab = 
         });
       });
     return mapa;
-  }, [aulas, dataFoco]);
+  }, [aulas, dataSelecionada]);
 
   const getAulasDaCelula = (lab, horario) => {
     return mapaDetalhes[lab.id]?.[horario] || mapaDetalhes[lab.name]?.[horario] || [];
@@ -94,10 +123,36 @@ export default function GradeDisponibilidade({ aulas = [], dataFoco, tiposLab = 
   };
 
   return (
-    <Box>
-      <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
-        Clique em qualquer {isMobile ? 'bloco' : 'célula'} para visualizar os detalhes de ocupação ou disponibilidade.
-      </Typography>
+    <Box sx={{ mt: 1 }}>
+      {/* Barra de Seleção de Dia da Semana da Grade */}
+      <Paper elevation={1} sx={{ p: 1.5, mb: 2, borderRadius: 2, bgcolor: 'background.paper', border: '1px solid divider' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap', justifyContent: 'space-between' }}>
+          <Box display="flex" alignItems="center" gap={1}>
+            <CalendarTodayIcon color="primary" fontSize="small" />
+            <Box>
+              <Typography variant="subtitle2" fontWeight="bold">
+                Grade de Disponibilidade — {dayjs(dataSelecionada).format('dddd, DD [de] MMMM')}
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                Escolha o dia da semana para consultar vagas ou ocupação por bloco de horário
+              </Typography>
+            </Box>
+          </Box>
+          <ToggleButtonGroup
+            value={dataSelecionada}
+            exclusive
+            onChange={(_, novaData) => novaData && setDataSelecionada(novaData)}
+            size="small"
+            color="primary"
+          >
+            {diasDaSemana.map(d => (
+              <ToggleButton key={d.iso} value={d.iso} sx={{ px: 1.5, py: 0.5, fontSize: '0.75rem', fontWeight: 600 }}>
+                {d.label}
+              </ToggleButton>
+            ))}
+          </ToggleButtonGroup>
+        </Box>
+      </Paper>
 
       {isMobile ? (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
@@ -110,6 +165,8 @@ export default function GradeDisponibilidade({ aulas = [], dataFoco, tiposLab = 
                 <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
                   {BLOCOS.map(b => {
                     const ocupado = isOcupado(lab, b.value);
+                    const ocultarPorPerspectiva = (perspectivaFiltro === 'livres' && ocupado) || (perspectivaFiltro === 'ocupados' && !ocupado);
+                    if (ocultarPorPerspectiva) return null;
                     return (
                       <Paper
                         key={b.value}
@@ -166,8 +223,18 @@ export default function GradeDisponibilidade({ aulas = [], dataFoco, tiposLab = 
                   </TableCell>
                   {BLOCOS.map(b => {
                     const ocupado = isOcupado(lab, b.value);
+                    const ocultarPorPerspectiva = (perspectivaFiltro === 'livres' && ocupado) || (perspectivaFiltro === 'ocupados' && !ocupado);
                     const cor = ocupado ? 'error' : 'success';
                     const labelText = ocupado ? 'Ocupado' : 'Livre';
+
+                    if (ocultarPorPerspectiva) {
+                      return (
+                        <TableCell key={b.value} align="center" sx={{ p: 0.5, opacity: 0.2 }}>
+                          <Typography variant="caption" color="text.disabled">—</Typography>
+                        </TableCell>
+                      );
+                    }
+
                     return (
                       <TableCell key={b.value} align="center" sx={{ p: 0.5 }}>
                         <Tooltip title={`${lab.name} - ${b.label} (${b.value}): clique para detalhes`}>
@@ -178,7 +245,7 @@ export default function GradeDisponibilidade({ aulas = [], dataFoco, tiposLab = 
                             variant={ocupado ? 'outlined' : 'filled'}
                             clickable
                             onClick={() => handleCellClick(lab, b)}
-                            sx={{ fontSize: '0.65rem', minWidth: 58, cursor: 'pointer' }}
+                            sx={{ fontSize: '0.65rem', minWidth: 58, cursor: 'pointer', fontWeight: 600 }}
                           />
                         </Tooltip>
                       </TableCell>

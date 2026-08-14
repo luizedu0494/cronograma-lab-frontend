@@ -32,6 +32,7 @@ import { addDoc, serverTimestamp } from 'firebase/firestore';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import SendTimeExtensionIcon from '@mui/icons-material/SendTimeExtension';
 import { notificadorTelegram } from './services/NotificadorTelegram';
+import { langchainService } from './services/langchainService';
 
 const TELEGRAM_CHAT_ID = import.meta.env.VITE_TELEGRAM_CHAT_ID;
 

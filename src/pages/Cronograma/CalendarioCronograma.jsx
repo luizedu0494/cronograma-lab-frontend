@@ -560,23 +560,24 @@ function CalendarioCronograma({ userInfo }) {
                 if (filtros.tipoConteudo === 'pendente') matchTipo = item.status === 'pendente';
             }
 
-            // Filtro de Perspectiva (livres / ocupados / todos)
+            // Filtro de Perspectiva
+            // No cronograma de cartões, todos os cartões representam aulas agendadas (ocupações).
+            // Ao filtrar por 'livres', alternamos para a Grade de Disponibilidade onde as vagas são visualizadas.
             let matchPerspectiva = true;
-            if (perspectiva !== 'todos') {
-                const labsOcupados = new Set(aulas.map(a => a.laboratorio || a.laboratorioSelecionado));
-                const labDoItem = item.laboratorio || item.laboratorioSelecionado;
-                if (perspectiva === 'ocupados') {
-                    matchPerspectiva = labsOcupados.has(labDoItem);
-                } else if (perspectiva === 'livres') {
-                    matchPerspectiva = !labsOcupados.has(labDoItem);
-                }
+            if (perspectiva === 'ocupados') {
+                matchPerspectiva = true; // Todos os cartões de aula são ocupações
             }
 
             return matchLab && matchCurso && matchAssunto && matchTurno && matchTipo && matchPerspectiva;
         };
+
+        if (perspectiva === 'livres' && abaCalendario === 'semana') {
+            setAbaCalendario('grade');
+        }
+
         setAulasFiltradas(aulas.filter(a => filtrar(a)));
         setEventosFiltrados(eventos.filter(e => filtrar(e, true)));
-    }, [aulas, eventos, filtros, perspectiva]);
+    }, [aulas, eventos, filtros, perspectiva, abaCalendario]);
 
     // Navegação
     const handlePrev = () => {
@@ -938,7 +939,8 @@ function CalendarioCronograma({ userInfo }) {
                         <GradeDisponibilidade
                             aulas={aulas}
                             dataFoco={currentDate.format('YYYY-MM-DD')}
-                            tiposLab={[]}
+                            tiposLab={filtros.laboratorio}
+                            perspectivaFiltro={perspectiva}
                             onCelulaClick={({ labId, labNome, horario, ocupado }) => {
                                 if (ocupado) return;
                                 // Apenas coordenadores agendam direto clicando na grade.

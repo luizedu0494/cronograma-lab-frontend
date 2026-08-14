@@ -150,6 +150,24 @@ function DownloadCronograma() {
             const blob = new Blob([icalContent], { type: 'text/calendar;charset=utf-8' });
             saveAs(blob, `Cronograma_Lab_${sufixoNome}.ics`);
             setFeedback({ open: true, message: 'Arquivo de calendário (.ics) gerado com sucesso!', severity: 'success' });
+        } else if (format === 'pdf') {
+            const { jsPDF } = await import('jspdf');
+            const doc = new jsPDF();
+            doc.setFontSize(16);
+            doc.text(`Cronograma de Laboratórios — ${sufixoNome}`, 14, 20);
+            doc.setFontSize(10);
+            let y = 32;
+            aulasDoMes.forEach((aula, index) => {
+                if (y > 280) {
+                    doc.addPage();
+                    y = 20;
+                }
+                const dataFormatada = dayjs(aula.dataInicio?.toDate ? aula.dataInicio.toDate() : aula.dataInicio).format('DD/MM/YYYY HH:mm');
+                doc.text(`${index + 1}. [${aula.laboratorioSelecionado || 'Lab'}] ${aula.assunto || 'Aula'} — ${dataFormatada}`, 14, y);
+                y += 8;
+            });
+            doc.save(`Cronograma_Lab_${sufixoNome}.pdf`);
+            setFeedback({ open: true, message: 'Relatório em PDF gerado com sucesso!', severity: 'success' });
         }
 
     } catch (err) {
@@ -256,8 +274,9 @@ function DownloadCronograma() {
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12} sx={{ display: 'flex', gap: 2, mt: 1 }}>
+            <Grid item xs={12} sx={{ display: 'flex', gap: 2, mt: 1, flexWrap: 'wrap' }}>
               <Button variant="contained" color="primary" onClick={() => handleDownload('excel')} disabled={loading || !selectedDate} startIcon={loading ? <CircularProgress size={24} color="inherit" /> : <FileDownloadIcon />} sx={{ flexGrow: 1 }}>{loading ? "Gerando Relatório..." : "Baixar Relatório Excel"}</Button>
+              <Button variant="contained" color="error" onClick={() => handleDownload('pdf')} disabled={loading || !selectedDate} startIcon={loading ? <CircularProgress size={24} color="inherit" /> : <FileDownloadIcon />} sx={{ flexGrow: 1 }}>{loading ? "Gerando PDF..." : "Baixar PDF"}</Button>
               <Button variant="contained" color="secondary" onClick={() => handleDownload('ics')} disabled={loading || !selectedDate} startIcon={loading ? <CircularProgress size={24} color="inherit" /> : <FileDownloadIcon />} sx={{ flexGrow: 1 }}>{loading ? "Gerando Calendário..." : "Baixar Calendário (.ics)"}</Button>
               <Button variant="outlined" onClick={handleClearFilters} disabled={loading} startIcon={<ClearIcon />}>Limpar</Button>
             </Grid>

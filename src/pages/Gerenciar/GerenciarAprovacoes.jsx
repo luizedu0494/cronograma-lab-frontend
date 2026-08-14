@@ -109,6 +109,7 @@ function GerenciarAprovacoes() {
     const [aulasDoMes, setAulasDoMes]           = useState([]);
     const [loadingPendentes, setLoadingPendentes] = useState(true);
     const [loadingMes, setLoadingMes]             = useState(true);
+    const [aulaSelecionada, setAulaSelecionada] = useState(null);
 
     const [processando, setProcessando] = useState(null);
 
@@ -431,7 +432,7 @@ function GerenciarAprovacoes() {
             ) : listaAtiva.length > 0 ? (
                 <Grid container spacing={3}>
                     {/* Coluna Esquerda: Lista de Propostas (Master) */}
-                    <Grid item xs={12} md={5}>
+                    <Grid size={{ xs: 12, md: 5 }}>
                         <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
                             Propostas ({listaAtiva.length})
                         </Typography>
@@ -453,7 +454,7 @@ function GerenciarAprovacoes() {
                     </Grid>
 
                     {/* Coluna Direita: Detalhes e Ações (Detail) */}
-                    <Grid item xs={12} md={7}>
+                    <Grid size={{ xs: 12, md: 7 }}>
                         {aulaSelecionada ? (
                             <Paper elevation={3} sx={{ p: 3, borderRadius: 3, sticky: true, top: 20 }}>
                                 <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={2}>
@@ -485,21 +486,21 @@ function GerenciarAprovacoes() {
                                 <Divider sx={{ my: 2 }} />
 
                                 <Grid container spacing={2}>
-                                    <Grid item xs={12} sm={6}>
+                                    <Grid size={{ xs: 12, sm: 6 }}>
                                         <Typography variant="body2" color="text.secondary">Laboratório</Typography>
                                         <Typography variant="body1" fontWeight="bold">🏛️ {aulaSelecionada.laboratorioSelecionado || '—'}</Typography>
                                     </Grid>
-                                    <Grid item xs={12} sm={6}>
+                                    <Grid size={{ xs: 12, sm: 6 }}>
                                         <Typography variant="body2" color="text.secondary">Solicitado por</Typography>
                                         <Typography variant="body1" fontWeight="bold">👤 {aulaSelecionada.propostoPorNome || aulaSelecionada.professorNome || 'N/A'}</Typography>
                                     </Grid>
-                                    <Grid item xs={12} sm={6}>
+                                    <Grid size={{ xs: 12, sm: 6 }}>
                                         <Typography variant="body2" color="text.secondary">Data e Horário</Typography>
                                         <Typography variant="body1" fontWeight="bold">
                                             📅 {(() => { try { return dayjs(aulaSelecionada.dataInicio.toDate()).format('DD/MM/YYYY [às] HH:mm'); } catch { return '—'; } })()}
                                         </Typography>
                                     </Grid>
-                                    <Grid item xs={12} sm={6}>
+                                    <Grid size={{ xs: 12, sm: 6 }}>
                                         <Typography variant="body2" color="text.secondary">Cursos Atendidos</Typography>
                                         <Typography variant="body1" fontWeight="bold">
                                             🎓 {aulaSelecionada.cursos?.map(v => LISTA_CURSOS.find(c => c.value === v)?.label || v).join(', ') || '—'}
