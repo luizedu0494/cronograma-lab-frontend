@@ -384,6 +384,31 @@ ${desc ? `\n📝 <b>Descrição:</b> ${desc}` : ''}
 ${textoLink}
     `.trim();
   }
+  async enviarResumoDiario(chatId: string, aulasDoDiaSeguinte: any[]): Promise<boolean> {
+    if (!this.botToken || !chatId) return false;
+    if (aulasDoDiaSeguinte.length === 0) {
+      const mensagemVazia = `📅 <b>RESUMO DIÁRIO — CRONOLAB</b>\n\nNenhuma aula aprovada agendada para amanhã.`;
+      return this._enviarParaTopico(chatId, mensagemVazia, null);
+    }
+
+    const lista = aulasDoDiaSeguinte.map((a, i) => {
+      const ass = this.escaparHtml(a.assunto || 'Sem assunto');
+      const lab = this.escaparHtml(a.laboratorioSelecionado || 'Lab N/A');
+      const hor = this.escaparHtml(Array.isArray(a.horarioSlotString) ? a.horarioSlotString.join(', ') : a.horarioSlotString || 'Slot N/A');
+      return `<b>${i + 1}. ${ass}</b>\n   🏢 ${lab} | 🕐 ${hor}`;
+    }).join('\n\n');
+
+    const mensagem = `
+📅 <b>RESUMO DIÁRIO DE AULAS — CRONOLAB</b>
+<i>Aulas agendadas para amanhã (${aulasDoDiaSeguinte.length}):</i>
+
+${lista}
+
+🔗 <a href="${import.meta.env.VITE_SITE_URL || window.location.origin}/calendario">Ver Cronograma Completo</a>
+    `.trim();
+
+    return this._enviarParaTopico(chatId, mensagem, null);
+  }
 }
 
 export const notificadorTelegram = new NotificadorTelegram();

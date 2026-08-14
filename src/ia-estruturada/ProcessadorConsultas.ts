@@ -28,7 +28,7 @@ export interface DadosNovos {
 }
 
 export interface ResultadoProcessador {
-  acao?: 'consultar' | 'adicionar' | 'editar' | 'excluir';
+  acao?: 'consultar' | 'adicionar' | 'editar' | 'excluir' | 'propor';
   colecao?: string;
   criterios_busca?: CriteriosBusca;
   dados_novos?: DadosNovos;
@@ -160,7 +160,8 @@ class ProcessadorConsultas {
     3. **ANÁLISES ESPECIAIS (KPIs):**
        - Taxa de Ocupação: "eficiência", "taxa de uso", "ocupação %" → "analise_especial": "taxa_ocupacao", "tipo_visual": "kpi_numero".
        - Ociosidade: "não usados", "vazios", "sem aula" → "analise_especial": "nao_utilizados".
-       - Vagas: "horários vagos", "livres amanhã" → "analise_especial": "horarios_vagos".
+       - Vagas/Disponíveis: "horários vagos", "disponíveis agora", "labs disponíveis", "vagos hoje", "livres agora" → "analise_especial": "horarios_vagos", "tipo_visual": "tabela_aulas", "criterios_busca": { "data": "${agora.format('DD/MM/YYYY')}" }.
+       - Propostas Pendentes: "propostas pendentes", "propostas a serem aceitas", "propostas de aprovação", "aguardando aprovação" → "tipo_visual": "tabela_aulas", "criterios_busca": { "termoBusca": "pendente" }.
        - Média: "média por dia", "frequência" → "analise_especial": "media_diaria".
        - Saturação: "dias lotados", "picos" → "analise_especial": "dias_lotados".
        - Comparar tipos: "provas vs revisões", "comparar tipos de atividade" → "analise_especial": "comparar_tipos".
@@ -178,7 +179,7 @@ class ProcessadorConsultas {
 
     **FORMATO JSON OBRIGATÓRIO (retorne APENAS isso):**
     {
-      "acao": "consultar|adicionar|editar|excluir",
+      "acao": "consultar|adicionar|editar|excluir|propor",
       "colecao": "aulas",
       "criterios_busca": {
         "data": "DD/MM/YYYY",
@@ -239,7 +240,12 @@ class ProcessadorConsultas {
         });
       }
 
-      if (!response.ok) throw new Error(`Erro API Groq: ${response.status}`);
+      if (!response.ok) {
+        if (response.status === 404 && !GROQ_API_KEY) {
+          return { erro: 'A API Groq precisa da chave VITE_GROQ_API_KEY configurada no arquivo .env para testes locais.' };
+        }
+        throw new Error(`Erro API Groq: ${response.status}`);
+      }
 
       const data = await response.json();
       const conteudo = data.choices?.[0]?.message?.content;

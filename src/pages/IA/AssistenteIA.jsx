@@ -120,14 +120,27 @@ const AssistenteIA = ({ userInfo, currentUser, mode }) => {
 
     if (!isAuthorized) return null;
 
+    const isCoordenador = userInfo?.role === 'coordenador';
+    const sugestoesAtualizadas = isCoordenador ? [
+        "📋 Propostas pendentes de aprovação",
+        "🏛️ Labs disponíveis agora",
+        "📊 Taxa de ocupação dos laboratórios",
+        "📝 Provas agendadas este mês"
+    ] : [
+        "🎓 Aulas de hoje nos meus labs",
+        "🏛️ Labs disponíveis agora",
+        "📋 Minhas propostas enviadas",
+        "📖 Revisões agendadas este mês"
+    ];
+
     return (
-        <Container maxWidth="lg" sx={{ mt: 0, mb: 2, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <Container maxWidth="lg" sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', py: 3 }}>
             <Box sx={{ textAlign: 'center', mb: 2 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
-                    <AutoAwesome sx={{ fontSize: 28, color: 'primary.main' }} />
-                    <Typography variant="h5" fontWeight="bold" sx={{ background: 'linear-gradient(45deg, #1E7EC8 30%, #4AADE8 90%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Analista Inteligente</Typography>
+                <Box display="inline-flex" alignItems="center" gap={1} color="primary.main">
+                    <AutoAwesome />
+                    <Typography variant="h5" fontWeight="bold">Analista Inteligente</Typography>
                 </Box>
-                <Typography variant="caption" color="text.secondary">Consulte horários, vagas e estatísticas.</Typography>
+                <Typography variant="caption" color="text.secondary" display="block">Consulte horários, vagas e estatísticas.</Typography>
             </Box>
 
             <Paper elevation={4} sx={{ p: '2px 4px', display: 'flex', alignItems: 'center', width: '100%', maxWidth: 700, borderRadius: 50, border: '1px solid', borderColor: mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)', transition: '0.3s', '&:hover': { boxShadow: 8, borderColor: 'primary.main' } }}>
@@ -139,7 +152,7 @@ const AssistenteIA = ({ userInfo, currentUser, mode }) => {
 
             {/* Chips de Sugestão de Consulta */}
             <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', justifyContent: 'center', mt: 2, maxWidth: 720 }}>
-                {SUGESTOES.map((chipLabel, idx) => (
+                {sugestoesAtualizadas.map((chipLabel, idx) => (
                     <Chip
                         key={idx}
                         label={chipLabel}

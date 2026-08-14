@@ -400,6 +400,50 @@ function AnaliseAulas() {
             </Typography>
             <UsageMonitor />
 
+            {/* Painel Semana em Risco */}
+            {(() => {
+                const inicioSemana = dayjs().startOf('week');
+                const fimSemana = dayjs().endOf('week');
+                const aulasSemana = aulas.filter(a => {
+                    if (!a.dataInicio) return false;
+                    const d = dayjs(a.dataInicio.toDate ? a.dataInicio.toDate() : a.dataInicio);
+                    return d.isAfter(inicioSemana) && d.isBefore(fimSemana);
+                });
+
+                const contagemLabsSemana = {};
+                aulasSemana.forEach(a => {
+                    const lab = a.laboratorioSelecionado || 'Outro';
+                    contagemLabsSemana[lab] = (contagemLabsSemana[lab] || 0) + 1;
+                });
+
+                const labsDisputados = Object.entries(contagemLabsSemana).sort(([, a], [, b]) => b - a).slice(0, 3);
+
+                return (
+                    <Paper elevation={0} sx={{ p: 2.5, mb: 4, bgcolor: '#fffbe6', border: '1px solid #ffe58f', borderRadius: 2 }}>
+                        <Typography variant="h6" fontWeight="bold" color="#d48806" sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                            ⚠️ Painel "Semana em Risco" — Ocupação Alta de Laboratórios
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+                            Laboratórios com maior volume de agendamentos para esta semana ({inicioSemana.format('DD/MM')} a {fimSemana.format('DD/MM')}):
+                        </Typography>
+                        <Box display="flex" gap={1.5} flexWrap="wrap">
+                            {labsDisputados.length > 0 ? (
+                                labsDisputados.map(([lab, q]) => (
+                                    <Chip
+                                        key={lab}
+                                        label={`🏛️ ${lab}: ${q} aula(s) esta semana`}
+                                        color={q >= 5 ? "error" : "warning"}
+                                        sx={{ fontWeight: 'bold' }}
+                                    />
+                                ))
+                            ) : (
+                                <Typography variant="body2" color="text.secondary">Nenhuma saturação identificada para esta semana.</Typography>
+                            )}
+                        </Box>
+                    </Paper>
+                );
+            })()}
+
             <Paper elevation={2} sx={{ p: 2, mb: 4 }}>
                 <Typography variant="h6" gutterBottom>Filtros</Typography>
                 <Grid container spacing={2}>

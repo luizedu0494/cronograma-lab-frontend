@@ -13,8 +13,7 @@ function DesignarTecnicosModal({ open, onClose, aula, setSnackBar }) {
     const [tecnicosDisponiveis, setTecnicosDisponiveis] = useState([]);
     const [selectedTecnicos, setSelectedTecnicos] = useState([]);
     const [grupos, setGrupos] = useState([]);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState('');
+    const [tecnicosFrequencia, setTecnicosFrequencia] = useState({});
 
     const fetchData = useCallback(async () => {
         if (!open) return;
@@ -26,6 +25,23 @@ function DesignarTecnicosModal({ open, onClose, aula, setSnackBar }) {
             const tecnicosSnapshot = await getDocs(qTecnicos);
             const tecnicosList = tecnicosSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             setTecnicosDisponiveis(tecnicosList);
+
+            // Busca histórico de designações para o laboratório da aula
+            const labAlvo = aula?.laboratorioSelecionado || aula?.laboratorio;
+            if (labAlvo) {
+                const qAulasLab = query(collection(db, 'aulas'), where('laboratorioSelecionado', '==', labAlvo));
+                const snapLab = await getDocs(qAulasLab);
+                const freq = {};
+                snapLab.docs.forEach(d => {
+                    const data = d.data();
+                    if (Array.isArray(data.tecnicos)) {
+                        data.tecnicos.forEach(tId => {
+                            freq[tId] = (freq[tId] || 0) + 1;
+                        });
+                    }
+                });
+                setTecnicosFrequencia(freq);
+            }
 
             const gruposRef = collection(db, 'grupos');
             const qGrupos = query(gruposRef, orderBy('nome'));
@@ -128,15 +144,24 @@ function DesignarTecnicosModal({ open, onClose, aula, setSnackBar }) {
                 {loading ? <Box sx={{ display: 'flex', justifyContent: 'center', my: 2 }}><CircularProgress /></Box> :
                  error ? <Alert severity="error">{error}</Alert> :
                  <FormGroup>
-                    {tecnicosDisponiveis.map(tecnico => (
-                        <FormControlLabel
-                            key={tecnico.id}
-                            control={
-                                <Checkbox checked={selectedTecnicos.includes(tecnico.id)} onChange={() => handleToggleTecnico(tecnico.id)} />
-                            }
-                            label={tecnico.name || tecnico.email}
-                        />
-                    ))}
+                    {tecnicosDisponiveis.map(tecnico => {
+                        const freq = tecnicosFrequencia[tecnico.id] || 0;
+                        return (
+                            <Box key={tecnico.id} display="flex" alignItems="center" justifyContent="space-between">
+                                <FormControlLabel
+                                    control={
+                                        <Checkbox checked={selectedTecnicos.includes(tecnico.id)} onChange={() => handleToggleTecnico(tecnico.id)} />
+                                    }
+                                    label={tecnico.name || tecnico.email}
+                                />
+                                {freq > 0 && (
+                                    <Typography variant="caption" sx={{ bgcolor: 'action.hover', px: 1, py: 0.3, borderRadius: 1, color: 'primary.main', fontWeight: 'bold' }}>
+                                        ⭐ Sugerido ({freq}x neste lab)
+                                    </Typography>
+                                )}
+                            </Box>
+                        );
+                    })}
                 </FormGroup>
                 }
             </DialogContent>

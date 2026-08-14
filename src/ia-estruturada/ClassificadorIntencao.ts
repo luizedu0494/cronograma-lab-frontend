@@ -11,6 +11,7 @@ export const TIPOS_INTENCAO = {
   CONSULTAR_QUANTIDADE: 'consultar_quantidade',
   CONSULTAR_ESTATISTICAS: 'consultar_estatisticas',
   ADICIONAR_AULA: 'adicionar_aula',
+  PROPOR_AULA: 'propor_aula',
   EDITAR_AULA: 'editar_aula',
   EXCLUIR_AULA: 'excluir_aula',
   DESCONHECIDO: 'desconhecido',
@@ -47,6 +48,10 @@ class ClassificadorIntencao {
         /\b(adicionar|criar|agendar|cadastrar|incluir|nova|novo)\b.*\b(aula)\b/i,
         /\b(aula)\b.*\b(para|no|em)\b.*\d{1,2}\/\d{1,2}\/\d{4}/i,
         /\b(marcar|reservar)\b.*\b(aula|lab|laboratório|laboratorio)\b/i,
+      ],
+      [TIPOS_INTENCAO.PROPOR_AULA]: [
+        /\b(propor|sugerir|solicitar|pedir)\b.*\b(aula|evento|revisão|revisao|prova)\b/i,
+        /\b(propor|proposta)\b/i,
       ],
       [TIPOS_INTENCAO.EDITAR_AULA]: [
         /\b(editar|alterar|modificar|mudar|atualizar|trocar)\b.*\b(aula)\b/i,
@@ -126,6 +131,7 @@ class ClassificadorIntencao {
       [TIPOS_INTENCAO.CONSULTAR_QUANTIDADE]: 'Consultar quantidade de aulas',
       [TIPOS_INTENCAO.CONSULTAR_ESTATISTICAS]: 'Consultar estatísticas e análises',
       [TIPOS_INTENCAO.ADICIONAR_AULA]: 'Adicionar nova aula',
+      [TIPOS_INTENCAO.PROPOR_AULA]: 'Propor aula/evento para aprovação',
       [TIPOS_INTENCAO.EDITAR_AULA]: 'Editar aula existente',
       [TIPOS_INTENCAO.EXCLUIR_AULA]: 'Excluir aula',
       [TIPOS_INTENCAO.DESCONHECIDO]: 'Intenção não identificada',

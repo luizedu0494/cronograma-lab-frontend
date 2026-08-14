@@ -87,6 +87,14 @@ const MinhasPropostas = () => {
     const aprovadas = propostas.filter(p => p.status === 'aprovada');
     const rejeitadas = propostas.filter(p => p.status === 'rejeitada');
 
+    const agora = dayjs();
+    const aulasIminentes = aprovadas.filter(p => {
+        if (!p.dataInicio) return false;
+        const inicio = dayjs(p.dataInicio.toDate ? p.dataInicio.toDate() : p.dataInicio);
+        const diffMinutos = inicio.diff(agora, 'minute');
+        return diffMinutos >= 0 && diffMinutos <= 30;
+    });
+
     if (loading) {
         return (
             <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
@@ -105,7 +113,17 @@ const MinhasPropostas = () => {
 
     return (
         <Container maxWidth="md">
-            <Paper elevation={3} sx={{ p: 4, mt: 4 }}>
+            {aulasIminentes.length > 0 && (
+                <Alert
+                    severity="warning"
+                    variant="filled"
+                    sx={{ mt: 3, mb: 1, bgcolor: '#d48806', color: '#fff', fontWeight: 'bold', borderRadius: 2 }}
+                >
+                    ⚡ <strong>Alerta de Prep de Lab:</strong> Você tem {aulasIminentes.length} aula(s) aprovada(s) iniciando em ≤ 30 minutos!
+                    {aulasIminentes.map(a => ` "${a.assunto}" no ${a.laboratorioSelecionado || 'Lab'}`).join('; ')}
+                </Alert>
+            )}
+            <Paper elevation={3} sx={{ p: 4, mt: 2 }}>
                 <Typography variant="h5" component="h1" gutterBottom>
                     Minhas Propostas de Aula
                 </Typography>

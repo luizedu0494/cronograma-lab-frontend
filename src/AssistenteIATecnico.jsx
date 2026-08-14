@@ -28,66 +28,55 @@ const BLOCOS_HORARIO = [
 const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY;
 const GROQ_MODEL = 'llama-3.1-8b-instant';
 
-// PROMPT SOMENTE CONSULTA PARA TÉCNICO
-const PROMPT_TECNICO_CONSULTA = `Você é um Assistente de Consulta de Cronograma de Aulas, um especialista em interpretar e responder a perguntas complexas sobre o agendamento de aulas, laboratórios e cursos, com base nos dados estruturados fornecidos.
+import { addDoc, serverTimestamp } from 'firebase/firestore';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import SendTimeExtensionIcon from '@mui/icons-material/SendTimeExtension';
+import { notificadorTelegram } from './services/NotificadorTelegram';
 
-Seu objetivo é **apenas responder a consultas** do usuário. Você NÃO tem permissão para executar ações de agendamento (adicionar, editar, excluir).
+const TELEGRAM_CHAT_ID = import.meta.env.VITE_TELEGRAM_CHAT_ID;
 
-**1. Contexto e Estrutura de Dados (Conhecimento Base):**
+// PROMPT EXPANDIDO PARA O TÉCNICO (CONSULTA + PROPOR AULAS/EVENTOS)
+const PROMPT_TECNICO_ASSISTENTE = `Você é o Assistente IA do Técnico do CronoLab CESMAC.
+Seu papel é auxiliar o técnico a (1) consultar o cronograma e (2) montar **propostas de agendamento de aula ou evento**.
 
-Você tem acesso a um banco de dados de aulas com a seguinte estrutura (JSON de exemplo):
-{
-  "tipoAtividade": "Aula Prática",
-  "assunto": "Anatomia Humana",
-  "laboratorioSelecionado": "anatomia_1",
-  "cursos": ["medicina", "enfermagem"],
-  "horarioSlotString": "07:00-09:10",
-  "dataInicio": "Timestamp",
-  "status": "aprovada",
-  "observacoes": "Aula com foco em peças ósseas e musculatura.",
-  // ... outros campos
-}
+DATA DE HOJE: ${dayjs().format('DD/MM/YYYY')} (${dayjs().format('dddd')})
+HORA ATUAL: ${dayjs().format('HH:mm')}
 
-**2. Constantes do Sistema (Valores Válidos):**
+**REGRAS DE AÇÃO:**
+1. **acao = "consultar"**: Para qualquer pergunta sobre quais aulas existem, horários vagos, ocupação de laboratórios etc.
+2. **acao = "propor"**: Para quando o usuário deseja agendar, criar, propor ou solicitar uma aula ou evento. Extraia os dados na chave "proposta".
+3. **Bloqueio de escrita direta**: Se o usuário tentar "adicionar/alterar/excluir direto no cronograma oficial", explique de forma amigável: "Como técnico, você não pode alterar o cronograma aprovado diretamente, mas montei uma **proposta de agendamento** para revisão e envio ao coordenador."
 
-*   **Cursos Válidos:** Biomedicina, Farmácia, Enfermagem, Odontologia, Medicina, Fisioterapia, Nutrição, Ed. Física, Psicologia, Medicina Veterinária, Química Tecnológica, Engenharia, Tec. e Cosmético.
-*   **Horários Válidos (Slots):** 07:00-09:10, 09:30-12:00, 13:00-15:10, 15:30-18:00, 18:30-20:10, 20:30-22:00.
-*   **Tipos de Laboratório:** Anatomia (1 a 6), Microscopia Normal (1 a 5), Microscopia Galeria (6 e 7), Multidisciplinar (1 a 4), Habilidades Ney Braga (1 a 4), Habilidades Santander (1 a 3), Habilidades Galeria (1 a 3), Farmacêutico, Tec. Dietética, UDA.
-
-**3. Diretrizes de Consulta:**
-
-*   **Ação Única:** A única ação suportada é "consultar".
-*   **Busca por Termos Específicos:** Para consultas que envolvam termos incomuns (ex: "bcmol", "projeto X"), simule uma busca por palavra-chave nos campos **"assunto"** e **"observacoes"**.
-*   **Detalhe e Estrutura da Resposta:** Se você encontrar aulas, a resposta no campo \`resposta\` DEVE ser detalhada e estruturada (lista ou tabela) contendo: **Assunto**, **Data**, **Horário**, **Laboratório** e **Cursos Envolvidos**.
-*   **Restrição de Ação:** Se o usuário tentar um comando de ação (ex: "Adicionar aula de...", "Excluir a aula..."), você deve responder: "Meu papel é apenas consultar o cronograma. Não tenho permissão para agendar, editar ou excluir aulas."
-
-**4. Formato de Resposta Esperado (JSON):**
-
-*   Use APENAS o formato JSON abaixo.
-*   A \`acao\` DEVE ser sempre "consultar".
-
+**FORMATO DE RESPOSTA (JSON OBRIGATÓRIO):**
+Para consultas:
 \`\`\`json
 {
   "acao": "consultar",
   "dados": {
-    "termoBusca": "string (para consultas, ex: 'bcmol')",
-    "mes": "MM/YYYY (para consultas)",
-    "ano": "YYYY (para consultas)",
-    "data": "DD/MM/YYYY (para consultas)",
-    "laboratorio": "string (para consultas)"
+    "termoBusca": "string",
+    "data": "DD/MM/YYYY",
+    "laboratorio": "string"
   },
-  "resposta": "Texto de resposta detalhada para a consulta"
+  "resposta": "Texto detalhado com os dados encontrados"
 }
 \`\`\`
 
-Se o comando não for claro ou faltar informações CRÍTICAS, retorne:
+Para propostas:
 \`\`\`json
 {
-  "erro": "Descrição do que está faltando ou não está claro"
+  "acao": "propor",
+  "proposta": {
+    "assunto": "string",
+    "data": "DD/MM/YYYY",
+    "horario": "07:00-09:10",
+    "laboratorio": "string",
+    "cursos": ["string"],
+    "observacoes": "string"
+  },
+  "resposta": "Montei a proposta de agendamento abaixo. Confira os dados e clique em 'Confirmar e Enviar Proposta' para enviar para aprovação do coordenador."
 }
 \`\`\`
-
-Se o comando for uma consulta, retorne a resposta diretamente no campo "resposta" do JSON, e a "acao" deve ser "consultar".`;
+`;
 
 
 function AssistenteIATecnico({ userInfo, currentUser, mode }) {
@@ -125,32 +114,47 @@ function AssistenteIATecnico({ userInfo, currentUser, mode }) {
         setMensagens(prev => [...prev, { texto, tipo, timestamp: new Date() }]);
     };
 
-    const chamarGroqAPI = async (prompt, contexto) => {
+    const chamarGroqAPI = async (prompt, contexto, historicoMsgs = []) => {
         try {
-            const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+            const systemContent = `${PROMPT_TECNICO_ASSISTENTE}\n\nCONTEXTO DE CONEXÃO:\n${contexto}`;
+            const ultimosTurnos = historicoMsgs.slice(-6).map(m => ({
+                role: m.tipo === 'usuario' ? 'user' : 'assistant',
+                content: typeof m.texto === 'string' ? m.texto : 'Proposta gerada'
+            }));
+
+            const payload = {
+                model: GROQ_MODEL,
+                messages: [
+                    { role: 'system', content: systemContent },
+                    ...ultimosTurnos,
+                    { role: 'user', content: prompt }
+                ],
+                temperature: 0.3,
+                max_tokens: 1500,
+                response_format: { type: 'json_object' }
+            };
+
+            let response = await fetch('/api/groq', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${GROQ_API_KEY}`
-                },
-                body: JSON.stringify({
-                    model: GROQ_MODEL,
-                    messages: [
-                        {
-                            role: 'system',
-                            content: PROMPT_TECNICO_CONSULTA.replace('${contexto}', contexto) // Usa o prompt de consulta
-                        },
-                        {
-                            role: 'user',
-                            content: prompt
-                        }
-                    ],
-                    temperature: 0.3,
-                    max_tokens: 1500
-                })
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ payload })
             });
 
+            if (!response.ok && GROQ_API_KEY) {
+                response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${GROQ_API_KEY}`
+                    },
+                    body: JSON.stringify(payload)
+                });
+            }
+
             if (!response.ok) {
+                if (response.status === 404 && !GROQ_API_KEY) {
+                    return { erro: 'Configuração necessária: Adicione VITE_GROQ_API_KEY=gsk_... no arquivo .env para executar a IA em ambiente local (npm start).' };
+                }
                 throw new Error(`Erro na API Groq: ${response.status}`);
             }
 
@@ -162,11 +166,54 @@ function AssistenteIATecnico({ userInfo, currentUser, mode }) {
                 return JSON.parse(jsonMatch[0]);
             }
             
-            // Se não retornar JSON, assume que é uma resposta direta de consulta
             return { acao: 'consultar', resposta: resposta };
         } catch (error) {
             console.error('Erro ao chamar Groq API:', error);
             throw error;
+        }
+    };
+
+    const handleConfirmarProposta = async (proposta) => {
+        try {
+            const dataObj = dayjs(proposta.data || dayjs(), 'DD/MM/YYYY');
+            const novaProposta = {
+                assunto: proposta.assunto || 'Proposta via IA',
+                laboratorioSelecionado: proposta.laboratorio || 'Anatomia 1',
+                horarioSlotString: proposta.horario || '07:00-09:10',
+                cursos: proposta.cursos || ['Medicina'],
+                dataInicio: Timestamp.fromDate(dataObj.toDate()),
+                observacoes: proposta.observacoes || 'Proposta criada via Assistente IA do Técnico',
+                status: 'pendente',
+                propostoPorUid: currentUser?.uid || 'tecnico',
+                propostoPorNome: userInfo?.nome || currentUser?.displayName || 'Técnico',
+                origem: 'ia',
+                createdAt: serverTimestamp()
+            };
+
+            await addDoc(collection(db, 'aulas'), novaProposta);
+
+            if (TELEGRAM_CHAT_ID) {
+                await notificadorTelegram.enviarNotificacao(TELEGRAM_CHAT_ID, {
+                    assunto: novaProposta.assunto,
+                    data: dataObj.format('DD/MM/YYYY'),
+                    dataISO: dataObj.format('YYYY-MM-DD'),
+                    horario: novaProposta.horarioSlotString,
+                    laboratorio: novaProposta.laboratorioSelecionado,
+                    cursos: novaProposta.cursos,
+                    observacoes: novaProposta.observacoes,
+                    propostoPorNome: novaProposta.propostoPorNome,
+                }, 'pendente');
+            }
+
+            setSnackbarMessage('✅ Proposta enviada com sucesso para a fila de aprovação!');
+            setSnackbarSeverity('success');
+            setOpenSnackbar(true);
+            adicionarMensagem('✅ Proposta registrada com sucesso na fila do coordenador!', 'ia');
+        } catch (err) {
+            console.error('Erro ao enviar proposta:', err);
+            setSnackbarMessage('Erro ao enviar proposta.');
+            setSnackbarSeverity('error');
+            setOpenSnackbar(true);
         }
     };
 
@@ -175,7 +222,6 @@ function AssistenteIATecnico({ userInfo, currentUser, mode }) {
             let q = collection(db, "aulas");
             const constraints = [];
 
-            // Lógica de busca simplificada para consulta
             if (criterios.data) {
                 const dataInicio = dayjs(criterios.data, 'DD/MM/YYYY').startOf('day');
                 const dataFim = dataInicio.endOf('day');
@@ -185,11 +231,6 @@ function AssistenteIATecnico({ userInfo, currentUser, mode }) {
                 const [mes, ano] = criterios.mes.split('/');
                 const dataInicio = dayjs().month(parseInt(mes) - 1).year(parseInt(ano)).startOf('month');
                 const dataFim = dataInicio.endOf('month');
-                constraints.push(where("dataInicio", ">=", Timestamp.fromDate(dataInicio.toDate())));
-                constraints.push(where("dataInicio", "<=", Timestamp.fromDate(dataFim.toDate())));
-            } else if (criterios.ano) {
-                const dataInicio = dayjs().year(parseInt(criterios.ano)).startOf('year');
-                const dataFim = dataInicio.endOf('year');
                 constraints.push(where("dataInicio", ">=", Timestamp.fromDate(dataInicio.toDate())));
                 constraints.push(where("dataInicio", "<=", Timestamp.fromDate(dataFim.toDate())));
             }
@@ -230,33 +271,42 @@ function AssistenteIATecnico({ userInfo, currentUser, mode }) {
 
         try {
             const contexto = `Cursos: ${LISTA_CURSOS.map(c => c.value).join(', ')}\nLaboratórios: ${LISTA_LABORATORIOS.map(l => l.id).join(', ')}\nHorários: ${BLOCOS_HORARIO.map(h => h.value).join(', ')}`;
-            const resultadoIA = await chamarGroqAPI(mensagemUsuario, contexto);
+            const resultadoIA = await chamarGroqAPI(mensagemUsuario, contexto, mensagens);
 
             if (resultadoIA.erro) {
                 adicionarMensagem(`Erro: ${resultadoIA.erro}`, 'ia');
                 return;
             }
 
-            // Ação é sempre 'consultar' neste componente
+            if (resultadoIA.acao === 'propor' && resultadoIA.proposta) {
+                const p = resultadoIA.proposta;
+                const textoMsg = resultadoIA.resposta || 'Montei a proposta com base nas informações. Confira os dados:';
+                setMensagens(prev => [...prev, {
+                    texto: textoMsg,
+                    tipo: 'ia',
+                    proposta: p,
+                    timestamp: new Date()
+                }]);
+                return;
+            }
+
             const aulas = await buscarAulasFirebase(resultadoIA.dados || {});
             let resposta = resultadoIA.resposta;
 
-            // CORREÇÃO: Garante que a resposta da IA é uma string antes de ser exibida
             if (typeof resposta !== 'string') {
                 try {
                     resposta = JSON.stringify(resposta, null, 2);
                 } catch (e) {
-                    resposta = "Erro ao formatar a resposta da IA. Por favor, tente reformular a consulta.";
+                    resposta = "Erro ao formatar resposta da IA.";
                 }
             }
 
             if (!resposta || resposta.trim() === 'null' || resposta.trim() === '') {
                 if (aulas.length > 0) {
-                    // Formata a lista de aulas se a IA não tiver fornecido uma resposta textual
                     const listaAulas = aulas.map(aula => 
-                        `* **Assunto:** ${aula.assunto}\n  **Data:** ${dayjs(aula.dataInicio.toDate()).format('DD/MM/YYYY HH:mm')}\n  **Laboratório:** ${aula.laboratorioSelecionado}\n  **Cursos:** ${aula.cursos.join(', ')}`
+                        `* **Assunto:** ${aula.assunto}\n  **Data:** ${dayjs(aula.dataInicio.toDate()).format('DD/MM/YYYY HH:mm')}\n  **Laboratório:** ${aula.laboratorioSelecionado}\n  **Cursos:** ${Array.isArray(aula.cursos) ? aula.cursos.join(', ') : 'N/A'}`
                     ).join('\n\n');
-                    resposta = `Encontrei ${aulas.length} aula(s) que correspondem à sua busca:\n\n${listaAulas}`;
+                    resposta = `Encontrei ${aulas.length} aula(s):\n\n${listaAulas}`;
                 } else {
                     resposta = `Não encontrei nenhuma aula que corresponda à sua busca.`;
                 }
@@ -322,13 +372,13 @@ function AssistenteIATecnico({ userInfo, currentUser, mode }) {
         return (
             <Box
                 key={index}
-                sx={{ display: 'flex', justifyContent: isUsuario ? 'flex-end' : 'flex-start', mb: 2 }}
+                sx={{ display: 'flex', flexDirection: 'column', alignItems: isUsuario ? 'flex-end' : 'flex-start', mb: 2 }}
             >
                 <Paper
                     elevation={2}
                     sx={{
                         p: 1.5,
-                        maxWidth: '80%',
+                        maxWidth: '85%',
                         borderRadius: isUsuario ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
                         backgroundColor: isUsuario ? 'primary.main' : 'action.hover',
                         color: isUsuario ? 'primary.contrastText' : 'text.primary',
@@ -339,6 +389,34 @@ function AssistenteIATecnico({ userInfo, currentUser, mode }) {
                     }}
                 >
                     <Typography variant="body1">{mensagem.texto}</Typography>
+
+                    {mensagem.proposta && (
+                        <Paper variant="outlined" sx={{ mt: 1.5, p: 2, bgcolor: 'background.paper', borderRadius: 2, borderLeft: '4px solid #ed6c02' }}>
+                            <Box display="flex" alignItems="center" gap={1} mb={1}>
+                                <SendTimeExtensionIcon color="warning" size="small" />
+                                <Typography variant="subtitle2" fontWeight="bold" color="warning.main">
+                                    Proposta Prontas para Envio
+                                </Typography>
+                            </Box>
+                            <Typography variant="body2"><strong>Assunto:</strong> {mensagem.proposta.assunto || '—'}</Typography>
+                            <Typography variant="body2"><strong>Data:</strong> {mensagem.proposta.data || '—'}</Typography>
+                            <Typography variant="body2"><strong>Horário:</strong> {mensagem.proposta.horario || '—'}</Typography>
+                            <Typography variant="body2"><strong>Laboratório:</strong> {mensagem.proposta.laboratorio || '—'}</Typography>
+                            <Typography variant="body2"><strong>Cursos:</strong> {Array.isArray(mensagem.proposta.cursos) ? mensagem.proposta.cursos.join(', ') : mensagem.proposta.cursos || '—'}</Typography>
+                            
+                            <Button
+                                variant="contained"
+                                color="warning"
+                                size="small"
+                                startIcon={<CheckCircleIcon />}
+                                onClick={() => handleConfirmarProposta(mensagem.proposta)}
+                                sx={{ mt: 2, fontWeight: 'bold' }}
+                            >
+                                Confirmar e Enviar Proposta
+                            </Button>
+                        </Paper>
+                    )}
+
                     <Typography 
                         variant="caption" 
                         sx={{ 
@@ -354,6 +432,13 @@ function AssistenteIATecnico({ userInfo, currentUser, mode }) {
             </Box>
         );
     };
+
+    const sugestoesChips = [
+        "Quais aulas estão no Anatomia 1 amanhã?",
+        "Propor aula de Anatomia amanhã às 13h no Lab 2 para Enfermagem",
+        "Horários vagos no Microscopia 1 amanhã",
+        "Propor revisão de Bioquímica na próxima quinta 09:30"
+    ];
 
     if (!isTecnicoOuCoordenador) {
         return (
@@ -373,7 +458,7 @@ function AssistenteIATecnico({ userInfo, currentUser, mode }) {
                         </Avatar>
                         <Box>
                             <Typography variant="h6" component="h1" fontWeight={700}>
-                                Assistente IA de Consulta
+                                Assistente IA do Técnico & Agendamento
                             </Typography>
                             <Typography variant="caption" color="text.secondary">
                                 CronoLab — CESMAC
@@ -389,18 +474,38 @@ function AssistenteIATecnico({ userInfo, currentUser, mode }) {
                     />
                 </Box>
                 <Typography variant="body2" color="text.secondary" sx={{ mt: 1.5 }}>
-                    Use texto ou voz para consultar o cronograma de aulas. Ex: <em>"Quais aulas estão no Anatomia 1 amanhã?"</em> ou <em>"Existe alguma aula sobre bcmol este mês?"</em>.
+                    Consulte o cronograma ou peça para a IA montar uma proposta de aula/evento.
                 </Typography>
             </Paper>
 
             <Paper elevation={3} sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', p: 2.5, overflow: 'hidden', borderRadius: 2 }}>
                 <Box sx={{ flexGrow: 1, overflowY: 'auto', p: 1, mb: 2 }}>
+                    {mensagens.length === 0 && (
+                        <Box sx={{ p: 2, textAlign: 'center', color: 'text.secondary' }}>
+                            <Typography variant="body2" sx={{ mb: 1.5 }}>
+                                Experimente selecionar uma sugestão de consulta ou proposta:
+                            </Typography>
+                            <Box display="flex" flexWrap="wrap" justifyContent="center" gap={1}>
+                                {sugestoesChips.map((sugestao, idx) => (
+                                    <Chip
+                                        key={idx}
+                                        label={sugestao}
+                                        onClick={() => handleSend(sugestao)}
+                                        clickable
+                                        color="primary"
+                                        variant="outlined"
+                                        size="small"
+                                    />
+                                ))}
+                            </Box>
+                        </Box>
+                    )}
                     {mensagens.map(renderMensagem)}
                     {carregando && (
                         <Box display="flex" alignItems="center" sx={{ mb: 2 }}>
                             <Paper elevation={1} sx={{ p: 1.5, borderRadius: '16px 16px 16px 4px', bgcolor: 'action.hover', display: 'flex', alignItems: 'center', gap: 1 }}>
                                 <CircularProgress size={16} />
-                                <Typography variant="body2" color="text.secondary">Assistente IA está pesquisando...</Typography>
+                                <Typography variant="body2" color="text.secondary">Assistente IA está processando...</Typography>
                             </Paper>
                         </Box>
                     )}
@@ -412,7 +517,7 @@ function AssistenteIATecnico({ userInfo, currentUser, mode }) {
                         fullWidth
                         size="small"
                         variant="outlined"
-                        placeholder={isRecording ? "Ouvindo..." : "Digite sua mensagem..."}
+                        placeholder={isRecording ? "Ouvindo..." : "Digite sua pergunta ou solicitação de proposta..."}
                         value={inputUsuario}
                         onChange={(e) => setInputUsuario(e.target.value)}
                         onKeyPress={(e) => e.key === 'Enter' && handleSend()}

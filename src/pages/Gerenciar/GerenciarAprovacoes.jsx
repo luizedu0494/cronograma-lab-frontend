@@ -27,23 +27,27 @@ const TELEGRAM_CHAT_ID = import.meta.env.VITE_TELEGRAM_CHAT_ID;
 
 dayjs.locale('pt-br');
 
+import Checkbox from '@mui/material/Checkbox';
+import PlaylistAddCheckIcon from '@mui/icons-material/PlaylistAddCheck';
+import { writeBatch } from 'firebase/firestore';
+
 const MONTHS = Array.from({ length: 12 }, (_, i) => ({ value: i, label: dayjs().month(i).format('MMMM') }));
 const YEARS  = Array.from({ length: 5  }, (_, i) => dayjs().year() - 2 + i);
 
 // ─── Card de Aula ─────────────────────────────────────────────────────────────
-function AulaCard({ aula, onAction, processando, isSelected, onClick }) {
+function AulaCard({ aula, onAction, processando, isSelected, onClick, temConflito, isCheckable, isChecked, onToggleCheck }) {
     const cursosLabel = useMemo(() => {
         if (!aula.cursos?.length) return '—';
         return aula.cursos.map(v => LISTA_CURSOS.find(c => c.value === v)?.label || v).join(', ');
     }, [aula.cursos]);
 
     const dataFormatada = useMemo(() => {
-        try { return dayjs(aula.dataInicio.toDate()).format('ddd, DD/MM/YYYY [às] HH:mm'); }
+        try { return dayjs(aula.dataInicio.toDate ? aula.dataInicio.toDate() : aula.dataInicio).format('ddd, DD/MM/YYYY [às] HH:mm'); }
         catch { return '—'; }
     }, [aula.dataInicio]);
 
-    // Moldura por tipo: Roxa se Revisão, Laranja se Prova, Azul se Aula normal
     const borderLeftColor = 
+        temConflito ? '#d32f2f' :
         aula.isRevisao ? '#9c27b0' :
         aula.isProva   ? '#ff9800' :
         aula.status === 'aprovada'  ? '#2e7d32' :
@@ -63,16 +67,28 @@ function AulaCard({ aula, onAction, processando, isSelected, onClick }) {
                 opacity: isProcessando ? 0.6 : 1,
                 '&:hover': { boxShadow: 3, transform: 'translateY(-1px)' }
             }}>
-            <CardContent sx={{ pb: 1.5 }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1, flexWrap: 'wrap', gap: 1 }}>
+            <CardContent sx={{ pb: 1.5, position: 'relative' }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1, flexWrap: 'wrap', gap: 1, alignItems: 'center' }}>
                     <Box display="flex" alignItems="center" gap={1}>
+                        {isCheckable && (
+                            <Checkbox
+                                size="small"
+                                checked={isChecked}
+                                onChange={(e) => {
+                                    e.stopPropagation();
+                                    onToggleCheck(aula.id);
+                                }}
+                                onClick={(e) => e.stopPropagation()}
+                            />
+                        )}
                         <Typography variant="subtitle1" fontWeight="bold">{aula.assunto}</Typography>
                         {aula.isRevisao && <Chip label="Revisão" size="small" color="secondary" sx={{ height: 20, fontSize: '0.65rem' }} />}
                         {aula.isProva && <Chip label="Prova" size="small" color="warning" sx={{ height: 20, fontSize: '0.65rem' }} />}
+                        {temConflito && <Chip label="⚠️ Conflito" size="small" color="error" sx={{ height: 20, fontSize: '0.65rem', fontWeight: 'bold' }} />}
                     </Box>
                     <Chip
                         label={aula.status === 'pendente' ? 'Pendente' : aula.status === 'aprovada' ? 'Aprovada' : 'Rejeitada'}
-                        color={aula.status === 'pendente' ? 'warning' : aula.status === 'aprovada' ? 'success' : 'error'}
+                        color={aula.status === 'pendente' ? (temConflito ? 'error' : 'warning') : aula.status === 'aprovada' ? 'success' : 'error'}
                         size="small"
                     />
                 </Box>
@@ -96,8 +112,64 @@ function GerenciarAprovacoes() {
 
     const [processando, setProcessando] = useState(null);
 
-    // Item selecionado para visualização Master-Detail
-    const [aulaSelecionada, setAulaSelecionada] = useState(null);
+    const [selectedIds, setSelectedIds]         = useState([]);
+    const [loadingBatch, setLoadingBatch]       = useState(false);
+
+    // Mapeia propostas que possuem conflito de horário com aulas aprovadas
+    const conflitosMap = useMemo(() => {
+        const mapa = {};
+        pendentesGlobal.forEach(p => {
+            if (!p.dataInicio || !p.laboratorioSelecionado) return;
+            const dateStr = dayjs(p.dataInicio?.toDate ? p.dataInicio.toDate() : p.dataInicio).format('YYYY-MM-DD');
+            const lab = p.laboratorioSelecionado;
+            const hSlots = Array.isArray(p.horarioSlotString) ? p.horarioSlotString : [p.horarioSlotString];
+
+            const temConflito = aulasDoMes.some(aprov => {
+                if (aprov.status !== 'aprovada') return false;
+                const aDate = dayjs(aprov.dataInicio?.toDate ? aprov.dataInicio.toDate() : aprov.dataInicio).format('YYYY-MM-DD');
+                if (aDate !== dateStr) return false;
+                if (aprov.laboratorioSelecionado !== lab) return false;
+                const aSlots = Array.isArray(aprov.horarioSlotString) ? aprov.horarioSlotString : [aprov.horarioSlotString];
+                return hSlots.some(h => aSlots.includes(h));
+            });
+
+            if (temConflito) mapa[p.id] = true;
+        });
+        return mapa;
+    }, [pendentesGlobal, aulasDoMes]);
+
+    const toggleSelectId = useCallback((id) => {
+        setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+    }, []);
+
+    const handleSelectTodasSemConflito = () => {
+        const semConflito = pendentesGlobal.filter(p => !conflitosMap[p.id]).map(p => p.id);
+        setSelectedIds(semConflito);
+    };
+
+    const handleAprovarEmLote = async () => {
+        if (selectedIds.length === 0 || loadingBatch) return;
+        setLoadingBatch(true);
+        try {
+            const batch = writeBatch(db);
+            selectedIds.forEach(id => {
+                batch.update(doc(db, 'aulas', id), { status: 'aprovada' });
+            });
+            await batch.commit();
+
+            setSnackbar({
+                open: true,
+                severity: 'success',
+                message: `✅ ${selectedIds.length} proposta(s) aprovada(s) em lote!`
+            });
+            setSelectedIds([]);
+        } catch (err) {
+            console.error('Erro na aprovação em lote:', err);
+            setSnackbar({ open: true, severity: 'error', message: 'Erro ao aprovar em lote.' });
+        } finally {
+            setLoadingBatch(false);
+        }
+    };
 
     // Confirmação antes de aprovar/rejeitar + Motivo de rejeição
     const [confirmDialog, setConfirmDialog] = useState({ open: false, aula: null, acao: null });
@@ -292,6 +364,33 @@ function GerenciarAprovacoes() {
                         InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> }}
                         sx={{ flex: 1, minWidth: 220 }}
                     />
+
+                    {currentTab === 'pendente' && (
+                        <Box display="flex" gap={1} flexWrap="wrap">
+                            <Button
+                                size="small"
+                                variant="outlined"
+                                color="primary"
+                                startIcon={<PlaylistAddCheckIcon />}
+                                onClick={handleSelectTodasSemConflito}
+                            >
+                                Selecionar sem conflito
+                            </Button>
+                            {selectedIds.length > 0 && (
+                                <Button
+                                    size="small"
+                                    variant="contained"
+                                    color="success"
+                                    startIcon={<CheckCircleIcon />}
+                                    onClick={handleAprovarEmLote}
+                                    disabled={loadingBatch}
+                                >
+                                    {loadingBatch ? 'Aprovando...' : `Aprovar Selecionadas (${selectedIds.length})`}
+                                </Button>
+                            )}
+                        </Box>
+                    )}
+
                     {currentTab !== 'pendente' && (
                         <>
                             <Button variant={filtrosVisiveis ? 'contained' : 'outlined'} size="small"
@@ -344,6 +443,10 @@ function GerenciarAprovacoes() {
                                     isSelected={aulaSelecionada?.id === aula.id}
                                     onClick={() => setAulaSelecionada(aula)}
                                     processando={processando}
+                                    temConflito={Boolean(conflitosMap[aula.id])}
+                                    isCheckable={currentTab === 'pendente'}
+                                    isChecked={selectedIds.includes(aula.id)}
+                                    onToggleCheck={toggleSelectId}
                                 />
                             ))}
                         </Box>
@@ -361,14 +464,23 @@ function GerenciarAprovacoes() {
                                         <Box display="flex" gap={1} mt={0.5}>
                                             {aulaSelecionada.isRevisao && <Chip label="Revisão" color="secondary" size="small" />}
                                             {aulaSelecionada.isProva && <Chip label="Prova" color="warning" size="small" />}
+                                            {conflitosMap[aulaSelecionada.id] && (
+                                                <Chip label="⚠️ Conflito de Horário Mapeado" color="error" size="small" sx={{ fontWeight: 'bold' }} />
+                                            )}
                                             <Chip
                                                 label={aulaSelecionada.status === 'pendente' ? 'Aguardando aprovação' : aulaSelecionada.status === 'aprovada' ? 'Aprovada' : 'Rejeitada'}
-                                                color={aulaSelecionada.status === 'pendente' ? 'warning' : aulaSelecionada.status === 'aprovada' ? 'success' : 'error'}
+                                                color={aulaSelecionada.status === 'pendente' ? (conflitosMap[aulaSelecionada.id] ? 'error' : 'warning') : aulaSelecionada.status === 'aprovada' ? 'success' : 'error'}
                                                 size="small"
                                             />
                                         </Box>
                                     </Box>
                                 </Box>
+
+                                {conflitosMap[aulaSelecionada.id] && (
+                                    <Alert severity="error" sx={{ mb: 2 }}>
+                                        <strong>Alerta de Conflito Preventivo:</strong> Já existe uma aula <em>aprovada</em> neste mesmo laboratório e horário. Aprovar esta proposta pode gerar sobreposição.
+                                    </Alert>
+                                )}
 
                                 <Divider sx={{ my: 2 }} />
 

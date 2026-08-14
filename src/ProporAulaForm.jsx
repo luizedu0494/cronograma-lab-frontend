@@ -156,6 +156,86 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
         setSecao2Completa(secao1Completa && dataEHorarioValidos);
     }, [formData.dataInicio, formData.horarioSlotString, secao1Completa, aulaId]);
 
+    // Salva rascunho em localStorage para resiliencia offline
+    const handleSalvarRascunhoLocal = useCallback((dados) => {
+        try {
+            if (!isEditMode && dados.assunto.trim()) {
+                localStorage.setItem('cronolab_rascunho_proposta', JSON.stringify({
+                    ...dados,
+                    dataInicio: dados.dataInicio ? dayjs(dados.dataInicio).toISOString() : null
+                }));
+            }
+        } catch (e) {
+            console.warn('Erro ao salvar rascunho:', e);
+        }
+    }, [isEditMode]);
+
+    useEffect(() => {
+        handleSalvarRascunhoLocal(formData);
+    }, [formData, handleSalvarRascunhoLocal]);
+
+    const handleRestaurarRascunhoLocal = () => {
+        try {
+            const raw = localStorage.getItem('cronolab_rascunho_proposta');
+            if (raw) {
+                const parsed = JSON.parse(raw);
+                setFormData({
+                    ...parsed,
+                    dataInicio: parsed.dataInicio ? dayjs(parsed.dataInicio) : null
+                });
+                setSnackbarMessage('✅ Rascunho salvo restaurado!');
+                setSnackbarSeverity('info');
+                setOpenSnackbar(true);
+            }
+        } catch (e) {
+            console.error('Erro ao restaurar rascunho:', e);
+        }
+    };
+
+    const handleRepetirUltimaProposta = async () => {
+        try {
+            if (!currentUser?.uid) return;
+            const q = query(
+                collection(db, 'aulas'),
+                where('propostoPorUid', '==', currentUser.uid),
+                orderBy('createdAt', 'desc')
+            );
+            const snap = await getDocs(q);
+            if (!snap.empty) {
+                const ultima = snap.docs[0].data();
+                const labObj = LISTA_LABORATORIOS.find(l => l.name === ultima.laboratorioSelecionado || l.id === ultima.laboratorioSelecionado);
+                if (ultima.isRevisao) setTipoEntrada('revisao');
+                else if (ultima.isProva) setTipoEntrada('prova');
+
+                setFormData(prev => ({
+                    ...prev,
+                    assunto: ultima.assunto || '',
+                    observacoes: ultima.observacoes || '',
+                    tipoAtividade: ultima.tipoAtividade || '',
+                    cursos: ultima.cursos || [],
+                    liga: ultima.liga || '',
+                    dataInicio: null, // Limpa data para nova seleção
+                    horarioSlotString: Array.isArray(ultima.horarioSlotString) ? ultima.horarioSlotString : [ultima.horarioSlotString],
+                    dynamicLabs: [{ tipo: labObj ? labObj.tipo : '', laboratorios: [ultima.laboratorioSelecionado] }],
+                    tipoRevisao: ultima.tipoRevisao || 'revisao_conteudo',
+                    professorRevisao: ultima.professorRevisao || '',
+                }));
+                setSnackbarMessage('🔄 Proposta anterior duplicada com sucesso! Selecione a nova data.');
+                setSnackbarSeverity('success');
+                setOpenSnackbar(true);
+            } else {
+                setSnackbarMessage('Nenhuma proposta anterior encontrada para repetir.');
+                setSnackbarSeverity('warning');
+                setOpenSnackbar(true);
+            }
+        } catch (e) {
+            console.error('Erro ao repetir proposta:', e);
+            setSnackbarMessage('Erro ao buscar última proposta.');
+            setSnackbarSeverity('error');
+            setOpenSnackbar(true);
+        }
+    };
+
     // Reseta seleção de laboratórios e horários ao mudar de data no modo de inclusão
     useEffect(() => {
         if (isEditMode || !formData.dataInicio) return;
@@ -680,6 +760,30 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
                     <Typography variant="h4" component="h1" gutterBottom sx={{ color: theme.palette.text.primary, fontWeight: 'bold', mb: 1 }}>
                         {formTitle || (isEditMode ? "Editar Atividade" : (isCoordenador ? "Agendar Atividade" : "Propor Atividade"))}
                     </Typography>
+
+                    {!isEditMode && (
+                        <Box display="flex" justifyContent="center" gap={1.5} flexWrap="wrap" sx={{ mb: 2 }}>
+                            <Button
+                                size="small"
+                                variant="outlined"
+                                color="primary"
+                                onClick={handleRepetirUltimaProposta}
+                            >
+                                🔄 Repetir Última Proposta
+                            </Button>
+                            {localStorage.getItem('cronolab_rascunho_proposta') && (
+                                <Button
+                                    size="small"
+                                    variant="outlined"
+                                    color="info"
+                                    onClick={handleRestaurarRascunhoLocal}
+                                >
+                                    💾 Restaurar Rascunho Salvo
+                                </Button>
+                            )}
+                        </Box>
+                    )}
+
                     <Box sx={{ mt: 1 }}>
                         {tipoEntrada === 'revisao' && (
                             <Chip icon={<MenuBookIcon />} label="MODO REVISÃO / REFORÇO ATIVO" color="secondary" sx={{ fontWeight: 'bold', fontSize: '0.8rem', py: 1.5, px: 1, boxShadow: 1 }} />

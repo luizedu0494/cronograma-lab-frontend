@@ -220,6 +220,10 @@ class ExecutorAcoes {
         aulas = aulas.filter(a => !a.isProva && !a.isRevisao);
       }
 
+      if (criterios.termoBusca && criterios.termoBusca.toLowerCase().includes('pendente')) {
+        aulas = aulas.filter(a => a.status === 'pendente');
+      }
+
       return aulas;
     } catch (e) {
       console.error(e);
@@ -402,24 +406,64 @@ class ExecutorAcoes {
   }
 
   analisarHorariosVagos(aulas: any[], criterios: CriteriosBusca): ResultadoExecucao {
-    if (!criterios.data || !criterios.laboratorio)
+    const dataAlvo = criterios.data || dayjs().format('DD/MM/YYYY');
+    const hora = dayjs().hour();
+    const min = dayjs().minute();
+    const hm = hora * 60 + min;
+
+    let slotAtual = '07:00-09:10';
+    if (hm >= 9 * 60 + 30 && hm < 12 * 60) slotAtual = '09:30-12:00';
+    else if (hm >= 13 * 60 && hm < 15 * 60 + 30) slotAtual = '13:00-15:10';
+    else if (hm >= 15 * 60 + 30 && hm < 18 * 60) slotAtual = '15:30-18:00';
+    else if (hm >= 18 * 60 + 30 && hm < 20 * 60 + 30) slotAtual = '18:30-20:10';
+    else if (hm >= 20 * 60 + 30) slotAtual = '20:30-22:00';
+
+    if (criterios.laboratorio) {
+      const ocupados = aulas.map(a => Array.isArray(a.horarioSlotString) ? a.horarioSlotString : [a.horarioSlotString]).flat();
+      const livres = TODOS_HORARIOS.filter(h => !ocupados.includes(h));
       return {
-        tipo: 'aviso_acao',
-        titulo: 'Filtro Necessário',
-        mensagem: 'Informe DATA e LABORATÓRIO.',
+        tipo: 'tabela_aulas',
+        titulo: `Horários Livres em ${criterios.laboratorio} (${dataAlvo})`,
+        dados_consulta: livres.map(h => ({
+          assunto: h === slotAtual ? '🟢 DISPONÍVEL AGORA' : '🟢 Horário Livre',
+          data: dataAlvo,
+          horario: h,
+          laboratorio: criterios.laboratorio,
+          cursos: ['-'],
+        })),
       };
-    const ocupados = aulas.map(a => a.horarioSlotString);
-    const livres = TODOS_HORARIOS.filter(h => !ocupados.includes(h));
+    }
+
+    const ocupacaoMap = new Set<string>();
+    aulas.forEach(a => {
+      const lab = a.laboratorioSelecionado || 'N/A';
+      const slots = Array.isArray(a.horarioSlotString) ? a.horarioSlotString : [a.horarioSlotString];
+      slots.forEach(s => ocupacaoMap.add(`${lab.toLowerCase()}___${s}`));
+    });
+
+    const disponiveis: any[] = [];
+    LISTA_LABORATORIOS.forEach(labObj => {
+      const labName = labObj.name;
+      TODOS_HORARIOS.forEach(slot => {
+        if (!ocupacaoMap.has(`${labName.toLowerCase()}___${slot}`)) {
+          disponiveis.push({
+            assunto: slot === slotAtual ? '🟢 DISPONÍVEL AGORA' : '🟢 Livre',
+            data: dataAlvo,
+            horario: slot,
+            laboratorio: labName,
+            cursos: ['-'],
+          });
+        }
+      });
+    });
+
+    // Ordena colocando os slots disponíveis AGORA primeiro
+    disponiveis.sort((a, b) => (a.horario === slotAtual ? -1 : 1));
+
     return {
       tipo: 'tabela_aulas',
-      titulo: `Horários Livres em ${criterios.data}`,
-      dados_consulta: livres.map(h => ({
-        assunto: 'DISPONÍVEL',
-        data: criterios.data,
-        horario: h,
-        laboratorio: criterios.laboratorio,
-        cursos: ['-'],
-      })),
+      titulo: `Laboratórios e Horários Livres (${dataAlvo}) — Total: ${disponiveis.length} slots`,
+      dados_consulta: disponiveis.slice(0, 50),
     };
   }
 
