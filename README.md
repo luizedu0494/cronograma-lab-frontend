@@ -152,6 +152,17 @@ Perfil de leitura, liberado pelo coordenador:
 
 > Resumo das últimas melhorias de arquitetura, segurança, UX/UI e recursos de IA.
 
+### 🛠️ Reformulação da Verificação de Integridade de Dados (`VerificarIntegridadeDados.jsx` & `integridadeUtils.js`)
+- **Detecção de Schemas Legados e Órfãos**: identifica automaticamente agendamentos antigos sem `dataInicio` (Timestamp), com campos legados (`disciplina` x `assunto`, `laboratorio` x `laboratorioSelecionado`), sem `status` explícito ou fora dos períodos letivos cadastrados.
+- **Controle Prévia de Escopo (Economia do Plano Spark)**: o usuário escolhe a abrangência da varredura (*Mês Atual*, *Período Letivo*, *Datas Customizadas* ou *Varredura Completa*) antes de consultar o Firestore, evitando leituras desnecessárias da coleção inteira.
+- **Seleção Múltipla & Exclusão em Massa (Dry-Run)**: seleção interativa com exclusão em lote atômico (`writeBatch`) em blocos de até 500 documentos e modal de confirmação / revisão prévia.
+- **Auditoria & Registro**: gravação automática de log de exclusão em `logs` contendo o responsável, data e snapshot dos dados excluídos.
+- **Inspeção JSON Bruto & Exportação CSV**: modal de inspeção direta do documento Firestore em JSON e botão de exportação do relatório de diagnóstico em CSV.
+
+### 📜 Histórico de Aulas & Card de Aulas Recentes (`HistoricoAulas.jsx` & `UltimasAulasCard.jsx`)
+- **Card de Aulas Recentes**: componente na página inicial exibindo as 5 últimas aulas adicionadas ao sistema com resumo de status e autor.
+- **Página de Histórico Completo**: listagem completa com tabela paginada, busca textual por disciplina, filtros avançados por curso, ano, status (aprovada, pendente, rejeitada), intervalo de datas e métricas em tempo real.
+
 ### 🧠 Evolução da Arquitetura de IA com LangChain.js
 - **Orquestração com LangChain.js v0.3 (`langchainService.js`)**: integração do `ChatGroq` (`llama-3.3-70b-versatile`) com streaming em tempo real de respostas e gerenciamento leve de memória de sessão de conversação.
 - **Ferramentas Dinâmicas (`langchainTools.ts`)**: inclusão de `DynamicStructuredTool` com esquemas Zod para a IA montar propostas de agendamento (`proporAulaTool`), consultar disponibilidades (`buscarDisponibilidadeTool`) e filtrar propostas pendentes (`consultarPropostasPendentesTool`).

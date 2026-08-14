@@ -7,10 +7,11 @@ import {
     Checkbox, FormControlLabel, Tooltip, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Stack
 } from '@mui/material';
 import { db } from '../../firebaseConfig';
-import { collection, getDocs, doc, deleteDoc, updateDoc, writeBatch, serverTimestamp, addDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, deleteDoc, updateDoc, writeBatch, serverTimestamp, addDoc, query, where, Timestamp } from 'firebase/firestore';
 import {
     BugReport, CheckCircle, Warning, Delete, Edit, DataObject, Groups,
-    FilterList, FileDownload, CleaningServices, HistoryToggleOff, ContentCopy, SelectAll, Refresh
+    FilterList, FileDownload, CleaningServices, HistoryToggleOff, ContentCopy, SelectAll, Refresh,
+    CompareArrows, PersonOff
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../AuthContext';
@@ -74,37 +75,88 @@ function VerificarIntegridadeDados() {
     // Feedback
     const [feedback, setFeedback] = useState({ open: false, message: '', severity: 'success' });
 
-    // Buscar dados do Firestore
-    const fetchAulasEContexto = useCallback(async () => {
-        setLoading(true);
-        setHasValidated(true);
-        setSelectedIds(new Set());
+    // Escopo prévio para consulta otimizada (evita ler o banco inteiro de uma vez)
+    const [escopoModo, setEscopoModo] = useState('mes_atual'); // 'mes_atual', 'periodo_letivo', 'datas_customizada', 'completo'
+    const [escopoPeriodoId, setEscopoPeriodoId] = useState('');
+    const [escopoDataInicio, setEscopoDataInicio] = useState(dayjs().startOf('month').format('YYYY-MM-DD'));
+    const [escopoDataFim, setEscopoDataFim] = useState(dayjs().endOf('month').format('YYYY-MM-DD'));
+    const [infoLeituras, setInfoLeituras] = useState('');
 
-        try {
-            // 1. Buscar Aulas
-            const aulasSnapshot = await getDocs(collection(db, "aulas"));
-            const listaAulas = aulasSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-            setAulas(listaAulas);
-
-            // 2. Buscar Períodos (para verificação de schema legado fora de semestre)
+    // Carregar períodos e contexto inicial no mount
+    useEffect(() => {
+        const carregarContextoInicial = async () => {
             try {
                 const periodosSnap = await getDocs(collection(db, "periodosSemAtividade"));
-                setPeriodos(periodosSnap.docs.map(d => ({ id: d.id, ...d.data() })));
-            } catch (pErr) {
-                console.warn("Períodos não encontrados ou erro ao ler periodosSemAtividade:", pErr);
+                const listP = periodosSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+                setPeriodos(listP);
+                if (listP.length > 0) setEscopoPeriodoId(listP[0].id);
+            } catch (err) {
+                console.warn("Não foi possível carregar os períodos iniciais:", err);
             }
 
-            // 3. Buscar Usuários para checar vínculos quebrados
             try {
-                const usuariosSnap = await getDocs(collection(db, "usuarios"));
+                const usuariosSnap = await getDocs(collection(db, "users"));
                 const mapU = {};
                 usuariosSnap.docs.forEach(uDoc => {
                     mapU[uDoc.id] = { id: uDoc.id, ...uDoc.data() };
                 });
                 setUsuariosMap(mapU);
             } catch (uErr) {
-                console.warn("Não foi possível carregar a lista de usuários para checagem de vínculos:", uErr);
+                console.warn("Não foi possível carregar usuários:", uErr);
             }
+        };
+        carregarContextoInicial();
+    }, []);
+
+    // Buscar dados do Firestore com base no escopo pré-definido pelo usuário
+    const fetchAulasEContexto = useCallback(async () => {
+        setLoading(true);
+        setHasValidated(true);
+        setSelectedIds(new Set());
+
+        try {
+            let aulasQuery;
+
+            if (escopoModo === 'mes_atual') {
+                const inicioMes = dayjs().startOf('month').toDate();
+                const fimMes = dayjs().endOf('month').toDate();
+                aulasQuery = query(
+                    collection(db, "aulas"),
+                    where("dataInicio", ">=", Timestamp.fromDate(inicioMes)),
+                    where("dataInicio", "<=", Timestamp.fromDate(fimMes))
+                );
+                setInfoLeituras(`Varredura do Mês Atual (${dayjs().format('MMMM/YYYY')})`);
+            } else if (escopoModo === 'periodo_letivo' && escopoPeriodoId) {
+                const pSelecionado = periodos.find(p => p.id === escopoPeriodoId);
+                if (pSelecionado && pSelecionado.dataInicio?.toDate && pSelecionado.dataFim?.toDate) {
+                    aulasQuery = query(
+                        collection(db, "aulas"),
+                        where("dataInicio", ">=", pSelecionado.dataInicio),
+                        where("dataInicio", "<=", pSelecionado.dataFim)
+                    );
+                    setInfoLeituras(`Varredura do Período: "${pSelecionado.descricao || 'Selecionado'}"`);
+                } else {
+                    aulasQuery = collection(db, "aulas");
+                    setInfoLeituras('Varredura Geral (Sem filtro rígido de data)');
+                }
+            } else if (escopoModo === 'datas_customizada' && escopoDataInicio && escopoDataFim) {
+                const dtInicio = dayjs(escopoDataInicio).startOf('day').toDate();
+                const dtFim = dayjs(escopoDataFim).endOf('day').toDate();
+                aulasQuery = query(
+                    collection(db, "aulas"),
+                    where("dataInicio", ">=", Timestamp.fromDate(dtInicio)),
+                    where("dataInicio", "<=", Timestamp.fromDate(dtFim))
+                );
+                setInfoLeituras(`Varredura de ${dayjs(dtInicio).format('DD/MM/YYYY')} até ${dayjs(dtFim).format('DD/MM/YYYY')}`);
+            } else {
+                // Varredura completa da coleção (alerta de consumo)
+                aulasQuery = collection(db, "aulas");
+                setInfoLeituras('Varredura Completa de Toda a Coleção (Todas as Aulas)');
+            }
+
+            const aulasSnapshot = await getDocs(aulasQuery);
+            const listaAulas = aulasSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+            setAulas(listaAulas);
 
         } catch (err) {
             console.error("Erro ao buscar aulas:", err);
@@ -112,7 +164,7 @@ function VerificarIntegridadeDados() {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [escopoModo, escopoPeriodoId, escopoDataInicio, escopoDataFim, periodos]);
 
     // Processamento das regras de integridade
     useEffect(() => {
@@ -305,7 +357,7 @@ function VerificarIntegridadeDados() {
             await deleteDoc(doc(db, 'aulas', aulaToDelete.id));
 
             // Log de Auditoria
-            await addDoc(collection(db, 'logs_integridade_exclusoes'), {
+            await addDoc(collection(db, 'logs'), {
                 timestamp: serverTimestamp(),
                 executadoPorUid: currentUser?.uid || 'desconhecido',
                 executadoPorEmail: currentUser?.email || 'desconhecido',
@@ -345,7 +397,7 @@ function VerificarIntegridadeDados() {
             }
 
             // Registrar Log de Auditoria no Firestore
-            await addDoc(collection(db, 'logs_integridade_exclusoes'), {
+            await addDoc(collection(db, 'logs'), {
                 timestamp: serverTimestamp(),
                 executadoPorUid: currentUser?.uid || 'desconhecido',
                 executadoPorEmail: currentUser?.email || 'desconhecido',
@@ -524,15 +576,96 @@ function VerificarIntegridadeDados() {
             </Typography>
 
             {!hasValidated ? (
-                <Paper elevation={3} sx={{ p: 4, textAlign: 'center' }}>
-                    <BugReport sx={{ fontSize: 60, color: 'primary.main', mb: 2 }} />
-                    <Typography variant="h6">Verificar a saúde dos dados do sistema</Typography>
-                    <Typography variant="body1" color="text.secondary" sx={{ my: 2 }}>
-                        Esta ferramenta analisa toda a coleção de aulas em busca de schemas legados/órfãos, dados inválidos, conflitos de horário, duplicatas e vínculos quebrados.
-                    </Typography>
-                    <Button variant="contained" size="large" startIcon={<Refresh />} onClick={fetchAulasEContexto} disabled={loading}>
-                        {loading ? <CircularProgress size={24} /> : "Iniciar Verificação Completa"}
-                    </Button>
+                <Paper elevation={3} sx={{ p: 4, maxWidth: 720, mx: 'auto' }}>
+                    <Box textAlign="center" mb={3}>
+                        <BugReport sx={{ fontSize: 50, color: 'primary.main', mb: 1 }} />
+                        <Typography variant="h6" fontWeight="bold">Configurar Escopo de Verificação de Integridade</Typography>
+                        <Typography variant="body2" color="text.secondary">
+                            Escolha a abrangência da varredura para evitar consumo excessivo de leituras do plano Spark.
+                        </Typography>
+                    </Box>
+
+                    <Grid container spacing={2} sx={{ mb: 3 }}>
+                        <Grid item xs={12}>
+                            <FormControl fullWidth size="small">
+                                <InputLabel>Modo de Escopo da Consulta</InputLabel>
+                                <Select
+                                    value={escopoModo}
+                                    label="Modo de Escopo da Consulta"
+                                    onChange={(e) => setEscopoModo(e.target.value)}
+                                >
+                                    <MenuItem value="mes_atual">📅 Mês Atual (Recomendado - Baixo Consumo de Leituras)</MenuItem>
+                                    <MenuItem value="periodo_letivo">🏫 Por Período / Semestre Cadastrado</MenuItem>
+                                    <MenuItem value="datas_customizada">📆 Intervalo de Datas Personalizado</MenuItem>
+                                    <MenuItem value="completo">⚠️ Varredura Completa do Banco (Todas as Aulas)</MenuItem>
+                                </Select>
+                            </FormControl>
+                        </Grid>
+
+                        {escopoModo === 'periodo_letivo' && (
+                            <Grid item xs={12}>
+                                <FormControl fullWidth size="small">
+                                    <InputLabel>Selecione o Período Letivo</InputLabel>
+                                    <Select
+                                        value={escopoPeriodoId}
+                                        label="Selecione o Período Letivo"
+                                        onChange={(e) => setEscopoPeriodoId(e.target.value)}
+                                    >
+                                        {periodos.length === 0 ? (
+                                            <MenuItem value="" disabled>Nenhum período cadastrado</MenuItem>
+                                        ) : (
+                                            periodos.map(p => (
+                                                <MenuItem key={p.id} value={p.id}>
+                                                    {p.descricao || `Período ${p.id}`}
+                                                </MenuItem>
+                                            ))
+                                        )}
+                                    </Select>
+                                </FormControl>
+                            </Grid>
+                        )}
+
+                        {escopoModo === 'datas_customizada' && (
+                            <>
+                                <Grid item xs={12} sm={6}>
+                                    <TextField
+                                        fullWidth
+                                        size="small"
+                                        type="date"
+                                        label="Data de Início"
+                                        InputLabelProps={{ shrink: true }}
+                                        value={escopoDataInicio}
+                                        onChange={(e) => setEscopoDataInicio(e.target.value)}
+                                    />
+                                </Grid>
+                                <Grid item xs={12} sm={6}>
+                                    <TextField
+                                        fullWidth
+                                        size="small"
+                                        type="date"
+                                        label="Data de Fim"
+                                        InputLabelProps={{ shrink: true }}
+                                        value={escopoDataFim}
+                                        onChange={(e) => setEscopoDataFim(e.target.value)}
+                                    />
+                                </Grid>
+                            </>
+                        )}
+
+                        {escopoModo === 'completo' && (
+                            <Grid item xs={12}>
+                                <Alert severity="warning">
+                                    A varredura completa lê <strong>todas as aulas do banco de dados</strong> sem filtro de data. Utilize se desejar encontrar schemas antigos desestruturados, mas note que consome mais quota diária do Firestore.
+                                </Alert>
+                            </Grid>
+                        )}
+                    </Grid>
+
+                    <Box display="flex" justifyContent="center">
+                        <Button variant="contained" size="large" startIcon={<Refresh />} onClick={fetchAulasEContexto} disabled={loading}>
+                            {loading ? <CircularProgress size={24} color="inherit" /> : "Iniciar Verificação Filtrada"}
+                        </Button>
+                    </Box>
                 </Paper>
             ) : loading ? (
                 <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', my: 5, gap: 2 }}>
@@ -541,6 +674,17 @@ function VerificarIntegridadeDados() {
                 </Box>
             ) : (
                 <>
+                    {/* Banner do Escopo Ativo */}
+                    <Paper sx={{ p: 2, mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center', bgcolor: 'primary.50' }}>
+                        <Box display="flex" alignItems="center" gap={1}>
+                            <Chip label="Escopo da Consulta" color="primary" size="small" />
+                            <Typography variant="body1" fontWeight="bold">{infoLeituras}</Typography>
+                        </Box>
+                        <Button size="small" variant="outlined" startIcon={<Refresh />} onClick={() => setHasValidated(false)}>
+                            Alterar Escopo / Nova Busca
+                        </Button>
+                    </Paper>
+
                     {/* Dashboard de Métricas */}
                     <Grid container spacing={2} sx={{ mb: 3 }}>
                         <Grid item xs={6} sm={4} md={2}>

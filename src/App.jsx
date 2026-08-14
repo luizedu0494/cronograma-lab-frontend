@@ -21,28 +21,46 @@ import {
 
 import PromptInstalacaoPWA from './componentes/comuns/PromptInstalacaoPWA';
 
-// --- LAZY LOADING DE PÁGINAS ---
-const ProporAulaForm = lazy(() => import('./ProporAulaForm'));
-const ProporEventoForm = lazy(() => import('./ProporEventoForm'));
-const MinhasPropostas = lazy(() => import('./MinhasPropostas'));
-const GerenciarAprovacoes = lazy(() => import('./pages/Gerenciar/GerenciarAprovacoes'));
-const GerenciarUsuarios = lazy(() => import('./pages/Gerenciar/GerenciarUsuarios'));
-const CalendarioCronograma = lazy(() => import('./pages/Cronograma/CalendarioCronograma'));
-const MinhasDesignacoes = lazy(() => import('./MinhasDesignacoes'));
-const PainelAvisos = lazy(() => import('./PainelAvisos'));
-const GerenciarAvisos = lazy(() => import('./pages/Gerenciar/GerenciarAvisos'));
-const AjudaFAQ = lazy(() => import('./AjudaFAQ'));
-const ConfiguracoesPerfil = lazy(() => import('./pages/Perfil/ConfiguracoesPerfil'));
-const PaginaInicial = lazy(() => import('./pages/Cronograma/PaginaInicial'));
-const GerenciarPeriodos = lazy(() => import('./pages/Gerenciar/GerenciarPeriodos'));
-const DownloadCronograma = lazy(() => import('./DownloadCronograma'));
-const AnaliseAulas = lazy(() => import('./pages/Gerenciar/AnaliseAulas'));
-const AnaliseEventos = lazy(() => import('./pages/Gerenciar/AnaliseEventos'));
-const VerificarIntegridadeDados = lazy(() => import('./pages/Gerenciar/VerificarIntegridadeDados'));
-const HistoricoAulas = lazy(() => import('./pages/Cronograma/HistoricoAulas'));
-const AssistenteIA = lazy(() => import('./pages/IA/AssistenteIA'));
-const CalendarioRevisoesTecnico = lazy(() => import('./pages/Cronograma/CalendarioRevisoesTecnico'));
-const UploadCronogramaExterno = lazy(() => import('./UploadCronogramaExterno'));
+// --- LAZY LOADING DE PÁGINAS COM TRATAMENTO DE RE-DEPLOY ---
+const lazyWithRetry = (componentImport) =>
+    lazy(async () => {
+        const pageHasAlreadyBeenReloaded = JSON.parse(
+            window.sessionStorage.getItem('page-has-been-reloaded') || 'false'
+        );
+        try {
+            const component = await componentImport();
+            window.sessionStorage.setItem('page-has-been-reloaded', 'false');
+            return component;
+        } catch (error) {
+            if (!pageHasAlreadyBeenReloaded) {
+                window.sessionStorage.setItem('page-has-been-reloaded', 'true');
+                window.location.reload();
+            }
+            throw error;
+        }
+    });
+
+const ProporAulaForm = lazyWithRetry(() => import('./ProporAulaForm'));
+const ProporEventoForm = lazyWithRetry(() => import('./ProporEventoForm'));
+const MinhasPropostas = lazyWithRetry(() => import('./MinhasPropostas'));
+const GerenciarAprovacoes = lazyWithRetry(() => import('./pages/Gerenciar/GerenciarAprovacoes'));
+const GerenciarUsuarios = lazyWithRetry(() => import('./pages/Gerenciar/GerenciarUsuarios'));
+const CalendarioCronograma = lazyWithRetry(() => import('./pages/Cronograma/CalendarioCronograma'));
+const MinhasDesignacoes = lazyWithRetry(() => import('./MinhasDesignacoes'));
+const PainelAvisos = lazyWithRetry(() => import('./PainelAvisos'));
+const GerenciarAvisos = lazyWithRetry(() => import('./pages/Gerenciar/GerenciarAvisos'));
+const AjudaFAQ = lazyWithRetry(() => import('./AjudaFAQ'));
+const ConfiguracoesPerfil = lazyWithRetry(() => import('./pages/Perfil/ConfiguracoesPerfil'));
+const PaginaInicial = lazyWithRetry(() => import('./pages/Cronograma/PaginaInicial'));
+const GerenciarPeriodos = lazyWithRetry(() => import('./pages/Gerenciar/GerenciarPeriodos'));
+const DownloadCronograma = lazyWithRetry(() => import('./DownloadCronograma'));
+const AnaliseAulas = lazyWithRetry(() => import('./pages/Gerenciar/AnaliseAulas'));
+const AnaliseEventos = lazyWithRetry(() => import('./pages/Gerenciar/AnaliseEventos'));
+const VerificarIntegridadeDados = lazyWithRetry(() => import('./pages/Gerenciar/VerificarIntegridadeDados'));
+const HistoricoAulas = lazyWithRetry(() => import('./pages/Cronograma/HistoricoAulas'));
+const AssistenteIA = lazyWithRetry(() => import('./pages/IA/AssistenteIA'));
+const CalendarioRevisoesTecnico = lazyWithRetry(() => import('./pages/Cronograma/CalendarioRevisoesTecnico'));
+const UploadCronogramaExterno = lazyWithRetry(() => import('./UploadCronogramaExterno'));
 
 const LoadingFallback = () => (<Box display="flex" justifyContent="center" alignItems="center" height="80vh"><CircularProgress /></Box>);
 const MainLayout = () => (<Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}><Outlet /></Container>);
