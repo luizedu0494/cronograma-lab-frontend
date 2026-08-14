@@ -1,19 +1,15 @@
-/* Fonte carregada via index.html — Sora (identidade CESMAC) */
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&display=swap');
 
-/* Reset e configurações globais */
 * {
   box-sizing: border-box;
+  font-family: 'Sora', 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", sans-serif;
 }
 
 body {
   margin: 0;
-  /* A fonte agora é definida no theme.jsx, mas mantemos o fallback */
-  font-family: "Sora", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
-    "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
-    sans-serif;
+  font-family: 'Sora', 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  /* O background é definido no MuiCssBaseline em theme.jsx */
   min-height: 100vh;
 }
 
