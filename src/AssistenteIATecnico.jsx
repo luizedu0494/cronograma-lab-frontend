@@ -141,7 +141,10 @@ function AssistenteIATecnico({ userInfo, currentUser, mode }) {
                 body: JSON.stringify({ payload })
             });
 
-            if (!response.ok && GROQ_API_KEY) {
+            const contentType = response.headers.get('content-type');
+            const isJson = contentType && contentType.includes('application/json');
+
+            if ((!response.ok || !isJson) && GROQ_API_KEY) {
                 response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
                     method: 'POST',
                     headers: {
@@ -152,8 +155,11 @@ function AssistenteIATecnico({ userInfo, currentUser, mode }) {
                 });
             }
 
-            if (!response.ok) {
-                if (response.status === 404 && !GROQ_API_KEY) {
+            const finalContentType = response.headers.get('content-type');
+            const finalIsJson = finalContentType && finalContentType.includes('application/json');
+
+            if (!response.ok || !finalIsJson) {
+                if (!GROQ_API_KEY) {
                     return { erro: 'Configuração necessária: Adicione VITE_GROQ_API_KEY=gsk_... no arquivo .env para executar a IA em ambiente local (npm start).' };
                 }
                 throw new Error(`Erro na API Groq: ${response.status}`);

@@ -8,15 +8,27 @@ import reportWebVitals from './reportWebVitals'; // Opcional, para métricas de 
 // Importe o AuthProvider que você criou (se o caminho estiver correto)
 import { AuthProvider } from './AuthContext'; 
 
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Toaster } from 'sonner';
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000, // 5 minutos de cache padrão
+      refetchOnWindowFocus: false,
+    },
+  },
+});
+
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
-    {/* O ThemeProvider e o CssBaseline agora estão dentro do App.js 
-      para gerenciar o tema dinâmico (claro/escuro).
-    */}
-    <AuthProvider>
-      <App />
-    </AuthProvider>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <App />
+        <Toaster position="bottom-right" richColors />
+      </AuthProvider>
+    </QueryClientProvider>
   </React.StrictMode>
 );
 

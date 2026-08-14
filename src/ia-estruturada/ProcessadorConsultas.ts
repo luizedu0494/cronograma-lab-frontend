@@ -228,8 +228,11 @@ class ProcessadorConsultas {
         body: JSON.stringify({ payload }),
       });
 
-      // Fallback para desenvolvimento local caso a API Key esteja no VITE_GROQ_API_KEY
-      if (!response.ok && GROQ_API_KEY) {
+      const contentType = response.headers.get('content-type');
+      const isJson = contentType && contentType.includes('application/json');
+
+      // Fallback para desenvolvimento local caso a API Key esteja no VITE_GROQ_API_KEY ou /api/groq retorne HTML no Vite
+      if ((!response.ok || !isJson) && GROQ_API_KEY) {
         response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
           method: 'POST',
           headers: {
@@ -240,9 +243,12 @@ class ProcessadorConsultas {
         });
       }
 
-      if (!response.ok) {
-        if (response.status === 404 && !GROQ_API_KEY) {
-          return { erro: 'A API Groq precisa da chave VITE_GROQ_API_KEY configurada no arquivo .env para testes locais.' };
+      const finalContentType = response.headers.get('content-type');
+      const finalIsJson = finalContentType && finalContentType.includes('application/json');
+
+      if (!response.ok || !finalIsJson) {
+        if (!GROQ_API_KEY) {
+          return { erro: 'A API Groq precisa da chave VITE_GROQ_API_KEY configurada no arquivo .env para testes locais (npm start).' };
         }
         throw new Error(`Erro API Groq: ${response.status}`);
       }

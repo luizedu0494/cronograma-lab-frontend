@@ -5,15 +5,19 @@ importScripts("https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-com
 
 // Inicialização com as configurações do projeto
 if (!firebase.apps.length) {
-  const urlParams = new URLSearchParams(location.search);
-  firebase.initializeApp({
-    apiKey: urlParams.get("apiKey") || "AIzaSyATwNg81vq-nBJTWB_0cnhMDBuhfxYmWJA",
-    authDomain: urlParams.get("authDomain") || "cronolab-novo.firebaseapp.com",
-    projectId: urlParams.get("projectId") || "cronolab-novo",
-    storageBucket: urlParams.get("storageBucket") || "cronolab-novo.firebasestorage.app",
-    messagingSenderId: urlParams.get("messagingSenderId") || "386849385604",
-    appId: urlParams.get("appId") || "1:386849385604:web:8c76bd4ca86d3d2ea926d1"
-  });
+  try {
+    importScripts("/__/firebase/init.js");
+  } catch (e) {
+    const urlParams = new URLSearchParams(location.search);
+    firebase.initializeApp({
+      apiKey: urlParams.get("apiKey") || "AIzaSyATwNg81vq-nBJTWB_0cnhMDBuhfxYmWJA",
+      authDomain: urlParams.get("authDomain") || "cronolab-novo.firebaseapp.com",
+      projectId: urlParams.get("projectId") || "cronolab-novo",
+      storageBucket: urlParams.get("storageBucket") || "cronolab-novo.firebasestorage.app",
+      messagingSenderId: urlParams.get("messagingSenderId") || "386849385604",
+      appId: urlParams.get("appId") || "1:386849385604:web:8c76bd4ca86d3d2ea926d1"
+    });
+  }
 }
 
 const messaging = firebase.messaging();

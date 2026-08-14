@@ -12,12 +12,26 @@ export default defineConfig(({ command } ) => {
       rollupOptions: {
         output: {
           manualChunks(id) {
+            if (id.includes('@xenova/transformers')) return 'ai-embeddings';
+            if (id.includes('tesseract.js')) return 'ocr';
+            if (id.includes('brain.js')) return 'ml';
+            if (id.includes('mammoth')) return 'docx-parser';
+            if (id.includes('exceljs') || id.includes('xlsx') || id.includes('papaparse')) return 'spreadsheet';
+            if (id.includes('jspdf')) return 'pdf';
+            if (id.includes('framer-motion')) return 'animation';
+            if (id.includes('@mui') || id.includes('@emotion')) return 'ui';
+            if (id.includes('langchain') || id.includes('@langchain')) return 'langchain';
+            if (id.includes('firebase')) return 'firebase';
             if (id.includes('node_modules')) {
               return 'vendor';
             }
           }
         }
       }
+    },
+    test: {
+      environment: 'jsdom',
+      globals: true,
     }
   };
 

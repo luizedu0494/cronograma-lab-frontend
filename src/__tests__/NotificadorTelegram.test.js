@@ -5,7 +5,7 @@
  * Execute com: npm test
  */
 
-import NotificadorTelegram from './NotificadorTelegram';
+import { notificadorTelegram } from '../services/NotificadorTelegram';
 
 describe('NotificadorTelegram', () => {
   let notificador;

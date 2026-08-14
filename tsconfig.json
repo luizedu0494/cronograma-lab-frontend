@@ -16,6 +16,7 @@
 
     /* Migration flexibility */
     "strict": false,
+    "noImplicitAny": true,
     "allowJs": true,
     "checkJs": false,
     "paths": {
