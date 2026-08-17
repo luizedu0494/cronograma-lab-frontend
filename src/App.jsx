@@ -224,6 +224,7 @@ function App() {
                                     <Route path="/propor-aula" element={<ProporAulaForm userInfo={userProfileData} currentUser={user} />} />
                                     <Route path="/propor-evento" element={<ProporEventoForm userInfo={userProfileData} currentUser={user} />} />
                                     <Route path="/propor-aula/:aulaId" element={<ProporAulaForm userInfo={userProfileData} currentUser={user} />} />
+                                    <Route path="/propor-evento/:eventoId" element={<ProporEventoForm userInfo={userProfileData} currentUser={user} />} />
                                     <Route path="/avisos" element={<PainelAvisos />} />
                                     <Route path="/ajuda" element={<AjudaFAQ />} />
                                     <Route path="/perfil" element={<ConfiguracoesPerfil />} />
