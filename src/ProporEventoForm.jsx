@@ -98,8 +98,9 @@ function ProporEventoForm({ userInfo, currentUser, initialDate, onSuccess, onCan
             setSecaoDataCompleta(true);
             return;
         }
-        setSecaoDataCompleta(Boolean(formData.dataInicio) && secao1Completa);
-    }, [formData.dataInicio, secao1Completa, eventoId]);
+        const dataCompleta = Boolean(formData.dataInicio) && formData.horarioSlotString.length > 0;
+        setSecaoDataCompleta(dataCompleta && secao1Completa);
+    }, [formData.dataInicio, formData.horarioSlotString, secao1Completa, eventoId]);
 
     useEffect(() => {
         if (eventoId) {
@@ -107,16 +108,15 @@ function ProporEventoForm({ userInfo, currentUser, initialDate, onSuccess, onCan
             return;
         }
         const labsCompletos = formData.dynamicLabs.every(lab => lab && lab.tipo !== '' && lab.laboratorios.length > 0);
-        setSecao2Completa(labsCompletos && secao1Completa);
-    }, [formData.dynamicLabs, secao1Completa, eventoId]);
+        setSecao2Completa(labsCompletos && secaoDataCompleta);
+    }, [formData.dynamicLabs, secaoDataCompleta, eventoId]);
 
-    // Reseta seleção de laboratórios e horários ao mudar de data no modo de inclusão
+    // Reseta APENAS os horários selecionados ao trocar a data no modo de inclusão (PRESERVA os laboratórios selecionados)
     useEffect(() => {
         if (isEditMode || !formData.dataInicio) return;
         setFormData(prev => ({
             ...prev,
             horarioSlotString: [],
-            dynamicLabs: [{ tipo: '', laboratorios: [] }],
         }));
         setHorariosOcupados([]);
     }, [formData.dataInicio, isEditMode]);
@@ -188,19 +188,21 @@ function ProporEventoForm({ userInfo, currentUser, initialDate, onSuccess, onCan
     }, [mesVisivel]);
 
     useEffect(() => {
-        const laboratoriosParaVerificar = formData.dynamicLabs.flatMap(lab => lab.laboratorios).filter(Boolean);
-        if (!formData.dataInicio || laboratoriosParaVerificar.length === 0) {
+        if (!formData.dataInicio) {
             setOcupacaoDoDia({ aulas: [], eventos: [] });
             setHorariosOcupados([]);
             return;
         }
+
+        const laboratoriosParaVerificar = formData.dynamicLabs.flatMap(lab => lab.laboratorios).filter(Boolean);
+        const labsConsulta = laboratoriosParaVerificar.length > 0 ? laboratoriosParaVerificar : LISTA_LABORATORIOS.map(l => l.name);
 
         consultarDisponibilidade({
             dataInicio: formData.dataInicio,
             dataFim: formData.dataInicio,
             diasSemana: [dayjs(formData.dataInicio).day()],
             horarios: BLOCOS_HORARIO.map(b => b.value),
-            laboratorios: laboratoriosParaVerificar,
+            laboratorios: labsConsulta,
         }).then(resultados => {
             const conflitos = resultados[0]?.conflitos ?? [];
             const conflitosAulas = conflitos.filter(c => c.tipo === 'aula');
@@ -213,6 +215,28 @@ function ProporEventoForm({ userInfo, currentUser, initialDate, onSuccess, onCan
             setHorariosOcupados(slotsOcupados);
         });
     }, [formData.dataInicio, formData.dynamicLabs, eventoId, consultarDisponibilidade]);
+
+    // Função auxiliar para calcular o status do laboratório com base na data e horários selecionados
+    const statusLab = (labParam) => {
+        if (!formData.dataInicio) return 'indefinido';
+        const targetLab = typeof labParam === 'object' ? labParam : LISTA_LABORATORIOS.find(l => l.id === labParam || l.name === labParam);
+        const targetName = targetLab?.name || labParam;
+
+        const conflitosDoLab = (ocupacaoDoDia.aulas || []).concat(ocupacaoDoDia.eventos || []).filter(c => {
+            return c.laboratorio === targetName || c.laboratorio === 'Todos';
+        });
+
+        if (conflitosDoLab.length === 0) return 'livre';
+
+        const horariosOcupadosLab = conflitosDoLab.map(c => c.horario);
+
+        if (formData.horarioSlotString.length === 0) {
+            return 'parcial';
+        }
+
+        const temConflito = formData.horarioSlotString.some(h => horariosOcupadosLab.includes(h));
+        return temConflito ? 'ocupado' : 'livre';
+    };
 
     // Função auxiliar para bloquear o dia
     const isDayBlocked = (day) => {
@@ -434,6 +458,7 @@ function ProporEventoForm({ userInfo, currentUser, initialDate, onSuccess, onCan
                 </Typography>
                 <form onSubmit={(e) => { e.preventDefault(); prepareAndConfirm(); }}>
                     <Grid container spacing={3} justifyContent="center">
+                        {/* ── SEÇÃO 1: Detalhes do Evento ── */}
                         <Grid item xs={12} md={6}>
                             <Paper elevation={3} sx={{ p: 3, borderLeft: '5px solid #1976d2', height: '100%' }}>
                                 <Typography variant="h6" gutterBottom>1. Detalhes do Evento</Typography>
@@ -447,68 +472,21 @@ function ProporEventoForm({ userInfo, currentUser, initialDate, onSuccess, onCan
                                 <TextField fullWidth label="Descrição/Observações" name="descricao" value={formData.descricao} onChange={handleChange} multiline rows={3} />
                             </Paper>
                         </Grid>
+
+                        {/* ── SEÇÃO 2: Data e Horário ── */}
                         <Grid item xs={12} md={6}>
-                            <Paper elevation={3} sx={{ p: 3, borderLeft: '5px solid #ff9800', height: '100%', opacity: (!secao1Completa && !isEditMode) ? 0.8 : 1 }}>
-                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                        <Typography variant="h6" gutterBottom sx={{ mb: 0 }}>2. Laboratório(s)</Typography>
-                                        {!secao1Completa && !isEditMode && <LockIcon color="warning" />}
-                                    </Box>
-                                    <Tooltip title="Adicionar outro tipo de laboratório">
-                                        <span>
-                                            <IconButton onClick={handleAddLabField} color="primary" disabled={formData.dynamicLabs.length >= 5 || (!secao1Completa && !isEditMode)}>
-                                                <AddIcon />
-                                            </IconButton>
-                                        </span>
-                                    </Tooltip>
+                            <Paper elevation={3} sx={{ p: 3, borderLeft: '5px solid #4caf50', height: '100%', opacity: (!secao1Completa && !isEditMode) ? 0.8 : 1 }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                                    <Typography variant="h6" gutterBottom sx={{ mb: 0 }}>2. Data e Horário</Typography>
+                                    {!secao1Completa && !isEditMode && <LockIcon color="warning" />}
                                 </Box>
                                 {!secao1Completa && !isEditMode && (
-                                    <Alert severity="warning" sx={{ mb: 2, mt: 1 }}>
+                                    <Alert severity="warning" sx={{ mb: 2 }}>
                                         <strong>Seção bloqueada!</strong> Complete a Seção 1 para desbloquear.
                                     </Alert>
                                 )}
-                                {formData.dynamicLabs.map((labSelection, index) => {
-                                    if (!labSelection) return null;
-                                    return (
-                                        <Grid container spacing={1} key={index} sx={{ mt: index > 0 ? 1 : 0, alignItems: 'center' }}>
-                                            <Grid item xs={5}>
-                                                <FormControl sx={{ minWidth: 120 }} size="small" disabled={!secao1Completa && !isEditMode}>
-                                                    <InputLabel shrink>Tipo *</InputLabel>
-                                                    <Select value={labSelection.tipo || ''} onChange={(e) => handleLabTipoChange(index, e.target.value)}>
-                                                        {TIPOS_LABORATORIO.map(t => <MenuItem key={t.id} value={t.id}>{t.name}</MenuItem>)}
-                                                    </Select>
-                                                </FormControl>
-                                            </Grid>
-                                            <Grid item xs={6}>
-                                                <FormControl sx={{ minWidth: 140 }} size="small" disabled={!labSelection.tipo || (!secao1Completa && !isEditMode)}>
-                                                    <InputLabel shrink>Lab(s) *</InputLabel>
-                                                    <Select multiple value={labSelection.laboratorios || []} onChange={(e) => handleLabSelectionChange(index, e.target.value)} renderValue={(selected) => (<Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>{selected.map((value) => (<Chip key={value} label={value} size="small" />))}</Box>)}>
-                                                        {LISTA_LABORATORIOS.filter(l => l.tipo === labSelection.tipo).map(l => <MenuItem key={l.id} value={l.name}>{l.name}</MenuItem>)}
-                                                    </Select>
-                                                </FormControl>
-                                            </Grid>
-                                            <Grid item xs={1}>
-                                                <IconButton size="small" onClick={() => handleRemoveLabField(index)} disabled={formData.dynamicLabs.length === 1 || (!secao1Completa && !isEditMode)}><DeleteIcon fontSize="small" /></IconButton>
-                                            </Grid>
-                                        </Grid>
-                                    );
-                                })}
-                            </Paper>
-                        </Grid>
-                        <Grid item xs={12}>
-                            <Paper elevation={3} sx={{ p: 3, borderLeft: '5px solid #4caf50', opacity: (!secao2Completa && !isEditMode) ? 0.8 : 1 }}>
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                                    <Typography variant="h6" gutterBottom sx={{ mb: 0 }}>3. Data e Horário</Typography>
-                                    {!secao2Completa && !isEditMode && <LockIcon color="warning" />}
-                                </Box>
-                                {!secao2Completa && !isEditMode && (
-                                    <Alert severity="warning" sx={{ mb: 2 }}>
-                                        <strong>Seção bloqueada!</strong> Complete a Seção 2 para desbloquear.
-                                    </Alert>
-                                )}
                                 <Grid container spacing={2}>
-                                    <Grid item xs={12} md={6}>
-                                        {/* --- DATEPICKER COM BLOQUEIO DE FERIADOS --- */}
+                                    <Grid item xs={12}>
                                         <DatePicker
                                             label="Data do Evento *"
                                             value={formData.dataInicio}
@@ -516,8 +494,7 @@ function ProporEventoForm({ userInfo, currentUser, initialDate, onSuccess, onCan
                                                 setFormData(prev => ({ ...prev, dataInicio: newValue }));
                                                 if (errors.dataInicio) setErrors(prev => ({ ...prev, dataInicio: null }));
                                             }}
-                                            disabled={!secao2Completa && !isEditMode}
-                                            // BLOQUEIA CLIQUE SE FERIADO
+                                            disabled={!secao1Completa && !isEditMode}
                                             shouldDisableDate={isDayBlocked}
                                             slotProps={{
                                                 textField: { fullWidth: true, error: !!errors.dataInicio, helperText: errors.dataInicio },
@@ -525,10 +502,7 @@ function ProporEventoForm({ userInfo, currentUser, initialDate, onSuccess, onCan
                                                     sx: (day) => {
                                                         const dateObj = dayjs(day);
                                                         if (!dateObj.isValid()) return {};
-                                                        
-                                                        // PINTA FERIADO DE CINZA/VERMELHO
                                                         if (isDayBlocked(dateObj)) return { backgroundColor: 'rgba(0, 0, 0, 0.1)', color: '#999', pointerEvents: 'none', borderRadius: '50%' };
-
                                                         const dateStr = dateObj.format('YYYY-MM-DD');
                                                         if (diasTotalmenteOcupados.includes(dateStr)) return { backgroundColor: 'rgba(244, 67, 54, 0.2)', borderRadius: '50%' };
                                                         if (diasParcialmenteOcupados.includes(dateStr)) return { border: '1px solid #1976d2', borderRadius: '50%' };
@@ -540,7 +514,7 @@ function ProporEventoForm({ userInfo, currentUser, initialDate, onSuccess, onCan
                                             loading={loadingCalendario}
                                         />
                                     </Grid>
-                                    <Grid item xs={12} md={6}>
+                                    <Grid item xs={12}>
                                         <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
                                             Horário(s) Selecionado(s) *:
                                         </Typography>
@@ -569,40 +543,122 @@ function ProporEventoForm({ userInfo, currentUser, initialDate, onSuccess, onCan
                                         {errors.horarioSlotString && <FormHelperText error>{errors.horarioSlotString}</FormHelperText>}
                                     </Grid>
                                 </Grid>
+                            </Paper>
+                        </Grid>
 
-                                {formData.dataInicio && (secao2Completa || isEditMode) && (
-                                    <Box sx={{ mt: 3 }}>
-                                        <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
-                                            Grade de Disponibilidade do Dia:
-                                        </Typography>
-                                        {verificandoDisp ? (
-                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 2 }}>
-                                                <CircularProgress size={20} />
-                                                <Typography variant="body2" color="text.secondary">Carregando disponibilidades...</Typography>
-                                            </Box>
-                                        ) : (
-                                            <GradeDisponibilidade
-                                                aulas={ocupacaoDoDia.aulas}
-                                                eventos={ocupacaoDoDia.eventos}
-                                                dataFoco={formData.dataInicio?.format('YYYY-MM-DD')}
-                                                tiposLab={formData.dynamicLabs.map(l => l.tipo).filter(Boolean)}
-                                                onCelulaClick={({ horario, ocupado }) => {
-                                                    if (ocupado) return;
-                                                    setFormData(prev => {
-                                                        const jaSelecionado = prev.horarioSlotString.includes(horario);
-                                                        const novos = jaSelecionado
-                                                            ? prev.horarioSlotString.filter(h => h !== horario)
-                                                            : [...prev.horarioSlotString, horario];
-                                                        return { ...prev, horarioSlotString: novos };
-                                                    });
-                                                    if (errors.horarioSlotString) {
-                                                        setErrors(prev => ({ ...prev, horarioSlotString: null }));
-                                                    }
-                                                }}
-                                            />
-                                        )}
+                        {/* ── GRADE DE DISPONIBILIDADE DO DIA ── */}
+                        {formData.dataInicio && (secao1Completa || isEditMode) && (
+                            <Grid item xs={12}>
+                                <Paper elevation={3} sx={{ p: 3, borderLeft: '5px solid #00bcd4' }}>
+                                    <Typography variant="subtitle1" fontWeight="bold" gutterBottom color="primary">
+                                        📊 Grade de Disponibilidade ({dayjs(formData.dataInicio).format('DD/MM/YYYY')}):
+                                    </Typography>
+                                    <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1.5 }}>
+                                        Clique no bloco de horário livre desejado para alternar a seleção.
+                                    </Typography>
+                                    {verificandoDisp ? (
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 2 }}>
+                                            <CircularProgress size={20} />
+                                            <Typography variant="body2" color="text.secondary">Carregando disponibilidades...</Typography>
+                                        </Box>
+                                    ) : (
+                                        <GradeDisponibilidade
+                                            aulas={ocupacaoDoDia.aulas}
+                                            eventos={ocupacaoDoDia.eventos}
+                                            dataFoco={formData.dataInicio?.format('YYYY-MM-DD')}
+                                            tiposLab={formData.dynamicLabs.map(l => l.tipo).filter(Boolean)}
+                                            onCelulaClick={({ horario, ocupado }) => {
+                                                if (ocupado) return;
+                                                setFormData(prev => {
+                                                    const jaSelecionado = prev.horarioSlotString.includes(horario);
+                                                    const novos = jaSelecionado
+                                                        ? prev.horarioSlotString.filter(h => h !== horario)
+                                                        : [...prev.horarioSlotString, horario];
+                                                    return { ...prev, horarioSlotString: novos };
+                                                });
+                                                if (errors.horarioSlotString) {
+                                                    setErrors(prev => ({ ...prev, horarioSlotString: null }));
+                                                }
+                                            }}
+                                        />
+                                    )}
+                                </Paper>
+                            </Grid>
+                        )}
+
+                        {/* ── SEÇÃO 3: Seleção Múltipla de Laboratórios ── */}
+                        <Grid item xs={12}>
+                            <Paper elevation={3} sx={{ p: 3, borderLeft: '5px solid #ff9800', opacity: (!secaoDataCompleta && !isEditMode) ? 0.8 : 1 }}>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                        <Typography variant="h6" gutterBottom sx={{ mb: 0 }}>3. Laboratório(s)</Typography>
+                                        {!secaoDataCompleta && !isEditMode && <LockIcon color="warning" />}
                                     </Box>
+                                    <Tooltip title="Adicionar outro tipo de laboratório">
+                                        <span>
+                                            <IconButton onClick={handleAddLabField} color="primary" disabled={formData.dynamicLabs.length >= 5 || (!secaoDataCompleta && !isEditMode)}>
+                                                <AddIcon />
+                                            </IconButton>
+                                        </span>
+                                    </Tooltip>
+                                </Box>
+                                {!secaoDataCompleta && !isEditMode && (
+                                    <Alert severity="warning" sx={{ mb: 2, mt: 1 }}>
+                                        <strong>Seção bloqueada!</strong> Selecione uma data e pelo menos um horário na Seção 2 para desbloquear a escolha de laboratórios.
+                                    </Alert>
                                 )}
+                                {formData.dynamicLabs.map((labSelection, index) => {
+                                    if (!labSelection) return null;
+                                    return (
+                                        <Grid container spacing={1} key={index} sx={{ mt: index > 0 ? 1 : 0, alignItems: 'center' }}>
+                                            <Grid item xs={5}>
+                                                <FormControl sx={{ minWidth: 120 }} size="small" fullWidth disabled={!secaoDataCompleta && !isEditMode}>
+                                                    <InputLabel shrink>Tipo *</InputLabel>
+                                                    <Select value={labSelection.tipo || ''} onChange={(e) => handleLabTipoChange(index, e.target.value)}>
+                                                        {TIPOS_LABORATORIO.map(t => <MenuItem key={t.id} value={t.id}>{t.name}</MenuItem>)}
+                                                    </Select>
+                                                </FormControl>
+                                            </Grid>
+                                            <Grid item xs={6}>
+                                                <FormControl sx={{ minWidth: 140 }} size="small" fullWidth disabled={!labSelection.tipo || (!secaoDataCompleta && !isEditMode)}>
+                                                    <InputLabel shrink>Lab(s) *</InputLabel>
+                                                    <Select
+                                                        multiple
+                                                        value={labSelection.laboratorios || []}
+                                                        onChange={(e) => handleLabSelectionChange(index, e.target.value)}
+                                                        renderValue={(selected) => (
+                                                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                                                                {selected.map((value) => <Chip key={value} label={value} size="small" />)}
+                                                            </Box>
+                                                        )}
+                                                    >
+                                                        {LISTA_LABORATORIOS.filter(l => l.tipo === labSelection.tipo).map(l => {
+                                                            const st = statusLab(l.name);
+                                                            const isBlocked = st === 'ocupado';
+                                                            const chipInfo = {
+                                                                livre:     { label: 'Livre',    color: 'success' },
+                                                                parcial:   { label: 'Parcial',  color: 'warning' },
+                                                                ocupado:   { label: 'Ocupado',  color: 'error'   },
+                                                                indefinido:{ label: '—',        color: 'default'  },
+                                                            }[st];
+                                                            return (
+                                                                <MenuItem key={l.id} value={l.name} disabled={isBlocked}>
+                                                                    <Box display="flex" justifyContent="space-between" alignItems="center" width="100%" gap={1}>
+                                                                        <Typography variant="body2" color={isBlocked ? 'text.disabled' : 'text.primary'}>{l.name}</Typography>
+                                                                        <Chip label={chipInfo.label} color={chipInfo.color} size="small" variant={st === 'livre' ? 'filled' : 'outlined'} sx={{ fontSize: '0.65rem', minWidth: 62 }} />
+                                                                    </Box>
+                                                                </MenuItem>
+                                                            );
+                                                        })}
+                                                    </Select>
+                                                </FormControl>
+                                            </Grid>
+                                            <Grid item xs={1}>
+                                                <IconButton size="small" onClick={() => handleRemoveLabField(index)} disabled={formData.dynamicLabs.length === 1 || (!secaoDataCompleta && !isEditMode)}><DeleteIcon fontSize="small" /></IconButton>
+                                            </Grid>
+                                        </Grid>
+                                    );
+                                })}
                             </Paper>
                         </Grid>
                         <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'center', gap: 2, mt: 2, mb: 4 }}>
