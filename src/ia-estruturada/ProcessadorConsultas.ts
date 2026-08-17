@@ -3,7 +3,7 @@ import ExtratorParametros, { ParametrosExtraidos } from './ExtratorParametros';
 import dayjs from 'dayjs';
 
 const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY;
-const GROQ_MODEL = import.meta.env.VITE_GROQ_MODEL || 'qwen/qwen3.6-27b';
+const GROQ_MODEL = import.meta.env.VITE_GROQ_MODEL || 'openai/gpt-oss-20b';
 
 export interface CriteriosBusca {
   data?: string | null;

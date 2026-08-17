@@ -12,7 +12,7 @@ class LangChainService {
       try {
         this.model = new ChatGroq({
           apiKey: GROQ_API_KEY,
-          model: import.meta.env.VITE_GROQ_MODEL || "qwen/qwen3.6-27b",
+          model: import.meta.env.VITE_GROQ_MODEL || "openai/gpt-oss-20b",
           temperature: 0.3,
         });
 
