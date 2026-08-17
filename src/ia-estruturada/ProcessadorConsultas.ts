@@ -3,7 +3,7 @@ import ExtratorParametros, { ParametrosExtraidos } from './ExtratorParametros';
 import dayjs from 'dayjs';
 
 const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY;
-const GROQ_MODEL = import.meta.env.VITE_GROQ_MODEL || 'llama-3.3-70b-versatile';
+const GROQ_MODEL = import.meta.env.VITE_GROQ_MODEL || 'qwen/qwen3.6-27b';
 
 export interface CriteriosBusca {
   data?: string | null;
@@ -243,24 +243,23 @@ class ProcessadorConsultas {
         });
       }
 
-      const finalContentType = response.headers.get('content-type');
-      const finalIsJson = finalContentType && finalContentType.includes('application/json');
+      const data = finalIsJson ? await response.json().catch(() => ({})) : {};
 
       if (!response.ok || !finalIsJson) {
         if (!GROQ_API_KEY) {
-          return { erro: 'A API Groq precisa da chave VITE_GROQ_API_KEY configurada no arquivo .env para testes locais (npm start).' };
+          return { erro: 'A API Groq precisa da chave VITE_GROQ_API_KEY configurada no arquivo .env para testes locais.' };
         }
-        throw new Error(`Erro API Groq: ${response.status}`);
+        const apiError = data?.error?.message || response.statusText || response.status;
+        throw new Error(`Erro API Groq (${response.status}): ${apiError}`);
       }
 
-      const data = await response.json();
       const conteudo = data.choices?.[0]?.message?.content;
       if (!conteudo) throw new Error('Resposta da IA veio vazia');
 
       return JSON.parse(conteudo) as ResultadoProcessador;
     } catch (error: any) {
       console.error('Erro Groq:', error);
-      return { erro: 'Falha na inteligência do processador. Verifique a conexão.' };
+      return { erro: 'Falha no processamento da IA: ' + (error?.message || error) };
     }
   }
 }

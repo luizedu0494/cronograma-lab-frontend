@@ -26,7 +26,7 @@ const BLOCOS_HORARIO = [
 ];
 
 const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY;
-const GROQ_MODEL = import.meta.env.VITE_GROQ_MODEL_LIGHT || 'llama-3.2-3b-preview';
+const GROQ_MODEL = import.meta.env.VITE_GROQ_MODEL_LIGHT || 'groq/compound-mini';
 
 import { addDoc, serverTimestamp } from 'firebase/firestore';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
@@ -155,18 +155,17 @@ function AssistenteIATecnico({ userInfo, currentUser, mode }) {
                 });
             }
 
-            const finalContentType = response.headers.get('content-type');
-            const finalIsJson = finalContentType && finalContentType.includes('application/json');
+            const data = finalIsJson ? await response.json().catch(() => ({})) : {};
 
             if (!response.ok || !finalIsJson) {
                 if (!GROQ_API_KEY) {
-                    return { erro: 'Configuração necessária: Adicione VITE_GROQ_API_KEY=gsk_... no arquivo .env para executar a IA em ambiente local (npm start).' };
+                    return { erro: 'Configuração necessária: Adicione VITE_GROQ_API_KEY=gsk_... no arquivo .env para executar a IA em ambiente local.' };
                 }
-                throw new Error(`Erro na API Groq: ${response.status}`);
+                const apiError = data?.error?.message || response.statusText || response.status;
+                throw new Error(`Erro na API Groq (${response.status}): ${apiError}`);
             }
 
-            const data = await response.json();
-            const resposta = data.choices[0].message.content;
+            const resposta = data.choices?.[0]?.message?.content;
             
             const jsonMatch = resposta.match(/\{[\s\S]*\}/);
             if (jsonMatch) {
