@@ -16,6 +16,7 @@ export interface ConsultaParams {
 }
 
 export interface ConflitoItem {
+  id?: string;
   tipo: 'aula' | 'evento';
   laboratorio: string;
   horario: string;
@@ -118,6 +119,7 @@ export function useDisponibilidade() {
           }
 
           const conflito: ConflitoItem = {
+            id: docSnap.id,
             tipo: 'aula',
             laboratorio: lab,
             horario: slotStr,
@@ -147,6 +149,7 @@ export function useDisponibilidade() {
           }
 
           const conflito: ConflitoItem = {
+            id: docSnap.id,
             tipo: 'evento',
             laboratorio: lab,
             horario: slotStr,

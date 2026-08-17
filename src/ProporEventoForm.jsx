@@ -22,6 +22,8 @@ import { LISTA_LABORATORIOS, TIPOS_LABORATORIO } from './constants/laboratorios'
 import PropTypes from 'prop-types';
 import DialogConfirmacao from './components/DialogConfirmacao';
 import { notificadorTelegram } from './services/NotificadorTelegram';
+import GradeDisponibilidade from './components/GradeDisponibilidade';
+import { useDisponibilidade } from './hooks/useDisponibilidade';
 
 dayjs.locale('pt-br');
 dayjs.extend(isBetween);
@@ -63,7 +65,8 @@ function ProporEventoForm({ userInfo, currentUser, initialDate, onSuccess, onCan
     const [openConfirmModal, setOpenConfirmModal] = useState(false);
     const [eventosParaConfirmar, setEventosParaConfirmar] = useState([]);
     const [horariosOcupados, setHorariosOcupados] = useState([]);
-    const [verificandoDisp, setVerificandoDisp] = useState(false);
+    const { consultarDisponibilidade, loading: verificandoDisp } = useDisponibilidade();
+    const [ocupacaoDoDia, setOcupacaoDoDia] = useState({ aulas: [], eventos: [] });
     
     // Estados visuais do calendário
     const [diasTotalmenteOcupados, setDiasTotalmenteOcupados] = useState([]);
@@ -185,36 +188,31 @@ function ProporEventoForm({ userInfo, currentUser, initialDate, onSuccess, onCan
     }, [mesVisivel]);
 
     useEffect(() => {
-        const verificarDisponibilidade = async () => {
-            const laboratoriosParaVerificar = formData.dynamicLabs.flatMap(lab => lab.laboratorios).filter(Boolean);
-            if (!formData.dataInicio || laboratoriosParaVerificar.length === 0) {
-                setHorariosOcupados([]);
-                return;
-            }
-            setVerificandoDisp(true);
-            try {
-                const diaSelecionado = dayjs(formData.dataInicio).startOf('day');
-                const qAulas = query(collection(db, "aulas"), where("laboratorioSelecionado", "in", laboratoriosParaVerificar), where("dataInicio", ">=", Timestamp.fromDate(diaSelecionado.toDate())), where("dataInicio", "<", Timestamp.fromDate(diaSelecionado.add(1, 'day').toDate())));
-                const snapAulas = await getDocs(qAulas);
-                const slotsAulas = snapAulas.docs.map(doc => doc.data().horarioSlotString);
+        const laboratoriosParaVerificar = formData.dynamicLabs.flatMap(lab => lab.laboratorios).filter(Boolean);
+        if (!formData.dataInicio || laboratoriosParaVerificar.length === 0) {
+            setOcupacaoDoDia({ aulas: [], eventos: [] });
+            setHorariosOcupados([]);
+            return;
+        }
 
-                const qEventos = query(collection(db, "eventosManutencao"), where("dataInicio", ">=", Timestamp.fromDate(diaSelecionado.toDate())), where("dataInicio", "<", Timestamp.fromDate(diaSelecionado.add(1, 'day').toDate())));
-                const snapEventos = await getDocs(qEventos);
-                const slotsEventos = snapEventos.docs
-                    .filter(doc => doc.id !== eventoId)
-                    .map(doc => doc.data())
-                    .filter(e => e.laboratorio === 'Todos' || laboratoriosParaVerificar.includes(e.laboratorio))
-                    .map(e => e.horarioSlotString);
-                
-                setHorariosOcupados([...new Set([...slotsAulas, ...slotsEventos])]);
-            } catch (error) {
-                console.error("Erro ao verificar disponibilidade:", error);
-            } finally {
-                setVerificandoDisp(false);
-            }
-        };
-        verificarDisponibilidade();
-    }, [formData.dataInicio, formData.dynamicLabs, eventoId]);
+        consultarDisponibilidade({
+            dataInicio: formData.dataInicio,
+            dataFim: formData.dataInicio,
+            diasSemana: [dayjs(formData.dataInicio).day()],
+            horarios: BLOCOS_HORARIO.map(b => b.value),
+            laboratorios: laboratoriosParaVerificar,
+        }).then(resultados => {
+            const conflitos = resultados[0]?.conflitos ?? [];
+            const conflitosAulas = conflitos.filter(c => c.tipo === 'aula');
+            const conflitosEventos = conflitos.filter(c => c.tipo === 'evento' && c.id !== eventoId);
+            setOcupacaoDoDia({
+                aulas: conflitosAulas,
+                eventos: conflitosEventos,
+            });
+            const slotsOcupados = [...new Set([...conflitosAulas, ...conflitosEventos].map(c => c.horario))];
+            setHorariosOcupados(slotsOcupados);
+        });
+    }, [formData.dataInicio, formData.dynamicLabs, eventoId, consultarDisponibilidade]);
 
     // Função auxiliar para bloquear o dia
     const isDayBlocked = (day) => {
@@ -319,15 +317,23 @@ function ProporEventoForm({ userInfo, currentUser, initialDate, onSuccess, onCan
             }
 
             const conflitosEncontrados = [];
-            for (const novo of eventosParaAgendar) {
-                const qA = query(collection(db, "aulas"), where("laboratorioSelecionado", "==", novo.laboratorio), where("dataInicio", "==", Timestamp.fromDate(novo.dataInicio.toDate())), where("horarioSlotString", "==", novo.horarioSlotString));
-                const snapA = await getDocs(qA);
-                snapA.docs.forEach(doc => conflitosEncontrados.push({ novo, conflito: { id: doc.id, ...doc.data(), tipoConflito: 'Aula' } }));
+            const todosConflitos = [...ocupacaoDoDia.aulas, ...ocupacaoDoDia.eventos];
 
-                const qE = query(collection(db, "eventosManutencao"), where("laboratorio", "==", novo.laboratorio), where("dataInicio", "==", Timestamp.fromDate(novo.dataInicio.toDate())), where("horarioSlotString", "==", novo.horarioSlotString));
-                const snapE = await getDocs(qE);
-                snapE.docs.forEach(doc => {
-                    if (doc.id !== eventoId) conflitosEncontrados.push({ novo, conflito: { id: doc.id, ...doc.data(), tipoConflito: 'Evento' } });
+            for (const novo of eventosParaAgendar) {
+                const conflitosDoItem = todosConflitos.filter(c => 
+                    c.horario === novo.horarioSlotString && 
+                    (c.laboratorio === novo.laboratorio || c.laboratorio === 'Todos')
+                );
+                conflitosDoItem.forEach(c => {
+                    conflitosEncontrados.push({
+                        novo,
+                        conflito: {
+                            id: c.id,
+                            assunto: c.titulo,
+                            titulo: c.titulo,
+                            tipoConflito: c.tipo === 'aula' ? 'Aula' : 'Evento'
+                        }
+                    });
                 });
             }
 
@@ -535,16 +541,68 @@ function ProporEventoForm({ userInfo, currentUser, initialDate, onSuccess, onCan
                                         />
                                     </Grid>
                                     <Grid item xs={12} md={6}>
-                                        <FormControl sx={{ minWidth: 150 }} error={!!errors.horarioSlotString} disabled={!formData.dataInicio || (!secao2Completa && !isEditMode)}>
-                                            <InputLabel shrink>Horário(s) *</InputLabel>
-                                            <Select multiple name="horarioSlotString" value={formData.horarioSlotString} onChange={handleChange} input={<OutlinedInput notched label="Horário(s) *" />} renderValue={(selected) => selected.length === 0 ? <em style={{color:'rgba(200,200,200,0.5)'}}>Horário(s) *</em> : selected.length === 1 ? selected[0] : `${selected[0]} +${selected.length - 1}`}>
-                                                {BLOCOS_HORARIO.map((bloco) => <MenuItem key={bloco.value} value={bloco.value} disabled={horariosOcupados.includes(bloco.value)}>{bloco.label} {horariosOcupados.includes(bloco.value) ? '(Ocupado)' : ''}</MenuItem>)}
-                                            </Select>
-                                            {errors.horarioSlotString && <FormHelperText>{errors.horarioSlotString}</FormHelperText>}
-                                            {verificandoDisp && <CircularProgress size={20} sx={{ mt: 1 }} />}
-                                        </FormControl>
+                                        <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
+                                            Horário(s) Selecionado(s) *:
+                                        </Typography>
+                                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, minHeight: 56, alignItems: 'center', p: 1, border: '1px solid', borderColor: errors.horarioSlotString ? 'error.main' : 'rgba(0, 0, 0, 0.23)', borderRadius: 1 }}>
+                                            {formData.horarioSlotString.length === 0 ? (
+                                                <Typography variant="body2" color="text.secondary">
+                                                    Clique na grade abaixo para escolher os horários livres.
+                                                </Typography>
+                                            ) : (
+                                                formData.horarioSlotString.map(h => (
+                                                    <Chip
+                                                        key={h}
+                                                        label={h}
+                                                        color="primary"
+                                                        size="small"
+                                                        onDelete={() => {
+                                                            setFormData(prev => ({
+                                                                ...prev,
+                                                                horarioSlotString: prev.horarioSlotString.filter(slot => slot !== h)
+                                                            }));
+                                                        }}
+                                                    />
+                                                ))
+                                            )}
+                                        </Box>
+                                        {errors.horarioSlotString && <FormHelperText error>{errors.horarioSlotString}</FormHelperText>}
                                     </Grid>
                                 </Grid>
+
+                                {formData.dataInicio && (secao2Completa || isEditMode) && (
+                                    <Box sx={{ mt: 3 }}>
+                                        <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
+                                            Grade de Disponibilidade do Dia:
+                                        </Typography>
+                                        {verificandoDisp ? (
+                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 2 }}>
+                                                <CircularProgress size={20} />
+                                                <Typography variant="body2" color="text.secondary">Carregando disponibilidades...</Typography>
+                                            </Box>
+                                        ) : (
+                                            <GradeDisponibilidade
+                                                aulas={ocupacaoDoDia.aulas}
+                                                eventos={ocupacaoDoDia.eventos}
+                                                dataFoco={formData.dataInicio?.format('YYYY-MM-DD')}
+                                                tiposLab={formData.dynamicLabs.map(l => l.tipo).filter(Boolean)}
+                                                onCelulaClick={({ horario, ocupado }) => {
+                                                    if (ocupado) return;
+                                                    setFormData(prev => {
+                                                        const jaSelecionado = prev.horarioSlotString.includes(horario);
+                                                        const novos = jaSelecionado
+                                                            ? prev.horarioSlotString.filter(h => h !== horario)
+                                                            : [...prev.horarioSlotString, horario];
+                                                        return { ...prev, horarioSlotString: novos };
+                                                    });
+                                                    if (errors.horarioSlotString) {
+                                                        setErrors(prev => ({ ...prev, horarioSlotString: null }));
+                                                    }
+                                                }}
+                                            />
+                                        )}
+                                    </Box>
+                                )}
                             </Paper>
                         </Grid>
                         <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'center', gap: 2, mt: 2, mb: 4 }}>

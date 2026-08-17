@@ -32,6 +32,7 @@ const BLOCOS = [
  */
 export default function GradeDisponibilidade({
   aulas = [],
+  eventos = [],
   dataFoco = dayjs().format('YYYY-MM-DD'),
   tiposLab = [],
   perspectivaFiltro = 'todos',
@@ -69,34 +70,47 @@ export default function GradeDisponibilidade({
   // Mapa de ocupação e detalhes para o dia selecionado
   const mapaDetalhes = useMemo(() => {
     const mapa = {};
+
+    const registrar = (rawLab, horarios, item, origem) => {
+      if (!rawLab) return;
+      const labObj = LISTA_LABORATORIOS.find(l => l.id === rawLab || l.name === rawLab);
+      const alvos = rawLab === 'Todos'
+        ? LISTA_LABORATORIOS
+        : [labObj || { id: rawLab, name: rawLab }];
+
+      alvos.forEach(lab => {
+        horarios.forEach(h => {
+          if (!h) return;
+          if (!mapa[lab.id]) mapa[lab.id] = {};
+          if (!mapa[lab.name]) mapa[lab.name] = {};
+          if (!mapa[lab.id][h]) mapa[lab.id][h] = [];
+          if (!mapa[lab.name][h]) mapa[lab.name][h] = [];
+          const registro = { ...item, origem };
+          mapa[lab.id][h].push(registro);
+          mapa[lab.name][h].push(registro);
+        });
+      });
+    };
+
     aulas
       .filter(a => {
         if (!dataSelecionada) return true;
-        const dataAula = toDataLocal(a.dataInicio);
+        const dataAula = a.dataInicio ? toDataLocal(a.dataInicio) : dataSelecionada;
         return dataAula === dataSelecionada;
       })
-      .forEach(a => {
-        const rawLab = a.laboratorioSelecionado || a.laboratorio;
-        if (!rawLab) return;
-        const labObj = LISTA_LABORATORIOS.find(l => l.id === rawLab || l.name === rawLab);
-        const labId = labObj ? labObj.id : rawLab;
-        const labName = labObj ? labObj.name : rawLab;
+      .forEach(a => registrar(a.laboratorioSelecionado || a.laboratorio, toHorariosArray(a.horarioSlotString || a.horario), a, 'aula'));
 
-        if (!mapa[labId]) mapa[labId] = {};
-        if (!mapa[labName]) mapa[labName] = {};
+    eventos
+      .filter(e => e.status !== 'cancelado')
+      .filter(e => {
+        if (!dataSelecionada) return true;
+        const dataEvento = e.dataInicio ? toDataLocal(e.dataInicio) : dataSelecionada;
+        return dataEvento === dataSelecionada;
+      })
+      .forEach(e => registrar(e.laboratorio, toHorariosArray(e.horarioSlotString || e.horario), e, 'evento'));
 
-        const horarios = toHorariosArray(a.horarioSlotString);
-        horarios.forEach(h => {
-          if (h) {
-            if (!mapa[labId][h]) mapa[labId][h] = [];
-            if (!mapa[labName][h]) mapa[labName][h] = [];
-            mapa[labId][h].push(a);
-            mapa[labName][h].push(a);
-          }
-        });
-      });
     return mapa;
-  }, [aulas, dataSelecionada]);
+  }, [aulas, eventos, dataSelecionada]);
 
   const getAulasDaCelula = (lab, horario) => {
     return mapaDetalhes[lab.id]?.[horario] || mapaDetalhes[lab.name]?.[horario] || [];
@@ -276,34 +290,45 @@ export default function GradeDisponibilidade({
           {modalDetalhes?.ocupado ? (
             <Box sx={{ mt: 2 }}>
               <Chip label="Ocupado" color="error" size="small" sx={{ mb: 1.5 }} />
-              {modalDetalhes.aulas.map((aula, idx) => (
-                <Box key={aula.id || idx} sx={{ mb: idx < modalDetalhes.aulas.length - 1 ? 2 : 0 }}>
-                  {idx > 0 && <Divider sx={{ my: 1 }} />}
-                  <Typography variant="subtitle2" color="primary.main">
-                    {aula.assunto || 'Aula sem título'}
-                  </Typography>
-                  {aula.cursos && (
-                    <Typography variant="body2">
-                      <strong>Curso(s):</strong> {Array.isArray(aula.cursos) ? aula.cursos.join(', ') : aula.cursos}
-                    </Typography>
-                  )}
-                  {aula.propostoPorNome && (
-                    <Typography variant="body2">
-                      <strong>Solicitante/Prof.:</strong> {aula.propostoPorNome}
-                    </Typography>
-                  )}
-                  {aula.tipoAtividade && (
-                    <Typography variant="body2">
-                      <strong>Tipo:</strong> {aula.tipoAtividade}
-                    </Typography>
-                  )}
-                  {aula.observacoes && (
-                    <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
-                      <strong>Obs:</strong> {aula.observacoes}
-                    </Typography>
-                  )}
-                </Box>
-              ))}
+              {modalDetalhes.aulas.map((item, idx) => {
+                const isEvento = item.origem === 'evento' || item.tipo === 'evento';
+                return (
+                  <Box key={item.id || idx} sx={{ mb: idx < modalDetalhes.aulas.length - 1 ? 2 : 0 }}>
+                    {idx > 0 && <Divider sx={{ my: 1 }} />}
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                      <Chip
+                        label={isEvento ? 'Evento' : 'Aula'}
+                        color={isEvento ? 'warning' : 'primary'}
+                        size="small"
+                        sx={{ height: 20, fontSize: '0.65rem', fontWeight: 600 }}
+                      />
+                      <Typography variant="subtitle2" color="primary.main">
+                        {item.assunto || item.titulo || 'Sem título'}
+                      </Typography>
+                    </Box>
+                    {item.cursos && (
+                      <Typography variant="body2">
+                        <strong>Curso(s):</strong> {Array.isArray(item.cursos) ? item.cursos.join(', ') : item.cursos}
+                      </Typography>
+                    )}
+                    {(item.propostoPorNome || item.detalhe) && (
+                      <Typography variant="body2">
+                        <strong>Solicitante/Prof.:</strong> {item.propostoPorNome || item.detalhe}
+                      </Typography>
+                    )}
+                    {(item.tipoAtividade || item.tipo) && (
+                      <Typography variant="body2">
+                        <strong>Tipo:</strong> {item.tipoAtividade || item.tipo}
+                      </Typography>
+                    )}
+                    {(item.observacoes || item.descricao) && (
+                      <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
+                        <strong>Obs:</strong> {item.observacoes || item.descricao}
+                      </Typography>
+                    )}
+                  </Box>
+                );
+              })}
             </Box>
           ) : (
             <Box sx={{ mt: 2, textAlign: 'center', py: 1 }}>
