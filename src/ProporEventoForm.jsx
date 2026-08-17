@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import {
     Container, Typography, TextField, Button, Grid, MenuItem, FormControl, InputLabel,
     Select, Box, Paper, Snackbar, Alert, CircularProgress, OutlinedInput, Chip, IconButton, Tooltip,
-    List, ListItem, ListItemText, FormHelperText, Dialog, DialogTitle, DialogContent, DialogActions
+    List, ListItem, ListItemText, FormHelperText, Dialog, DialogTitle, DialogContent, DialogActions,
+    Accordion, AccordionSummary, AccordionDetails
 } from '@mui/material';
-import { ArrowBack, Delete as DeleteIcon, Add as AddIcon, Lock as LockIcon } from '@mui/icons-material';
+import { ArrowBack, Delete as DeleteIcon, Add as AddIcon, Lock as LockIcon, ExpandMore as ExpandMoreIcon } from '@mui/icons-material';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider } from '@mui/x-date-pickers';
 import { DatePicker } from '@mui/x-date-pickers';
@@ -67,6 +68,25 @@ function ProporEventoForm({ userInfo, currentUser, initialDate, onSuccess, onCan
     const [horariosOcupados, setHorariosOcupados] = useState([]);
     const { consultarDisponibilidade, loading: verificandoDisp } = useDisponibilidade();
     const [ocupacaoDoDia, setOcupacaoDoDia] = useState({ aulas: [], eventos: [] });
+    const [openKeepDataDialog, setOpenKeepDataDialog] = useState(false);
+    const [gradeAberta, setGradeAberta] = useState(false);
+
+    // Mapeia horários ocupados para exibir título das aulas/eventos no Select
+    const infoOcupacao = React.useMemo(() => {
+        const map = {};
+        const laboratoriosParaVerificar = formData.dynamicLabs.flatMap(lab => lab.laboratorios).filter(Boolean);
+        const todosConflitos = [...(ocupacaoDoDia.aulas || []), ...(ocupacaoDoDia.eventos || [])];
+
+        todosConflitos.forEach(c => {
+            const labMatch = laboratoriosParaVerificar.length === 0 || 
+                             c.laboratorio === 'Todos' || 
+                             laboratoriosParaVerificar.includes(c.laboratorio);
+            if (labMatch) {
+                map[c.horario] = c.titulo || c.assunto || 'Ocupado';
+            }
+        });
+        return map;
+    }, [ocupacaoDoDia, formData.dynamicLabs]);
     
     // Estados visuais do calendário
     const [diasTotalmenteOcupados, setDiasTotalmenteOcupados] = useState([]);
@@ -406,7 +426,7 @@ function ProporEventoForm({ userInfo, currentUser, initialDate, onSuccess, onCan
                     updatedAt: serverTimestamp()
                 };
                 await updateDoc(doc(db, "eventosManutencao", eventoId), finalData);
-                finalizadas.push(ev);
+                finalizadas.push({ ...ev, id: eventoId });
             } else {
                 for (const ev of eventosParaConfirmar) {
                     const finalData = {
@@ -414,10 +434,25 @@ function ProporEventoForm({ userInfo, currentUser, initialDate, onSuccess, onCan
                         dataInicio: Timestamp.fromDate(ev.dataInicio.toDate()),
                         dataFim: Timestamp.fromDate(ev.dataFim.toDate())
                     };
-                    await addDoc(collection(db, "eventosManutencao"), finalData);
-                    finalizadas.push(ev);
+                    const docRef = await addDoc(collection(db, "eventosManutencao"), finalData);
+                    finalizadas.push({ ...ev, id: docRef.id });
                 }
             }
+
+            // Atualiza ocupação local imediatamente para refletir o novo agendamento como ocupado sem recarregar a tela
+            const novosConflitosEventos = finalizadas.map(ev => ({
+                id: ev.id,
+                tipo: 'evento',
+                laboratorio: ev.laboratorio,
+                horario: ev.horarioSlotString,
+                titulo: ev.titulo,
+                detalhe: `${ev.tipo}: ${ev.descricao || ''}`
+            }));
+
+            setOcupacaoDoDia(prev => ({
+                ...prev,
+                eventos: [...prev.eventos, ...novosConflitosEventos]
+            }));
 
             if (TELEGRAM_CHAT_ID) {
                 for (const ev of finalizadas) {
@@ -441,12 +476,26 @@ function ProporEventoForm({ userInfo, currentUser, initialDate, onSuccess, onCan
             setSnackbarSeverity('success');
             setOpenSnackbar(true);
             if (onSuccess) onSuccess();
+            else if (!isEditMode) setOpenKeepDataDialog(true);
         } catch (error) {
             setSnackbarMessage('Erro ao salvar.');
             setSnackbarSeverity('error');
             setOpenSnackbar(true);
         } finally {
             setLoadingSubmit(false);
+        }
+    };
+
+    const handleKeepData = (keep) => {
+        setOpenKeepDataDialog(false);
+        if (!keep) {
+            navigate('/calendario');
+        } else {
+            // Limpa apenas os horários selecionados, mantendo a data e os laboratórios selecionados para outro agendamento
+            setFormData(prev => ({
+                ...prev,
+                horarioSlotString: []
+            }));
         }
     };
 
@@ -486,7 +535,7 @@ function ProporEventoForm({ userInfo, currentUser, initialDate, onSuccess, onCan
                                     </Alert>
                                 )}
                                 <Grid container spacing={2}>
-                                    <Grid item xs={12}>
+                                    <Grid item xs={12} sm={6}>
                                         <DatePicker
                                             label="Data do Evento *"
                                             value={formData.dataInicio}
@@ -514,77 +563,99 @@ function ProporEventoForm({ userInfo, currentUser, initialDate, onSuccess, onCan
                                             loading={loadingCalendario}
                                         />
                                     </Grid>
-                                    <Grid item xs={12}>
-                                        <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
-                                            Horário(s) Selecionado(s) *:
-                                        </Typography>
-                                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, minHeight: 56, alignItems: 'center', p: 1, border: '1px solid', borderColor: errors.horarioSlotString ? 'error.main' : 'rgba(0, 0, 0, 0.23)', borderRadius: 1 }}>
-                                            {formData.horarioSlotString.length === 0 ? (
-                                                <Typography variant="body2" color="text.secondary">
-                                                    Clique na grade abaixo para escolher os horários livres.
-                                                </Typography>
+                                    <Grid item xs={12} sm={6}>
+                                        <FormControl fullWidth error={!!errors.horarioSlotString} disabled={!formData.dataInicio || (!secao1Completa && !isEditMode)}>
+                                            <InputLabel>{isEditMode ? 'Horário *' : 'Horário(s) *'}</InputLabel>
+                                            {isEditMode ? (
+                                                <Select
+                                                    name="horarioSlotString"
+                                                    value={formData.horarioSlotString[0] || ''}
+                                                    onChange={(e) => setFormData(prev => ({ ...prev, horarioSlotString: [e.target.value] }))}
+                                                    label="Horário *"
+                                                >
+                                                    {BLOCOS_HORARIO.map((bloco) => {
+                                                        const isOccupied = infoOcupacao.hasOwnProperty(bloco.value);
+                                                        const tituloQueOcupa = infoOcupacao[bloco.value];
+                                                        return (
+                                                            <MenuItem key={bloco.value} value={bloco.value} disabled={isOccupied} sx={isOccupied ? { opacity: 0.9 } : {}}>
+                                                                <Box display="flex" justifyContent="space-between" alignItems="center" width="100%" gap={1}>
+                                                                    <Typography variant="body2">{bloco.label}</Typography>
+                                                                    {isOccupied && (
+                                                                        <Typography variant="caption" color="error" fontWeight="bold">
+                                                                            🚫 Ocupado: {tituloQueOcupa}
+                                                                        </Typography>
+                                                                    )}
+                                                                </Box>
+                                                            </MenuItem>
+                                                        );
+                                                    })}
+                                                </Select>
                                             ) : (
-                                                formData.horarioSlotString.map(h => (
-                                                    <Chip
-                                                        key={h}
-                                                        label={h}
-                                                        color="primary"
-                                                        size="small"
-                                                        onDelete={() => {
-                                                            setFormData(prev => ({
-                                                                ...prev,
-                                                                horarioSlotString: prev.horarioSlotString.filter(slot => slot !== h)
-                                                            }));
-                                                        }}
-                                                    />
-                                                ))
+                                                <Select
+                                                    multiple
+                                                    name="horarioSlotString"
+                                                    value={formData.horarioSlotString}
+                                                    onChange={handleChange}
+                                                    input={<OutlinedInput label="Horário(s) *" />}
+                                                    renderValue={(selected) => (
+                                                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                                                            {selected.map((value) => (
+                                                                <Chip key={value} label={BLOCOS_HORARIO.find(b => b.value === value)?.label || value} size="small" color="primary" />
+                                                            ))}
+                                                        </Box>
+                                                    )}
+                                                >
+                                                    {BLOCOS_HORARIO.map((bloco) => {
+                                                        const isOccupied = infoOcupacao.hasOwnProperty(bloco.value);
+                                                        const tituloQueOcupa = infoOcupacao[bloco.value];
+                                                        return (
+                                                            <MenuItem key={bloco.value} value={bloco.value} disabled={isOccupied} sx={isOccupied ? { opacity: 0.9 } : {}}>
+                                                                <Box display="flex" justifyContent="space-between" alignItems="center" width="100%" gap={1}>
+                                                                    <Typography variant="body2">{bloco.label}</Typography>
+                                                                    {isOccupied && (
+                                                                        <Typography variant="caption" color="error" fontWeight="bold">
+                                                                            🚫 Ocupado: {tituloQueOcupa}
+                                                                        </Typography>
+                                                                    )}
+                                                                </Box>
+                                                            </MenuItem>
+                                                        );
+                                                    })}
+                                                </Select>
                                             )}
-                                        </Box>
-                                        {errors.horarioSlotString && <FormHelperText error>{errors.horarioSlotString}</FormHelperText>}
+                                            {errors.horarioSlotString && <FormHelperText error>{errors.horarioSlotString}</FormHelperText>}
+                                            {verificandoDisp && <CircularProgress size={20} sx={{ mt: 1 }} />}
+                                        </FormControl>
                                     </Grid>
                                 </Grid>
+
+                                {/* Grade de Disponibilidade Informativa / Auxiliar */}
+                                {formData.dataInicio && dayjs(formData.dataInicio).isValid() && (
+                                    <Accordion sx={{ mt: 3 }} expanded={gradeAberta} onChange={() => setGradeAberta(!gradeAberta)}>
+                                        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                                            <Typography variant="subtitle2" color="primary" fontWeight="bold">
+                                                📊 Consulta de Grade de Disponibilidade ({dayjs(formData.dataInicio).format('DD/MM/YYYY')})
+                                            </Typography>
+                                        </AccordionSummary>
+                                        <AccordionDetails>
+                                            {verificandoDisp ? (
+                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 2 }}>
+                                                    <CircularProgress size={20} />
+                                                    <Typography variant="body2" color="text.secondary">Carregando disponibilidades...</Typography>
+                                                </Box>
+                                            ) : (
+                                                <GradeDisponibilidade
+                                                    aulas={ocupacaoDoDia.aulas}
+                                                    eventos={ocupacaoDoDia.eventos}
+                                                    dataFoco={formData.dataInicio?.format('YYYY-MM-DD')}
+                                                    tiposLab={formData.dynamicLabs.map(l => l.tipo).filter(Boolean)}
+                                                />
+                                            )}
+                                        </AccordionDetails>
+                                    </Accordion>
+                                )}
                             </Paper>
                         </Grid>
-
-                        {/* ── GRADE DE DISPONIBILIDADE DO DIA ── */}
-                        {formData.dataInicio && (secao1Completa || isEditMode) && (
-                            <Grid item xs={12}>
-                                <Paper elevation={3} sx={{ p: 3, borderLeft: '5px solid #00bcd4' }}>
-                                    <Typography variant="subtitle1" fontWeight="bold" gutterBottom color="primary">
-                                        📊 Grade de Disponibilidade ({dayjs(formData.dataInicio).format('DD/MM/YYYY')}):
-                                    </Typography>
-                                    <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1.5 }}>
-                                        Clique no bloco de horário livre desejado para alternar a seleção.
-                                    </Typography>
-                                    {verificandoDisp ? (
-                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 2 }}>
-                                            <CircularProgress size={20} />
-                                            <Typography variant="body2" color="text.secondary">Carregando disponibilidades...</Typography>
-                                        </Box>
-                                    ) : (
-                                        <GradeDisponibilidade
-                                            aulas={ocupacaoDoDia.aulas}
-                                            eventos={ocupacaoDoDia.eventos}
-                                            dataFoco={formData.dataInicio?.format('YYYY-MM-DD')}
-                                            tiposLab={formData.dynamicLabs.map(l => l.tipo).filter(Boolean)}
-                                            onCelulaClick={({ horario, ocupado }) => {
-                                                if (ocupado) return;
-                                                setFormData(prev => {
-                                                    const jaSelecionado = prev.horarioSlotString.includes(horario);
-                                                    const novos = jaSelecionado
-                                                        ? prev.horarioSlotString.filter(h => h !== horario)
-                                                        : [...prev.horarioSlotString, horario];
-                                                    return { ...prev, horarioSlotString: novos };
-                                                });
-                                                if (errors.horarioSlotString) {
-                                                    setErrors(prev => ({ ...prev, horarioSlotString: null }));
-                                                }
-                                            }}
-                                        />
-                                    )}
-                                </Paper>
-                            </Grid>
-                        )}
 
                         {/* ── SEÇÃO 3: Seleção Múltipla de Laboratórios ── */}
                         <Grid item xs={12}>
@@ -678,6 +749,16 @@ function ProporEventoForm({ userInfo, currentUser, initialDate, onSuccess, onCan
                         <Button onClick={() => setOpenDuplicateDialog(false)}>Cancelar</Button>
                         <Button onClick={() => handleConflitos(false)} color="primary">Ignorar Conflitos</Button>
                         <Button onClick={() => handleConflitos(true)} color="error" variant="contained">Substituir Existentes</Button>
+                    </DialogActions>
+                </Dialog>
+                <Dialog open={openKeepDataDialog} onClose={() => handleKeepData(false)}>
+                    <DialogTitle>Agendamento Realizado!</DialogTitle>
+                    <DialogContent>
+                        <Typography>Deseja manter os dados do formulário para realizar outro agendamento similar?</Typography>
+                    </DialogContent>
+                    <DialogActions>
+                        <Button onClick={() => handleKeepData(false)}>Não, ir para o calendário</Button>
+                        <Button onClick={() => handleKeepData(true)} variant="contained" color="primary">Sim, manter dados</Button>
                     </DialogActions>
                 </Dialog>
                 <Snackbar open={openSnackbar} autoHideDuration={6000} onClose={() => setOpenSnackbar(false)}><Alert onClose={() => setOpenSnackbar(false)} severity={snackbarSeverity} sx={{ width: '100%' }}>{snackbarMessage}</Alert></Snackbar>
