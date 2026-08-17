@@ -173,6 +173,12 @@ Perfil de leitura, liberado pelo coordenador:
 - **Reconhecimento de Imagens com Tesseract.js (`ocrService.js`)**: extração de texto de tabelas ou fotos de cronogramas impressos diretamente no navegador.
 - **Exportação em PDF (`DownloadCronograma.jsx`)**: inclusão do botão e gerador em PDF (`jsPDF`) para download de relatórios mensais/anuais formatados, alinhado com o FAQ.
 
+### 📊 Expansão de Downloads e Relatórios Unificados (`DownloadCronograma.jsx` & `downloadHelper.jsx`)
+- **Unificação de Aulas e Eventos de Manutenção**: exportação simultânea de agendamentos de aulas aprovadas e eventos da coleção `eventosManutencao` (feriados, manutenções, bloqueios de laboratório e eventos institucionais).
+- **Período Personalizado & Filtros Granulares**: suporte a seleção de intervalo arbitrário de datas (`dataInicio` / `dataFim`) via `DatePicker`, além de filtros por checkboxes para tipos de aula (regular, prova/avaliação, revisão, monitoria, prática) e tipos de evento.
+- **Relatório Excel Multi-Abas (`gerarRelatorioExcelUnificado`)**: geração de planilha Excel (.xlsx) com abas para *Cronológico (Aulas + Eventos)* com AutoFilter e destaque visual por tipo (eventos em amarelo claro, revisões em lilás), *Aulas por Laboratório* e *Eventos*.
+- **Exportação Multi-Formato Atualizada**: formatação unificada para os arquivos de Calendário **iCalendar (.ics)** e **PDF** com tags e metadados completos de aulas e eventos.
+
 ### 🟢 Reformulação da Grade de Disponibilidade & Filtros de Perspectiva
 - **Seletor de Dias da Semana (`GradeDisponibilidade.jsx`)**: matriz diária por laboratório e horário com seletor interativo para alternar rapidamente entre Segunda e Sábado.
 - **Filtro por Perspectiva (`🔴 Ocupados`, `🟢 Livres`, `Todos`)**: aplicação visual na matriz com esmaecimento de células irrelevantes e alternância automática da visão semanal para a Grade ao selecionar `🟢 Livres` em [`CalendarioCronograma.jsx`](file:///c:/Windows/System32/cronograma-lab-frontend/src/pages/Cronograma/CalendarioCronograma.jsx).
