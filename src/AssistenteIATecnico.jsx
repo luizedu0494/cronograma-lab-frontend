@@ -155,6 +155,9 @@ function AssistenteIATecnico({ userInfo, currentUser, mode }) {
                 });
             }
 
+            const finalContentType = response.headers.get('content-type');
+            const finalIsJson = finalContentType && finalContentType.includes('application/json');
+
             const data = finalIsJson ? await response.json().catch(() => ({})) : {};
 
             if (!response.ok || !finalIsJson) {
