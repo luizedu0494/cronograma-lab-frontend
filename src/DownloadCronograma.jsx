@@ -324,31 +324,154 @@ function DownloadCronograma() {
                 });
             } else if (format === 'pdf') {
                 const { jsPDF } = await import('jspdf');
-                const doc = new jsPDF();
+                const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
-                doc.setFontSize(16);
-                doc.text(`Cronograma de Laboratórios — ${labelSufixo.replace(/_/g, ' ')}`, 14, 18);
+                const pageWidth = doc.internal.pageSize.getWidth();
+                const pageHeight = doc.internal.pageSize.getHeight();
+                const margin = 14;
+                const contentWidth = pageWidth - (margin * 2);
+
+                let y = 15;
+
+                // --- Cabeçalho Institucional ---
+                doc.setFillColor(30, 126, 200); // Azul CESMAC #1E7EC8
+                doc.rect(0, 0, pageWidth, 24, 'F');
+
+                doc.setTextColor(255, 255, 255);
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(14);
+                doc.text('Centro Universitário CESMAC — CronoLab', margin, 11);
+
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(9);
+                doc.text(`Relatório de Cronograma de Laboratórios — Período: ${labelSufixo.replace(/_/g, ' ')}`, margin, 18);
+
+                y = 30;
+
+                // Subtítulo e Resumo KPI
+                doc.setTextColor(50, 50, 50);
                 doc.setFontSize(10);
-                doc.text(`Total: ${todosItens.length} registro(s) ${infoTotal}`, 14, 25);
+                doc.setFont('helvetica', 'bold');
+                doc.text(`Total de registros: ${todosItens.length}`, margin, y);
 
-                let y = 34;
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(9);
+                doc.setTextColor(100, 100, 100);
+                doc.text(`(${aulas.length} aula(s) aprovada(s) | ${eventos.length} evento(s) de manutenção/bloqueio)`, margin + 45, y);
+
+                y += 8;
+
+                // Linha divisória
+                doc.setDrawColor(200, 200, 200);
+                doc.setLineWidth(0.4);
+                doc.line(margin, y, pageWidth - margin, y);
+                y += 6;
+
+                let dataAtualGroup = '';
+
                 todosItens.forEach((item, index) => {
-                    if (y > 275) {
-                        doc.addPage();
-                        y = 20;
-                    }
                     const isEvt = item._sourceType === 'evento';
-                    const dataStr = dayjs(item.dataInicio?.toDate ? item.dataInicio.toDate() : item.dataInicio).format('DD/MM/YYYY HH:mm');
+                    const dInicio = item.dataInicio?.toDate ? dayjs(item.dataInicio.toDate()).locale('pt-br') : dayjs(item.dataInicio).locale('pt-br');
+                    const dFim = item.dataFim?.toDate ? dayjs(item.dataFim.toDate()).locale('pt-br') : dayjs(item.dataFim).locale('pt-br');
+                    const dataFormatada = dInicio.format('DD/MM/YYYY');
+                    const diaSemana = dInicio.format('dddd');
+                    const horaStr = `${dInicio.format('HH:mm')} às ${dFim.format('HH:mm')}`;
 
-                    const tag = isEvt
+                    // Se a data mudou, adiciona um cabeçalho de grupo de Data
+                    if (dataFormatada !== dataAtualGroup) {
+                        dataAtualGroup = dataFormatada;
+
+                        // Verificar quebra de página para o grupo de data
+                        if (y > pageHeight - 35) {
+                            doc.addPage();
+                            y = 18;
+                        } else {
+                            y += 3;
+                        }
+
+                        doc.setFillColor(235, 243, 250); // Fundo azul bem claro
+                        doc.roundedRect(margin, y, contentWidth, 7, 1.5, 1.5, 'F');
+
+                        doc.setTextColor(30, 126, 200);
+                        doc.setFont('helvetica', 'bold');
+                        doc.setFontSize(9.5);
+                        doc.text(`📅 ${dataFormatada} (${diaSemana})`, margin + 3, y + 5);
+                        y += 10;
+                    }
+
+                    // Altura do bloco por item
+                    const itemHeight = isEvt ? 16 : 18;
+
+                    // Quebra de página se o item exceder a página
+                    if (y + itemHeight > pageHeight - 15) {
+                        doc.addPage();
+                        y = 18;
+                    }
+
+                    // Fundo diferenciado para Evento / Revisão / Aula
+                    if (isEvt) {
+                        doc.setFillColor(255, 249, 196); // Amarelo claro para evento
+                        doc.setDrawColor(245, 197, 24); // Borda dourada
+                    } else if (item.isRevisao) {
+                        doc.setFillColor(243, 229, 245); // Lilás claro para revisão
+                        doc.setDrawColor(186, 104, 200);
+                    } else {
+                        doc.setFillColor(250, 250, 250); // Cinza super leve para aula
+                        doc.setDrawColor(220, 220, 220);
+                    }
+
+                    doc.setLineWidth(0.3);
+                    doc.roundedRect(margin, y, contentWidth, itemHeight - 2, 1, 1, 'FD');
+
+                    // Linha 1 do item: [TAG/LAB] Assunto/Título (Horário)
+                    doc.setFontSize(9);
+                    doc.setFont('helvetica', 'bold');
+                    doc.setTextColor(30, 30, 30);
+
+                    const tagLabel = isEvt
                         ? `[EVENTO – ${item.tipo || 'Manutenção'}]`
                         : `[${item.laboratorioSelecionado || 'Lab'}]`;
-                    const titulo = isEvt ? item.titulo : item.assunto;
+                    const tituloText = isEvt ? (item.titulo || 'Evento Sem Título') : (item.assunto || 'Aula Sem Assunto');
 
-                    doc.setFont('helvetica', isEvt ? 'bold' : 'normal');
-                    doc.text(`${index + 1}. ${tag} ${titulo} — ${dataStr}`, 14, y);
-                    y += 7;
+                    // Truncar texto se for muito longo
+                    const maxChar = 65;
+                    const tituloTruncado = tituloText.length > maxChar ? tituloText.substring(0, maxChar) + '...' : tituloText;
+
+                    doc.text(`${tagLabel} ${tituloTruncado}`, margin + 3, y + 5);
+
+                    // Horário alinhado à direita
+                    doc.setFontSize(8.5);
+                    doc.setFont('helvetica', 'bold');
+                    doc.setTextColor(60, 60, 60);
+                    doc.text(`🕒 ${horaStr}`, pageWidth - margin - 3, y + 5, { align: 'right' });
+
+                    // Linha 2 do item: Detalhes adicionais (Laboratório, Cursos, Proponente/Solicitante)
+                    doc.setFontSize(8);
+                    doc.setFont('helvetica', 'normal');
+                    doc.setTextColor(90, 90, 90);
+
+                    let detalheLinha = isEvt
+                        ? `Lab: ${item.laboratorio || 'Todos os Laboratórios'} | Resp: ${item.criadoPor || 'Sistema'}${item.descricao ? ' | Obs: ' + item.descricao : ''}`
+                        : `Tipo: ${item.tipoAtividade || 'Aula'} | Cursos: ${(item.cursos || []).join(', ') || 'N/A'} | Prof/Resp: ${item.proponenteNome || 'N/A'}`;
+
+                    if (detalheLinha.length > 95) {
+                        detalheLinha = detalheLinha.substring(0, 95) + '...';
+                    }
+
+                    doc.text(detalheLinha, margin + 3, y + 10);
+
+                    y += itemHeight;
                 });
+
+                // Adicionar números de página em todas as páginas
+                const totalPages = doc.internal.getNumberOfPages();
+                for (let i = 1; i <= totalPages; i++) {
+                    doc.setPage(i);
+                    doc.setFontSize(7.5);
+                    doc.setFont('helvetica', 'normal');
+                    doc.setTextColor(150, 150, 150);
+                    doc.text(`Página ${i} de ${totalPages} — Gerado pelo CronoLab CESMAC em ${dayjs().format('DD/MM/YYYY [às] HH:mm')}`, pageWidth / 2, pageHeight - 8, { align: 'center' });
+                }
 
                 doc.save(`Cronograma_CESMAC_${labelSufixo}.pdf`);
                 setFeedback({

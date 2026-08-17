@@ -153,11 +153,17 @@ export const gerarRelatorioExcelUnificado = async (itens, nomeArquivo) => {
     });
     headerRow.height = 25;
 
-    // Preencher dados cronológicos
+    // Preencher dados cronológicos com separadores visuais entre mudanças de data
+    let ultimaDataStr = '';
+
     itens.forEach(item => {
         const isEvento = item._sourceType === 'evento';
         const dInicio = item.dataInicio?.toDate ? dayjs(item.dataInicio.toDate()).locale('pt-br') : dayjs(item.dataInicio).locale('pt-br');
         const dFim = item.dataFim?.toDate ? dayjs(item.dataFim.toDate()).locale('pt-br') : dayjs(item.dataFim).locale('pt-br');
+
+        const dataAtualStr = dInicio.format('DD/MM/YYYY');
+        const mudouData = ultimaDataStr && dataAtualStr !== ultimaDataStr;
+        ultimaDataStr = dataAtualStr;
 
         let registroType = isEvento ? 'Evento' : (item.isRevisao ? 'Revisão' : 'Aula');
         let tipoLabel = isEvento
@@ -172,7 +178,7 @@ export const gerarRelatorioExcelUnificado = async (itens, nomeArquivo) => {
         let solicitanteStr = isEvento ? (item.criadoPor || 'Sistema') : (item.proponenteNome || '');
 
         const row = wsCronologico.addRow({
-            data: dInicio.format('DD/MM/YYYY'),
+            data: dataAtualStr,
             diaSemana: dInicio.format('dddd'),
             horario: `${dInicio.format('HH:mm')} - ${dFim.format('HH:mm')}`,
             registroType: registroType,
@@ -184,7 +190,12 @@ export const gerarRelatorioExcelUnificado = async (itens, nomeArquivo) => {
         });
 
         row.eachCell({ includeEmpty: true }, (cell) => {
-            cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+            cell.border = {
+                top: { style: mudouData ? 'medium' : 'thin', color: mudouData ? { argb: 'FF1E7EC8' } : { argb: 'FFD3D3D3' } },
+                left: { style: 'thin', color: { argb: 'FFD3D3D3' } },
+                bottom: { style: 'thin', color: { argb: 'FFD3D3D3' } },
+                right: { style: 'thin', color: { argb: 'FFD3D3D3' } }
+            };
             cell.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
 
             if (isEvento) {
