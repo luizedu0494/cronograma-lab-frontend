@@ -16,8 +16,9 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import 'dayjs/locale/pt-br';
 import AccountCircle from '@mui/icons-material/AccountCircle';
 import {
-    Menu as MenuIcon, Sun, Moon, LogOut, User, HelpCircle, UserCheck, Users, CalendarOff, Settings, Bell, ListTodo, Calendar, LayoutDashboard, ThumbsUp, PlusCircle, Download, BarChart, Bug, History, Bot, FlaskConical
+    Menu as MenuIcon, Sun, Moon, LogOut, User, HelpCircle, UserCheck, Users, CalendarOff, Settings, Bell, ListTodo, Calendar, LayoutDashboard, ThumbsUp, PlusCircle, Download, BarChart, Bug, History, Bot, FlaskConical, Search
 } from 'lucide-react';
+
 
 import PromptInstalacaoPWA from './componentes/comuns/PromptInstalacaoPWA';
 
@@ -61,6 +62,8 @@ const HistoricoAulas = lazyWithRetry(() => import('./pages/Cronograma/HistoricoA
 const AssistenteIA = lazyWithRetry(() => import('./pages/IA/AssistenteIA'));
 const CalendarioRevisoesTecnico = lazyWithRetry(() => import('./pages/Cronograma/CalendarioRevisoesTecnico'));
 const UploadCronogramaExterno = lazyWithRetry(() => import('./UploadCronogramaExterno'));
+const GerenciarEventosAvancado = lazyWithRetry(() => import('./GerenciarEventosAvancado'));
+const ConsultaDisponibilidade = lazyWithRetry(() => import('./ConsultaDisponibilidade'));
 
 const LoadingFallback = () => (<Box display="flex" justifyContent="center" alignItems="center" height="80vh"><CircularProgress /></Box>);
 const MainLayout = () => (<Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}><Outlet /></Container>);
@@ -160,14 +163,17 @@ function App() {
         ...(role === 'coordenador' && !approvalPending ? [
             <MenuItem key="agend" component={Link} to="/propor-aula" onClick={handleMenuClose}><PlusCircle size={18} style={menuIconStyle}/> Agendar Aula</MenuItem>,
             <MenuItem key="agend-evento" component={Link} to="/propor-evento" onClick={handleMenuClose}><PlusCircle size={18} style={menuIconStyle}/> Agendar Evento</MenuItem>,
+            <MenuItem key="gerenciar-eventos-avancado" component={Link} to="/gerenciar-eventos-avancado" onClick={handleMenuClose}><CalendarOff size={18} style={menuIconStyle}/> Gerenciar Eventos</MenuItem>,
+            <MenuItem key="consulta-disponibilidade" component={Link} to="/consulta-disponibilidade" onClick={handleMenuClose}><Search size={18} style={menuIconStyle}/> Consulta Disponibilidade</MenuItem>,
             <MenuItem key="gerenciar-menu" onClick={handleCoordenadorMenuOpen}><ListTodo size={18} style={menuIconStyle}/> Gerenciar</MenuItem>,
             <MenuItem key="users" component={Link} to="/gerenciar-usuarios" onClick={handleMenuClose}><Users size={18} style={menuIconStyle}/> Usuários</MenuItem>,
             <MenuItem key="importar-externo" component={Link} to="/importar-cronograma-externo" onClick={handleMenuClose}><Download size={18} style={menuIconStyle}/> Importar Cronograma Externo</MenuItem>,
-            <MenuItem key="periodos" component={Link} to="/gerenciar-periodos" onClick={handleMenuClose}><CalendarOff size={18} style={menuIconStyle}/> Eventos</MenuItem>,
+            <MenuItem key="periodos" component={Link} to="/gerenciar-periodos" onClick={handleMenuClose}><CalendarOff size={18} style={menuIconStyle}/> Periodos Eventos</MenuItem>,
             <MenuItem key="gerenciar-avisos" component={Link} to="/gerenciar-avisos" onClick={handleMenuClose}><Settings size={18} style={menuIconStyle}/> Gerenciar Avisos</MenuItem>,
         ] : []),
         ...(role === 'tecnico' && !approvalPending ? [
             <MenuItem key="aula" component={Link} to="/propor-aula" onClick={handleMenuClose}><PlusCircle size={18} style={menuIconStyle}/> Propor Atividade</MenuItem>,
+            <MenuItem key="consulta-disponibilidade-tec" component={Link} to="/consulta-disponibilidade" onClick={handleMenuClose}><Search size={18} style={menuIconStyle}/> Consulta Disponibilidade</MenuItem>,
             <MenuItem key="design" component={Link} to="/minhas-designacoes" onClick={handleMenuClose}><UserCheck size={18} style={menuIconStyle}/> Designações</MenuItem>,
             <MenuItem key="prop" component={Link} to="/minhas-propostas" onClick={handleMenuClose}><ListTodo size={18} style={menuIconStyle}/> Minhas Propostas</MenuItem>,
             <MenuItem key="revisoes" component={Link} to="/revisoes" onClick={handleMenuClose}><FlaskConical size={18} style={menuIconStyle}/> Revisões</MenuItem>,
@@ -221,12 +227,14 @@ function App() {
                                     <Route path="/avisos" element={<PainelAvisos />} />
                                     <Route path="/ajuda" element={<AjudaFAQ />} />
                                     <Route path="/perfil" element={<ConfiguracoesPerfil />} />
+                                    <Route path="/consulta-disponibilidade" element={<ConsultaDisponibilidade />} />
                                     {role === 'tecnico' && (<><Route path="/minhas-propostas" element={<MinhasPropostas />} /><Route path="/minhas-designacoes" element={<MinhasDesignacoes />} /><Route path="/revisoes" element={<CalendarioRevisoesTecnico userInfo={userProfileData} />} /></>)}
                                     {role === 'coordenador' && (<>
                                         <Route path="/gerenciar-aprovacoes" element={<GerenciarAprovacoes />} />
                                         <Route path="/gerenciar-usuarios" element={<GerenciarUsuarios />} />
                                         <Route path="/gerenciar-avisos" element={<GerenciarAvisos />} />
                                         <Route path="/gerenciar-periodos" element={<GerenciarPeriodos />} />
+                                        <Route path="/gerenciar-eventos-avancado" element={<GerenciarEventosAvancado userInfo={userProfileData} />} />
                                         <Route path="/analise-aulas" element={<AnaliseAulas />} />
                                         <Route path="/analise-eventos" element={<AnaliseEventos />} />
                                         <Route path="/verificar-integridade" element={<VerificarIntegridadeDados />} />
@@ -235,6 +243,7 @@ function App() {
                                     <Route path="/assistente-ia" element={<AssistenteIA userInfo={userProfileData} currentUser={user} mode={darkMode ? 'dark' : 'light'} />} />
                                     {isCoordenadorOrTecnico && (<Route path="/download-cronograma" element={<DownloadCronograma />} />)}
                                     <Route path="*" element={<Navigate to="/" />} />
+
                                 </Route>
                             )}
                         </Routes>

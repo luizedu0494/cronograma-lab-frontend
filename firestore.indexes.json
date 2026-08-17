@@ -1,0 +1,29 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "eventosManutencao",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "laboratorio", "order": "ASCENDING" },
+        { "fieldPath": "dataInicio", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "eventosManutencao",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tipo", "order": "ASCENDING" },
+        { "fieldPath": "dataInicio", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "eventosManutencao",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "dataInicio", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}
