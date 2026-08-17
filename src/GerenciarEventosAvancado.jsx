@@ -678,8 +678,9 @@ export default function GerenciarEventosAvancado({ userInfo }) {
                     onChange={(e) => setFormData(prev => ({ ...prev, tipoLaboratorio: e.target.value, laboratorios: ['Todos'] }))}
                   >
                     <MenuItem value="Todos">Todas as áreas</MenuItem>
-                    {TIPOS_LABORATORIO.map(t => <MenuItem key={t} value={t}>{t}</MenuItem>)}
+                    {TIPOS_LABORATORIO.map(t => <MenuItem key={t.id} value={t.id}>{t.name}</MenuItem>)}
                   </Select>
+
                 </FormControl>
               </Grid>
               <Grid item xs={12} sm={6}>

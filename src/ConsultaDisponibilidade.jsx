@@ -346,19 +346,20 @@ export default function ConsultaDisponibilidade() {
                   <Typography variant="subtitle2" fontWeight="bold">
                     4. LaboratóriosAlvo ({laboratorios.length} selecionados)
                   </Typography>
-                  <Box display="flex" gap={0.5}>
+                  <Box display="flex" gap={0.5} flexWrap="wrap">
                     {TIPOS_LABORATORIO.map(tipo => (
                       <Button
-                        key={tipo}
+                        key={tipo.id}
                         size="small"
                         variant="text"
-                        onClick={() => handleSelectAreaLabs(tipo)}
+                        onClick={() => handleSelectAreaLabs(tipo.id)}
                         sx={{ fontSize: '0.7rem', p: 0.5 }}
                       >
-                        {tipo}
+                        {tipo.name}
                       </Button>
                     ))}
                   </Box>
+
                 </Box>
                 <Box display="flex" flexWrap="wrap" gap={0.8} maxHeight={140} sx={{ overflowY: 'auto', p: 1, border: '1px solid #e0e0e0', borderRadius: 1, backgroundColor: '#fff' }}>
                   {LISTA_LABORATORIOS.map((lab) => (
