@@ -303,7 +303,18 @@ function DownloadCronograma() {
 
             const totalAulas = aulas.length;
             const totalEventos = eventos.length;
-            const infoTotal = `(${totalAulas} aula(s) + ${totalEventos} evento(s))`;
+
+            // Construção dinâmica e concisa da contagem
+            let partesContagem = [];
+            if (totalAulas > 0) partesContagem.push(`${totalAulas} aula(s)`);
+            if (totalEventos > 0) {
+                // Se houver filtro específico de tipo de evento (ex: Giro), mencionar o tipo exato
+                const tiposEvtStr = filtros.tiposEvento.length > 0
+                    ? filtros.tiposEvento.join(', ')
+                    : 'evento(s)';
+                partesContagem.push(`${totalEventos} ${tiposEvtStr}`);
+            }
+            const infoTotal = partesContagem.length > 0 ? `(${partesContagem.join(' + ')})` : '';
 
             if (format === 'excel') {
                 const { gerarRelatorioExcelUnificado } = await import('./utils/downloadHelper');
@@ -335,7 +346,6 @@ function DownloadCronograma() {
                 let y = 12;
 
                 // --- 1. CABEÇALHO INSTITUCIONAL ---
-                // Carregar Logo do CESMAC
                 try {
                     const img = new Image();
                     img.src = cesmacLogo;
@@ -343,7 +353,6 @@ function DownloadCronograma() {
                         img.onload = resolve;
                         img.onerror = resolve;
                     });
-                    // Desenhar Logo (proporção mantida)
                     doc.addImage(img, 'PNG', margin, y, 38, 10);
                 } catch (e) {
                     console.warn("Logo não pôde ser carregada no PDF", e);
@@ -362,7 +371,7 @@ function DownloadCronograma() {
 
                 y += 15;
 
-                // Faixa de resumo de KPIs
+                // Faixa de resumo de KPIs dinâmico
                 doc.setFillColor(245, 247, 250);
                 doc.setDrawColor(220, 225, 230);
                 doc.roundedRect(margin, y, contentWidth, 8, 1, 1, 'FD');
@@ -374,7 +383,18 @@ function DownloadCronograma() {
 
                 doc.setFont('helvetica', 'normal');
                 doc.setTextColor(90, 90, 90);
-                doc.text(`• ${aulas.length} aula(s) aprovada(s)   • ${eventos.length} evento(s) de manutenção/bloqueio`, margin + 40, y + 5.5);
+                
+                // Texto limpo sem listar "0 aulas" quando só houver eventos e vice-versa
+                let resumoDetalhadoText = '';
+                if (totalAulas > 0 && totalEventos > 0) {
+                    resumoDetalhadoText = `• ${totalAulas} aula(s) aprovada(s)   • ${totalEventos} evento(s)`;
+                } else if (totalAulas > 0) {
+                    resumoDetalhadoText = `• ${totalAulas} aula(s) aprovada(s)`;
+                } else if (totalEventos > 0) {
+                    const rotuloEvento = filtros.tiposEvento.length > 0 ? `evento(s) de ${filtros.tiposEvento.join(', ')}` : 'evento(s)';
+                    resumoDetalhadoText = `• ${totalEventos} ${rotuloEvento}`;
+                }
+                doc.text(resumoDetalhadoText, margin + 40, y + 5.5);
 
                 y += 12;
 
