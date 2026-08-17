@@ -75,12 +75,14 @@ function ProporEventoForm({ userInfo, currentUser, initialDate, onSuccess, onCan
     const infoOcupacao = React.useMemo(() => {
         const map = {};
         const laboratoriosParaVerificar = formData.dynamicLabs.flatMap(lab => lab.laboratorios).filter(Boolean);
+
+        // Se nenhum laboratório foi selecionado ainda na Seção 3, não bloqueia horários prematuramente no dropdown
+        if (laboratoriosParaVerificar.length === 0) return map;
+
         const todosConflitos = [...(ocupacaoDoDia.aulas || []), ...(ocupacaoDoDia.eventos || [])];
 
         todosConflitos.forEach(c => {
-            const labMatch = laboratoriosParaVerificar.length === 0 || 
-                             c.laboratorio === 'Todos' || 
-                             laboratoriosParaVerificar.includes(c.laboratorio);
+            const labMatch = c.laboratorio === 'Todos' || laboratoriosParaVerificar.includes(c.laboratorio);
             if (labMatch) {
                 map[c.horario] = c.titulo || c.assunto || 'Ocupado';
             }
@@ -118,9 +120,10 @@ function ProporEventoForm({ userInfo, currentUser, initialDate, onSuccess, onCan
             setSecaoDataCompleta(true);
             return;
         }
-        const dataCompleta = Boolean(formData.dataInicio) && formData.horarioSlotString.length > 0;
+        // Liberação da Seção 3 (Laboratórios) depende SOMENTE da escolha da Data na Seção 2
+        const dataCompleta = Boolean(formData.dataInicio);
         setSecaoDataCompleta(dataCompleta && secao1Completa);
-    }, [formData.dataInicio, formData.horarioSlotString, secao1Completa, eventoId]);
+    }, [formData.dataInicio, secao1Completa, eventoId]);
 
     useEffect(() => {
         if (eventoId) {
@@ -675,7 +678,7 @@ function ProporEventoForm({ userInfo, currentUser, initialDate, onSuccess, onCan
                                 </Box>
                                 {!secaoDataCompleta && !isEditMode && (
                                     <Alert severity="warning" sx={{ mb: 2, mt: 1 }}>
-                                        <strong>Seção bloqueada!</strong> Selecione uma data e pelo menos um horário na Seção 2 para desbloquear a escolha de laboratórios.
+                                        <strong>Seção bloqueada!</strong> Selecione uma data na Seção 2 para desbloquear a escolha de laboratórios.
                                     </Alert>
                                 )}
                                 {formData.dynamicLabs.map((labSelection, index) => {
