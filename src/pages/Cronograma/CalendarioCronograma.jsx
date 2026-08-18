@@ -885,12 +885,14 @@ function CalendarioCronograma({ userInfo }) {
                                     </FormControl>
                                 </Grid>
                                 <Grid item xs={12} md={3}>
-                                    <FormControl fullWidth size="small">
-                                        <InputLabel>Cursos</InputLabel>
-                                        <Select multiple value={filtros.cursos} onChange={(e) => setFiltros({...filtros, cursos: e.target.value})} input={<OutlinedInput label="Cursos" />} renderValue={(selected) => <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>{selected.map(v => <Chip key={v} label={LISTA_CURSOS.find(lc => lc.value === v)?.label || v} size="small" />)}</Box>}>
-                                            {LISTA_CURSOS.map(c => <MenuItem key={c.value} value={c.value}>{c.label}</MenuItem>)}
-                                        </Select>
-                                    </FormControl>
+                                    <Tooltip title={abaCalendario === 'grade' ? "Filtro de Cursos não se aplica à Grade de Disponibilidade" : ""}>
+                                        <FormControl fullWidth size="small" disabled={abaCalendario === 'grade'}>
+                                            <InputLabel>Cursos</InputLabel>
+                                            <Select multiple value={filtros.cursos} onChange={(e) => setFiltros({...filtros, cursos: e.target.value})} input={<OutlinedInput label="Cursos" />} renderValue={(selected) => <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>{selected.map(v => <Chip key={v} label={LISTA_CURSOS.find(lc => lc.value === v)?.label || v} size="small" />)}</Box>}>
+                                                {LISTA_CURSOS.map(c => <MenuItem key={c.value} value={c.value}>{c.label}</MenuItem>)}
+                                            </Select>
+                                        </FormControl>
+                                    </Tooltip>
                                 </Grid>
                                 <Grid item xs={12} md={2}>
                                     <FormControl fullWidth size="small">
@@ -903,19 +905,21 @@ function CalendarioCronograma({ userInfo }) {
                                     </FormControl>
                                 </Grid>
                                 <Grid item xs={12} md={2}>
-                                    <FormControl fullWidth size="small">
-                                        <InputLabel>Tipo</InputLabel>
-                                        <Select
-                                            value={filtros.tipoConteudo || 'todos'}
-                                            onChange={(e) => setFiltros({...filtros, tipoConteudo: e.target.value})}
-                                            label="Tipo"
-                                        >
-                                            <MenuItem value="todos">📅 Todos</MenuItem>
-                                            <MenuItem value="aula">🎓 Só Aulas</MenuItem>
-                                            <MenuItem value="revisao">📖 Só Revisões</MenuItem>
-                                            <MenuItem value="prova">📝 Só Provas</MenuItem>
-                                        </Select>
-                                    </FormControl>
+                                    <Tooltip title={abaCalendario === 'grade' ? "Filtro de Tipo de Aula não se aplica à Grade de Disponibilidade" : ""}>
+                                        <FormControl fullWidth size="small" disabled={abaCalendario === 'grade'}>
+                                            <InputLabel>Tipo</InputLabel>
+                                            <Select
+                                                value={filtros.tipoConteudo || 'todos'}
+                                                onChange={(e) => setFiltros({...filtros, tipoConteudo: e.target.value})}
+                                                label="Tipo"
+                                            >
+                                                <MenuItem value="todos">📅 Todos</MenuItem>
+                                                <MenuItem value="aula">🎓 Só Aulas</MenuItem>
+                                                <MenuItem value="revisao">📖 Só Revisões</MenuItem>
+                                                <MenuItem value="prova">📝 Só Provas</MenuItem>
+                                            </Select>
+                                        </FormControl>
+                                    </Tooltip>
                                 </Grid>
                                 <Grid item xs={12} md={1}>
                                     <Button fullWidth variant="outlined" color="inherit" onClick={limparFiltros} startIcon={<ClearAllIcon />}>Limpar</Button>
@@ -937,7 +941,8 @@ function CalendarioCronograma({ userInfo }) {
                 {abaCalendario === 'grade' && (
                     <Box sx={{ mb: 3 }}>
                         <GradeDisponibilidade
-                            aulas={aulas}
+                            aulas={aulasFiltradas}
+                            eventos={eventosFiltrados}
                             dataFoco={currentDate.format('YYYY-MM-DD')}
                             tiposLab={filtros.laboratorio}
                             perspectivaFiltro={perspectiva}
