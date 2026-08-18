@@ -555,21 +555,21 @@ function CalendarioCronograma({ userInfo }) {
                 const turnoItem = hora < 12 ? 'Manhã' : hora < 18 ? 'Tarde' : 'Noite';
                 matchTurno = filtros.turno.includes(turnoItem);
             }
-            // Filtro de tipo: aulas normais vs revisões
+            // Filtro de tipo: aulas normais, revisões, provas e eventos/manutenção
             let matchTipo = true;
-            if (!isEvento && filtros.tipoConteudo && filtros.tipoConteudo !== 'todos') {
-                if (filtros.tipoConteudo === 'revisao')  matchTipo = !!item.isRevisao && !item.isProva;
-                if (filtros.tipoConteudo === 'prova')    matchTipo = !!item.isProva;
-                if (filtros.tipoConteudo === 'aula')     matchTipo = !item.isRevisao && !item.isProva;
-                if (filtros.tipoConteudo === 'pendente') matchTipo = item.status === 'pendente';
+            if (filtros.tipoConteudo && filtros.tipoConteudo !== 'todos') {
+                if (filtros.tipoConteudo === 'evento')   matchTipo = isEvento;
+                else if (isEvento)                        matchTipo = false; // Se não escolheu 'evento' nem 'todos', esconde eventos
+                else if (filtros.tipoConteudo === 'revisao')  matchTipo = !!item.isRevisao && !item.isProva;
+                else if (filtros.tipoConteudo === 'prova')    matchTipo = !!item.isProva;
+                else if (filtros.tipoConteudo === 'aula')     matchTipo = !item.isRevisao && !item.isProva;
+                else if (filtros.tipoConteudo === 'pendente') matchTipo = item.status === 'pendente';
             }
 
             // Filtro de Perspectiva
-            // No cronograma de cartões, todos os cartões representam aulas agendadas (ocupações).
-            // Ao filtrar por 'livres', alternamos para a Grade de Disponibilidade onde as vagas são visualizadas.
             let matchPerspectiva = true;
             if (perspectiva === 'ocupados') {
-                matchPerspectiva = true; // Todos os cartões de aula são ocupações
+                matchPerspectiva = true;
             }
 
             return matchLab && matchCurso && matchAssunto && matchTurno && matchTipo && matchPerspectiva;
@@ -813,6 +813,7 @@ function CalendarioCronograma({ userInfo }) {
                                     <MenuItem value="aula">🎓 Aulas</MenuItem>
                                     <MenuItem value="revisao">📖 Revisões</MenuItem>
                                     <MenuItem value="prova">📝 Provas</MenuItem>
+                                    <MenuItem value="evento">🛠️ Eventos / Manutenção</MenuItem>
                                     {userInfo?.role === 'coordenador' && (
                                         <MenuItem value="pendente">⏳ Pendentes de Aprovação</MenuItem>
                                     )}
@@ -946,6 +947,7 @@ function CalendarioCronograma({ userInfo }) {
                                                 <MenuItem value="aula">🎓 Só Aulas</MenuItem>
                                                 <MenuItem value="revisao">📖 Só Revisões</MenuItem>
                                                 <MenuItem value="prova">📝 Só Provas</MenuItem>
+                                                <MenuItem value="evento">🛠️ Só Eventos / Manutenção</MenuItem>
                                             </Select>
                                         </FormControl>
                                     </Tooltip>
