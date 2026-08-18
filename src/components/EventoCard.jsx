@@ -87,6 +87,7 @@ const EventoCard = ({ evento, onEdit, onDelete, isCoordenador, isSelectionMode, 
                 onClick={handleCardClick} 
                 sx={{ 
                     p: 1.5, 
+                    pl: isSelectionMode ? 5 : 1.5,
                     width: '100%', 
                     display: 'block', 
                     textAlign: 'left', 
