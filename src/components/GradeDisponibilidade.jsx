@@ -8,6 +8,8 @@ import {
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
 import dayjs from 'dayjs';
 import { LISTA_LABORATORIOS } from '../constants/laboratorios';
 import { toDataLocal, toHorariosArray } from '../utils/dateHelper';
@@ -38,7 +40,12 @@ export default function GradeDisponibilidade({
   tiposLab = [],
   perspectivaFiltro = 'todos',
   onCelulaClick,
-  horariosDestacados = []
+  horariosDestacados = [],
+  isCoordenador = false,
+  onEditAula,
+  onDeleteAula,
+  onEditEvento,
+  onDeleteEvento
 }) {
   const [modalDetalhes, setModalDetalhes] = useState(null);
   const [dataSelecionada, setDataSelecionada] = useState(dataFoco);
@@ -402,6 +409,42 @@ export default function GradeDisponibilidade({
                       <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
                         <strong>Obs:</strong> {item.observacoes || item.descricao}
                       </Typography>
+                    )}
+                    {isCoordenador && (
+                      <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          color="primary"
+                          startIcon={<EditIcon />}
+                          onClick={() => {
+                            setModalDetalhes(null);
+                            if (isEvento) {
+                              onEditEvento && onEditEvento(item);
+                            } else {
+                              onEditAula && onEditAula(item);
+                            }
+                          }}
+                        >
+                          Editar
+                        </Button>
+                        <Button
+                          size="small"
+                          variant="contained"
+                          color="error"
+                          startIcon={<DeleteIcon />}
+                          onClick={() => {
+                            setModalDetalhes(null);
+                            if (isEvento) {
+                              onDeleteEvento && onDeleteEvento(item);
+                            } else {
+                              onDeleteAula && onDeleteAula(item);
+                            }
+                          }}
+                        >
+                          Excluir
+                        </Button>
+                      </Box>
                     )}
                   </Box>
                 );

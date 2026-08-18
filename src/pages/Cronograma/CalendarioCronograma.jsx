@@ -823,15 +823,18 @@ function CalendarioCronograma({ userInfo }) {
                             <Button variant={filtrosVisiveis ? "contained" : "outlined"} startIcon={<FilterListIcon />} onClick={() => setFiltrosVisiveis(!filtrosVisiveis)}>Outros Filtros</Button>
                             
                             {userInfo?.role === 'coordenador' && (
-                                <Tooltip title="Gerenciamento em Massa">
-                                    <Button 
-                                        onClick={() => setIsSelectionMode(!isSelectionMode)} 
-                                        variant={isSelectionMode ? "contained" : "outlined"} 
-                                        color="secondary" 
-                                        startIcon={isSelectionMode ? <CloseIcon /> : <CheckBoxIcon />}
-                                    >
-                                        {isSelectionMode ? "Cancelar" : "Selecionar"}
-                                    </Button>
+                                <Tooltip title={abaCalendario === 'grade' ? "A seleção em lote está disponível na visão de Cronograma em cartões" : "Gerenciamento em Massa"}>
+                                    <span>
+                                        <Button 
+                                            onClick={() => setIsSelectionMode(!isSelectionMode)} 
+                                            variant={isSelectionMode ? "contained" : "outlined"} 
+                                            color="secondary" 
+                                            disabled={abaCalendario === 'grade'}
+                                            startIcon={isSelectionMode ? <CloseIcon /> : <CheckBoxIcon />}
+                                        >
+                                            {isSelectionMode ? "Cancelar" : "Selecionar"}
+                                        </Button>
+                                    </span>
                                 </Tooltip>
                             )}
                             
@@ -935,8 +938,8 @@ function CalendarioCronograma({ userInfo }) {
                                     </Tooltip>
                                 </Grid>
                                 <Grid item xs={12} md={2}>
-                                    <Tooltip title={abaCalendario === 'grade' ? "Filtro de Tipo de Aula não se aplica à Grade de Disponibilidade" : ""}>
-                                        <FormControl fullWidth size="small" disabled={abaCalendario === 'grade'}>
+                                     <Tooltip title={abaCalendario === 'grade' ? "Filtra quais tipos de agendamento (Aulas, Provas, Revisões, Eventos) contam como ocupação na Grade" : ""}>
+                                         <FormControl fullWidth size="small">
                                             <InputLabel>Tipo</InputLabel>
                                             <Select
                                                 value={filtros.tipoConteudo || 'todos'}
@@ -977,6 +980,16 @@ function CalendarioCronograma({ userInfo }) {
                             dataFoco={currentDate.format('YYYY-MM-DD')}
                             tiposLab={filtros.laboratorio}
                             perspectivaFiltro={perspectiva}
+                            isCoordenador={userInfo?.role === 'coordenador'}
+                            onEditAula={(aula) => { setAulaParaAcao(aula); setIsEditModalOpen(true); }}
+                            onDeleteAula={(aula) => { setAulaParaAcao(aula); setIsDeleteModalOpen(true); }}
+                            onEditEvento={(evento) => { setEventoParaAcao(evento); setIsEventModalOpen(true); }}
+                            onDeleteEvento={async (evento) => {
+                                if (window.confirm("Deseja realmente excluir este evento?")) {
+                                    await deleteDoc(doc(db, 'eventosManutencao', evento.id));
+                                    fetchDados();
+                                }
+                            }}
                             onCelulaClick={({ labId, labNome, horario, ocupado }) => {
                                 if (ocupado) return;
                                 // Apenas coordenadores agendam direto clicando na grade.
