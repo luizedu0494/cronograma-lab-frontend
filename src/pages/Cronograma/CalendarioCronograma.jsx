@@ -874,7 +874,9 @@ function CalendarioCronograma({ userInfo }) {
 
                             <Grid container spacing={2}>
                                 <Grid item xs={12} md={3}>
-                                    <TextField fullWidth size="small" label="Buscar Assunto" value={filtros.assunto} onChange={(e) => setFiltros({...filtros, assunto: e.target.value})} InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> }} />
+                                    <Tooltip title={abaCalendario === 'grade' ? "Filtro de Assunto não se aplica à Grade de Disponibilidade" : ""}>
+                                        <TextField fullWidth size="small" label="Buscar Assunto" disabled={abaCalendario === 'grade'} value={filtros.assunto} onChange={(e) => setFiltros({...filtros, assunto: e.target.value})} InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> }} />
+                                    </Tooltip>
                                 </Grid>
                                 <Grid item xs={12} md={3}>
                                     <FormControl fullWidth size="small">
@@ -895,14 +897,16 @@ function CalendarioCronograma({ userInfo }) {
                                     </Tooltip>
                                 </Grid>
                                 <Grid item xs={12} md={2}>
-                                    <FormControl fullWidth size="small">
-                                        <InputLabel>Turno</InputLabel>
-                                        <Select multiple value={filtros.turno} onChange={(e) => setFiltros({...filtros, turno: e.target.value})} input={<OutlinedInput label="Turno" />} renderValue={(selected) => <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>{selected.map(v => <Chip key={v} label={v} size="small" />)}</Box>}>
-                                            <MenuItem value="Manhã">🌅 Manhã</MenuItem>
-                                            <MenuItem value="Tarde">☀️ Tarde</MenuItem>
-                                            <MenuItem value="Noite">🌙 Noite</MenuItem>
-                                        </Select>
-                                    </FormControl>
+                                    <Tooltip title={abaCalendario === 'grade' ? "Filtro de Turno não se aplica à Grade de Disponibilidade" : ""}>
+                                        <FormControl fullWidth size="small" disabled={abaCalendario === 'grade'}>
+                                            <InputLabel>Turno</InputLabel>
+                                            <Select multiple value={filtros.turno} onChange={(e) => setFiltros({...filtros, turno: e.target.value})} input={<OutlinedInput label="Turno" />} renderValue={(selected) => <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>{selected.map(v => <Chip key={v} label={v} size="small" />)}</Box>}>
+                                                <MenuItem value="Manhã">🌅 Manhã</MenuItem>
+                                                <MenuItem value="Tarde">☀️ Tarde</MenuItem>
+                                                <MenuItem value="Noite">🌙 Noite</MenuItem>
+                                            </Select>
+                                        </FormControl>
+                                    </Tooltip>
                                 </Grid>
                                 <Grid item xs={12} md={2}>
                                     <Tooltip title={abaCalendario === 'grade' ? "Filtro de Tipo de Aula não se aplica à Grade de Disponibilidade" : ""}>

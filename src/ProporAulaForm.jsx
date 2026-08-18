@@ -92,6 +92,7 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
 
     const [gradeAberta, setGradeAberta] = useState(false);
     const [aulasDoMesState, setAulasDoMesState] = useState([]);
+    const [eventosDoMesState, setEventosDoMesState] = useState([]);
 
     const statusLab = useCallback((labParam) => {
         if (!formData.dataInicio) return 'indefinido';
@@ -325,6 +326,7 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
                         const start = e.dataInicio instanceof Timestamp ? e.dataInicio.toDate() : new Date(e.dataInicio);
                         return dayjs(start).isAfter(dayjs(inicioDoMes)) || dayjs(start).isSame(dayjs(inicioDoMes));
                     });
+                setEventosDoMesState(eventosDoMes);
 
                 const ocupacaoPorDia = {};
                 aulasDoMes.forEach(aula => {
@@ -1147,6 +1149,7 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
                                         <AccordionDetails>
                                             <GradeDisponibilidade
                                                 aulas={aulasDoMesState}
+                                                eventos={eventosDoMesState}
                                                 dataFoco={dayjs(formData.dataInicio).format('YYYY-MM-DD')}
                                                 tiposLab={formData.dynamicLabs.map(l => l.tipo).filter(Boolean)}
                                             />
