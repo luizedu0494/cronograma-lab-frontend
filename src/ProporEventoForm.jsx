@@ -228,14 +228,27 @@ function ProporEventoForm({ userInfo, currentUser, initialDate, onSuccess, onCan
             laboratorios: labsConsulta,
         }).then(resultados => {
             const conflitos = resultados[0]?.conflitos ?? [];
-            const conflitosAulas = conflitos.filter(c => c.tipo === 'aula');
-            const conflitosEventos = conflitos.filter(c => c.tipo === 'evento' && c.id !== eventoId);
+
+            // Adaptador: ConflitoItem → shape esperado pela GradeDisponibilidade
+            const adaptarConflito = (c) => ({
+                ...c,
+                dataInicio: typeof formData.dataInicio?.toDate === 'function' ? formData.dataInicio.toDate() : formData.dataInicio,
+                horarioSlotString: c.horario,
+                laboratorioSelecionado: c.laboratorio,
+            });
+
+            const conflitosAulas = conflitos.filter(c => c.tipo === 'aula').map(adaptarConflito);
+            const conflitosEventos = conflitos
+                .filter(c => c.tipo === 'evento' && c.id !== eventoId)
+                .map(adaptarConflito);
+
             setOcupacaoDoDia({
                 aulas: conflitosAulas,
                 eventos: conflitosEventos,
             });
             const slotsOcupados = [...new Set([...conflitosAulas, ...conflitosEventos].map(c => c.horario))];
             setHorariosOcupados(slotsOcupados);
+            setGradeAberta(true);
         });
     }, [formData.dataInicio, formData.dynamicLabs, eventoId, consultarDisponibilidade]);
 
@@ -632,6 +645,25 @@ function ProporEventoForm({ userInfo, currentUser, initialDate, onSuccess, onCan
                                     </Grid>
                                 </Grid>
 
+                                {/* Resumo de Ocupação do Dia */}
+                                {formData.dataInicio && dayjs(formData.dataInicio).isValid() && (
+                                    <Alert
+                                        severity={
+                                            (ocupacaoDoDia.aulas.length + ocupacaoDoDia.eventos.length) === 0
+                                                ? 'success'
+                                                : horariosOcupados.length >= BLOCOS_HORARIO.length
+                                                ? 'error'
+                                                : 'warning'
+                                        }
+                                        sx={{ mt: 2 }}
+                                    >
+                                        {(ocupacaoDoDia.aulas.length + ocupacaoDoDia.eventos.length) === 0
+                                            ? `✅ Nenhuma ocupação encontrada em ${formData.dataInicio.format('DD/MM/YYYY')} para os laboratórios selecionados.`
+                                            : `⚠️ ${horariosOcupados.length} bloco(s) ocupado(s) em ${formData.dataInicio.format('DD/MM/YYYY')}. Consulte a grade abaixo.`
+                                        }
+                                    </Alert>
+                                )}
+
                                 {/* Grade de Disponibilidade Informativa / Auxiliar */}
                                 {formData.dataInicio && dayjs(formData.dataInicio).isValid() && (
                                     <Accordion sx={{ mt: 3 }} expanded={gradeAberta} onChange={() => setGradeAberta(!gradeAberta)}>
@@ -652,6 +684,19 @@ function ProporEventoForm({ userInfo, currentUser, initialDate, onSuccess, onCan
                                                     eventos={ocupacaoDoDia.eventos}
                                                     dataFoco={formData.dataInicio?.format('YYYY-MM-DD')}
                                                     tiposLab={formData.dynamicLabs.map(l => l.tipo).filter(Boolean)}
+                                                    horariosDestacados={formData.horarioSlotString}
+                                                    onCelulaClick={({ horario, ocupado }) => {
+                                                        if (ocupado) return;
+                                                        setFormData(prev => {
+                                                            const jaTem = prev.horarioSlotString.includes(horario);
+                                                            return {
+                                                                ...prev,
+                                                                horarioSlotString: jaTem
+                                                                    ? prev.horarioSlotString.filter(h => h !== horario)
+                                                                    : [...prev.horarioSlotString, horario],
+                                                            };
+                                                        });
+                                                    }}
                                                 />
                                             )}
                                         </AccordionDetails>

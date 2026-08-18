@@ -4,7 +4,7 @@ import {
   TableHead, TableRow, Paper, Chip, Tooltip, Typography, Box,
   Dialog, DialogTitle, DialogContent, DialogActions, Button, Divider,
   Accordion, AccordionSummary, AccordionDetails, useMediaQuery, useTheme,
-  ToggleButtonGroup, ToggleButton
+  ToggleButtonGroup, ToggleButton, FormControlLabel, Switch
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
@@ -29,6 +29,7 @@ const BLOCOS = [
  * @param {Array}  tiposLab   - Filtro opcional de tipos de laboratório
  * @param {string} perspectivaFiltro - 'todos' | 'livres' | 'ocupados'
  * @param {Function} onCelulaClick - Callback quando o usuário clica em uma célula
+ * @param {Array}  horariosDestacados - Lista de horarios selecionados para destacar
  */
 export default function GradeDisponibilidade({
   aulas = [],
@@ -36,10 +37,12 @@ export default function GradeDisponibilidade({
   dataFoco = dayjs().format('YYYY-MM-DD'),
   tiposLab = [],
   perspectivaFiltro = 'todos',
-  onCelulaClick
+  onCelulaClick,
+  horariosDestacados = []
 }) {
   const [modalDetalhes, setModalDetalhes] = useState(null);
   const [dataSelecionada, setDataSelecionada] = useState(dataFoco);
+  const [apenasComVaga, setApenasComVaga] = useState(false);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
@@ -92,10 +95,15 @@ export default function GradeDisponibilidade({
       });
     };
 
+    const extrairDataLocal = (val) => {
+      if (!val) return dataSelecionada;
+      return toDataLocal(typeof val?.toDate === 'function' ? val.toDate() : val);
+    };
+
     aulas
       .filter(a => {
         if (!dataSelecionada) return true;
-        const dataAula = a.dataInicio ? toDataLocal(a.dataInicio) : dataSelecionada;
+        const dataAula = a.dataInicio ? extrairDataLocal(a.dataInicio) : dataSelecionada;
         return dataAula === dataSelecionada;
       })
       .forEach(a => registrar(a.laboratorioSelecionado || a.laboratorio, toHorariosArray(a.horarioSlotString || a.horario), a, 'aula'));
@@ -104,7 +112,7 @@ export default function GradeDisponibilidade({
       .filter(e => e.status !== 'cancelado')
       .filter(e => {
         if (!dataSelecionada) return true;
-        const dataEvento = e.dataInicio ? toDataLocal(e.dataInicio) : dataSelecionada;
+        const dataEvento = e.dataInicio ? extrairDataLocal(e.dataInicio) : dataSelecionada;
         return dataEvento === dataSelecionada;
       })
       .forEach(e => registrar(e.laboratorio, toHorariosArray(e.horarioSlotString || e.horario), e, 'evento'));
@@ -119,6 +127,14 @@ export default function GradeDisponibilidade({
   const isOcupado = (lab, horario) => {
     return getAulasDaCelula(lab, horario).length > 0;
   };
+
+  // Filtro de labs com vaga
+  const labsParaRenderizar = useMemo(() => {
+    if (!apenasComVaga) return labsVisiveis;
+    return labsVisiveis.filter(lab =>
+      BLOCOS.some(b => !isOcupado(lab, b.value))
+    );
+  }, [labsVisiveis, apenasComVaga, mapaDetalhes]);
 
   const handleCellClick = (lab, bloco) => {
     const aulasEncontradas = getAulasDaCelula(lab, bloco.value);
@@ -138,6 +154,22 @@ export default function GradeDisponibilidade({
 
   return (
     <Box sx={{ mt: 1 }}>
+      {/* Legenda visual de cores */}
+      <Box sx={{ display: 'flex', gap: 2, mb: 1.5, flexWrap: 'wrap', alignItems: 'center' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+          <Box sx={{ width: 14, height: 14, borderRadius: 0.5, bgcolor: 'success.light' }} />
+          <Typography variant="caption" color="text.secondary">Livre</Typography>
+        </Box>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+          <Box sx={{ width: 14, height: 14, borderRadius: 0.5, bgcolor: 'error.light' }} />
+          <Typography variant="caption" color="text.secondary">Ocupado (Aula/Evento)</Typography>
+        </Box>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+          <Box sx={{ width: 14, height: 14, borderRadius: 0.5, border: '2px solid #1976d2' }} />
+          <Typography variant="caption" color="text.secondary">Selecionado no Form</Typography>
+        </Box>
+      </Box>
+
       {/* Barra de Seleção de Dia da Semana da Grade */}
       <Paper elevation={1} sx={{ p: 1.5, mb: 2, borderRadius: 2, bgcolor: 'background.paper', border: '1px solid divider' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap', justifyContent: 'space-between' }}>
@@ -152,75 +184,101 @@ export default function GradeDisponibilidade({
               </Typography>
             </Box>
           </Box>
-          <ToggleButtonGroup
-            value={dataSelecionada}
-            exclusive
-            onChange={(_, novaData) => novaData && setDataSelecionada(novaData)}
-            size="small"
-            color="primary"
-          >
-            {diasDaSemana.map(d => (
-              <ToggleButton key={d.iso} value={d.iso} sx={{ px: 1.5, py: 0.5, fontSize: '0.75rem', fontWeight: 600 }}>
-                {d.label}
-              </ToggleButton>
-            ))}
-          </ToggleButtonGroup>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+            <FormControlLabel
+              control={
+                <Switch
+                  size="small"
+                  checked={apenasComVaga}
+                  onChange={e => setApenasComVaga(e.target.checked)}
+                />
+              }
+              label={<Typography variant="caption" fontWeight={600}>Só labs com vaga</Typography>}
+            />
+            <ToggleButtonGroup
+              value={dataSelecionada}
+              exclusive
+              onChange={(_, novaData) => novaData && setDataSelecionada(novaData)}
+              size="small"
+              color="primary"
+            >
+              {diasDaSemana.map(d => (
+                <ToggleButton key={d.iso} value={d.iso} sx={{ px: 1.5, py: 0.5, fontSize: '0.75rem', fontWeight: 600 }}>
+                  {d.label}
+                </ToggleButton>
+              ))}
+            </ToggleButtonGroup>
+          </Box>
         </Box>
       </Paper>
 
       {isMobile ? (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-          {labsVisiveis.map(lab => (
-            <Accordion key={lab.id} variant="outlined" sx={{ borderRadius: 1 }}>
-              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                <Typography variant="subtitle2" fontWeight={600}>{lab.name}</Typography>
-              </AccordionSummary>
-              <AccordionDetails sx={{ pt: 0 }}>
-                <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
-                  {BLOCOS.map(b => {
-                    const ocupado = isOcupado(lab, b.value);
-                    const ocultarPorPerspectiva = (perspectivaFiltro === 'livres' && ocupado) || (perspectivaFiltro === 'ocupados' && !ocupado);
-                    if (ocultarPorPerspectiva) return null;
-                    return (
-                      <Paper
-                        key={b.value}
-                        variant="outlined"
-                        onClick={() => handleCellClick(lab, b)}
-                        sx={{
-                          p: 1,
-                          textAlign: 'center',
-                          cursor: 'pointer',
-                          bgcolor: ocupado ? 'rgba(239, 83, 80, 0.08)' : 'rgba(76, 175, 80, 0.08)',
-                          borderColor: ocupado ? 'error.light' : 'success.light',
-                          '&:hover': { bgcolor: ocupado ? 'rgba(239, 83, 80, 0.16)' : 'rgba(76, 175, 80, 0.16)' }
-                        }}
-                      >
-                        <Typography variant="caption" display="block" fontWeight={600}>
-                          {b.label}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary" display="block" sx={{ fontSize: '0.68rem', mb: 0.5 }}>
-                          {b.value}
-                        </Typography>
-                        <Chip
-                          label={ocupado ? 'Ocupado' : 'Livre'}
-                          color={ocupado ? 'error' : 'success'}
-                          size="small"
-                          sx={{ height: 18, fontSize: '0.65rem' }}
-                        />
-                      </Paper>
-                    );
-                  })}
-                </Box>
-              </AccordionDetails>
-            </Accordion>
-          ))}
+          {labsParaRenderizar.map(lab => {
+            const livresCount = BLOCOS.filter(b => !isOcupado(lab, b.value)).length;
+            return (
+              <Accordion key={lab.id} variant="outlined" sx={{ borderRadius: 1 }}>
+                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', pr: 1 }}>
+                    <Typography variant="subtitle2" fontWeight={600}>{lab.name}</Typography>
+                    <Chip
+                      label={`${livresCount}/6 livres`}
+                      size="small"
+                      color={livresCount === 0 ? 'error' : livresCount === 6 ? 'success' : 'warning'}
+                      sx={{ height: 18, fontSize: '0.65rem' }}
+                    />
+                  </Box>
+                </AccordionSummary>
+                <AccordionDetails sx={{ pt: 0 }}>
+                  <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
+                    {BLOCOS.map(b => {
+                      const ocupado = isOcupado(lab, b.value);
+                      const destacado = horariosDestacados.includes(b.value);
+                      const ocultarPorPerspectiva = (perspectivaFiltro === 'livres' && ocupado) || (perspectivaFiltro === 'ocupados' && !ocupado);
+                      if (ocultarPorPerspectiva) return null;
+                      return (
+                        <Paper
+                          key={b.value}
+                          variant="outlined"
+                          onClick={() => handleCellClick(lab, b)}
+                          sx={{
+                            p: 1,
+                            textAlign: 'center',
+                            cursor: 'pointer',
+                            bgcolor: ocupado ? 'rgba(239, 83, 80, 0.08)' : 'rgba(76, 175, 80, 0.08)',
+                            borderColor: ocupado ? 'error.light' : 'success.light',
+                            outline: destacado ? '2px solid #1976d2' : 'none',
+                            outlineOffset: '-2px',
+                            '&:hover': { bgcolor: ocupado ? 'rgba(239, 83, 80, 0.16)' : 'rgba(76, 175, 80, 0.16)' }
+                          }}
+                        >
+                          <Typography variant="caption" display="block" fontWeight={600}>
+                            {b.label}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary" display="block" sx={{ fontSize: '0.68rem', mb: 0.5 }}>
+                            {b.value}
+                          </Typography>
+                          <Chip
+                            label={ocupado ? 'Ocupado' : 'Livre'}
+                            color={ocupado ? 'error' : 'success'}
+                            size="small"
+                            sx={{ height: 18, fontSize: '0.65rem' }}
+                          />
+                        </Paper>
+                      );
+                    })}
+                  </Box>
+                </AccordionDetails>
+              </Accordion>
+            );
+          })}
         </Box>
       ) : (
         <TableContainer component={Paper} variant="outlined">
           <Table size="small" stickyHeader>
             <TableHead>
               <TableRow>
-                <TableCell sx={{ fontWeight: 700, minWidth: 140 }}>Laboratório</TableCell>
+                <TableCell sx={{ fontWeight: 700, minWidth: 160 }}>Laboratório</TableCell>
                 {BLOCOS.map(b => (
                   <TableCell key={b.value} align="center" sx={{ fontWeight: 600, fontSize: '0.75rem' }}>
                     {b.label}<br />
@@ -230,43 +288,62 @@ export default function GradeDisponibilidade({
               </TableRow>
             </TableHead>
             <TableBody>
-              {labsVisiveis.map(lab => (
-                <TableRow key={lab.id} hover>
-                  <TableCell sx={{ fontSize: '0.8rem', fontWeight: 500 }}>
-                    {lab.name}
-                  </TableCell>
-                  {BLOCOS.map(b => {
-                    const ocupado = isOcupado(lab, b.value);
-                    const ocultarPorPerspectiva = (perspectivaFiltro === 'livres' && ocupado) || (perspectivaFiltro === 'ocupados' && !ocupado);
-                    const cor = ocupado ? 'error' : 'success';
-                    const labelText = ocupado ? 'Ocupado' : 'Livre';
+              {labsParaRenderizar.map(lab => {
+                const livresCount = BLOCOS.filter(b => !isOcupado(lab, b.value)).length;
+                return (
+                  <TableRow key={lab.id} hover>
+                    <TableCell sx={{ fontSize: '0.8rem', fontWeight: 500 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8 }}>
+                        <span>{lab.name}</span>
+                        <Chip
+                          label={`${livresCount}/6`}
+                          size="small"
+                          color={livresCount === 0 ? 'error' : livresCount === 6 ? 'success' : 'warning'}
+                          sx={{ height: 16, fontSize: '0.6rem', fontWeight: 700 }}
+                        />
+                      </Box>
+                    </TableCell>
+                    {BLOCOS.map(b => {
+                      const ocupado = isOcupado(lab, b.value);
+                      const destacado = horariosDestacados.includes(b.value);
+                      const ocultarPorPerspectiva = (perspectivaFiltro === 'livres' && ocupado) || (perspectivaFiltro === 'ocupados' && !ocupado);
+                      const cor = ocupado ? 'error' : 'success';
+                      const labelText = ocupado ? 'Ocupado' : 'Livre';
 
-                    if (ocultarPorPerspectiva) {
+                      if (ocultarPorPerspectiva) {
+                        return (
+                          <TableCell key={b.value} align="center" sx={{ p: 0.5, opacity: 0.2 }}>
+                            <Typography variant="caption" color="text.disabled">—</Typography>
+                          </TableCell>
+                        );
+                      }
+
                       return (
-                        <TableCell key={b.value} align="center" sx={{ p: 0.5, opacity: 0.2 }}>
-                          <Typography variant="caption" color="text.disabled">—</Typography>
+                        <TableCell key={b.value} align="center" sx={{ p: 0.5 }}>
+                          <Tooltip title={`${lab.name} - ${b.label} (${b.value}): clique para selecionar/detalhes`}>
+                            <Chip
+                              label={labelText}
+                              color={cor}
+                              size="small"
+                              variant={ocupado ? 'outlined' : 'filled'}
+                              clickable
+                              onClick={() => handleCellClick(lab, b)}
+                              sx={{
+                                fontSize: '0.65rem',
+                                minWidth: 58,
+                                cursor: 'pointer',
+                                fontWeight: 600,
+                                outline: destacado ? '2px solid #1976d2' : 'none',
+                                outlineOffset: '1px'
+                              }}
+                            />
+                          </Tooltip>
                         </TableCell>
                       );
-                    }
-
-                    return (
-                      <TableCell key={b.value} align="center" sx={{ p: 0.5 }}>
-                        <Tooltip title={`${lab.name} - ${b.label} (${b.value}): clique para detalhes`}>
-                          <Chip
-                            label={labelText}
-                            color={cor}
-                            size="small"
-                            variant={ocupado ? 'outlined' : 'filled'}
-                            clickable
-                            onClick={() => handleCellClick(lab, b)}
-                            sx={{ fontSize: '0.65rem', minWidth: 58, cursor: 'pointer', fontWeight: 600 }}
-                          />
-                        </Tooltip>
-                      </TableCell>
-                    );
-                  })}
-                </TableRow>
-              ))}
+                    })}
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </TableContainer>
