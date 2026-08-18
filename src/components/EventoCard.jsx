@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Paper, Box, Typography, Collapse, Divider, Tooltip, IconButton, Menu, MenuItem, Chip, ButtonBase } from '@mui/material';
+import { Paper, Box, Typography, Collapse, Divider, Tooltip, IconButton, Menu, MenuItem, Chip, ButtonBase, Checkbox } from '@mui/material';
 import { MoreVert as MoreVertIcon, Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import dayjs from 'dayjs';
 
@@ -12,7 +12,7 @@ const EVENT_COLORS = {
     'default': '#757575'
 };
 
-const EventoCard = ({ evento, onEdit, onDelete, isCoordenador }) => {
+const EventoCard = ({ evento, onEdit, onDelete, isCoordenador, isSelectionMode, isSelected, onToggleSelect }) => {
     const [expanded, setExpanded] = useState(false);
     const [anchorEl, setAnchorEl] = useState(null);
     const openMenu = Boolean(anchorEl);
@@ -44,6 +44,14 @@ const EventoCard = ({ evento, onEdit, onDelete, isCoordenador }) => {
         return d.isValid() ? d.format('HH:mm') : '--:--';
     };
 
+    const handleCardClick = () => {
+        if (isSelectionMode && onToggleSelect) {
+            onToggleSelect(evento.id);
+            return;
+        }
+        setExpanded(!expanded);
+    };
+
     return (
         <Paper 
             elevation={expanded ? 6 : 2} 
@@ -53,10 +61,16 @@ const EventoCard = ({ evento, onEdit, onDelete, isCoordenador }) => {
                 position: 'relative',
                 borderLeft: `4px solid ${color}`,
                 transition: 'box-shadow 0.2s ease-in-out, transform 0.15s ease-in-out',
-                bgcolor: 'background.paper'
+                bgcolor: isSelected ? 'rgba(25, 118, 210, 0.12)' : 'background.paper',
+                border: isSelected ? '1px solid #1976d2' : undefined
             }}
         >
-            {isCoordenador && (
+            {isSelectionMode && (
+                <Box sx={{ position: 'absolute', top: 4, left: 4, zIndex: 2 }}>
+                    <Checkbox size="small" checked={isSelected} onChange={() => onToggleSelect(evento.id)} onClick={(e) => e.stopPropagation()} />
+                </Box>
+            )}
+            {isCoordenador && !isSelectionMode && (
                 <>
                     <Tooltip title="Mais Opções">
                         <IconButton size="small" onClick={handleMenuClick} sx={{ position: 'absolute', top: 4, right: 4, zIndex: 2 }}>
@@ -70,7 +84,7 @@ const EventoCard = ({ evento, onEdit, onDelete, isCoordenador }) => {
                 </>
             )}
             <ButtonBase 
-                onClick={() => setExpanded(!expanded)} 
+                onClick={handleCardClick} 
                 sx={{ 
                     p: 1.5, 
                     width: '100%', 

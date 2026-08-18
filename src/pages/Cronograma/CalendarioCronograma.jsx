@@ -291,7 +291,7 @@ const DayColumn = ({ day, viewMode, aulasFiltradas, eventosFiltrados, periodosBl
     filtroAtivo, userInfo, theme, handleDayClick,
     setEventoParaAcao, setIsEventModalOpen, fetchDados,
     setAulaParaAcao, setIsEditModalOpen, setIsDeleteModalOpen, setIsAddModalOpen,
-    isSelectionMode, selectedAulasIds, setSelectedAulasIds }) => {
+    isSelectionMode, selectedAulasIds, setSelectedAulasIds, selectedEventosIds, setSelectedEventosIds }) => {
 
     const isToday = day.isSame(dayjs(), 'day');
     const periodoInativo = periodosBloqueio.find(p => day.isBetween(p.start, p.end, 'day', '[]'));
@@ -372,6 +372,9 @@ const DayColumn = ({ day, viewMode, aulasFiltradas, eventosFiltrados, periodosBl
                                             fetchDados();
                                         }
                                     }}
+                                    isSelectionMode={isSelectionMode}
+                                    isSelected={selectedEventosIds.includes(evento.id)}
+                                    onToggleSelect={(id) => setSelectedEventosIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id])}
                                 />
                             ))}
                             {aulasVisiveis.map(aula => (
@@ -475,6 +478,7 @@ function CalendarioCronograma({ userInfo }) {
     // Seleção
     const [isSelectionMode, setIsSelectionMode] = useState(false);
     const [selectedAulasIds, setSelectedAulasIds] = useState([]);
+    const [selectedEventosIds, setSelectedEventosIds] = useState([]);
 
     // --- CÁLCULOS DE DATA ---
     const weekStart = useMemo(() => currentDate.startOf('week'), [currentDate]);
@@ -619,14 +623,18 @@ function CalendarioCronograma({ userInfo }) {
 
             const batch = writeBatch(db);
             selectedAulasIds.forEach(id => batch.delete(doc(db, 'aulas', id)));
+            selectedEventosIds.forEach(id => batch.delete(doc(db, 'eventosManutencao', id)));
             await batch.commit();
-            setFeedback({ open: true, message: `${selectedAulasIds.length} aulas excluídas!`, severity: 'success' });
+
+            const total = selectedAulasIds.length + selectedEventosIds.length;
+            setFeedback({ open: true, message: `${total} item(ns) excluído(s)!`, severity: 'success' });
             setIsSelectionMode(false);
             setSelectedAulasIds([]);
+            setSelectedEventosIds([]);
             fetchDados();
         } catch (e) {
-            console.error("Erro ao excluir aulas em lote:", e);
-            setFeedback({ open: true, message: 'Erro ao excluir aulas.', severity: 'error' });
+            console.error("Erro ao excluir em lote:", e);
+            setFeedback({ open: true, message: 'Erro ao excluir itens em lote.', severity: 'error' });
         } finally {
             setActionLoading(false);
             setIsBulkDeleteModalOpen(false);
@@ -827,23 +835,40 @@ function CalendarioCronograma({ userInfo }) {
                             )}
                             
                             {userInfo?.role === 'coordenador' && (
-                                <Button 
-                                    variant="contained" 
-                                    startIcon={<AddIcon />} 
-                                    onClick={() => setIsAddModalOpen(true)}
-                                >
-                                    Nova Aula
-                                </Button>
+                                <>
+                                    <Button 
+                                        variant="contained" 
+                                        startIcon={<AddIcon />} 
+                                        onClick={() => setIsAddModalOpen(true)}
+                                    >
+                                        Nova Aula
+                                    </Button>
+                                    <Button 
+                                        variant="outlined" 
+                                        color="primary"
+                                        startIcon={<EventIcon />} 
+                                        onClick={() => setIsEventModalOpen(true)}
+                                    >
+                                        Novo Evento
+                                    </Button>
+                                </>
                             )}
                         </Grid>
                     </Grid>
 
                     <Fade in={isSelectionMode}>
                         <Box sx={{ mt: 2, p: 1, bgcolor: theme.palette.mode === 'dark' ? 'rgba(144, 202, 249, 0.1)' : '#e3f2fd', borderRadius: 1, display: isSelectionMode ? 'flex' : 'none', alignItems: 'center', justifyContent: 'space-between', border: '1px solid', borderColor: 'primary.main' }}>
-                            <Typography variant="body2" sx={{ ml: 1 }}>{selectedAulasIds.length} selecionadas</Typography>
+                            <Typography variant="body2" sx={{ ml: 1 }}>
+                                {selectedAulasIds.length + selectedEventosIds.length} item(ns) selecionado(s)
+                                {selectedAulasIds.length > 0 && selectedEventosIds.length > 0 && ` (${selectedAulasIds.length} aula(s), ${selectedEventosIds.length} evento(s))`}
+                            </Typography>
                             <Box sx={{ display: 'flex', gap: 1 }}>
-                                <Button size="small" variant="outlined" color="primary" startIcon={<EditIcon />} disabled={selectedAulasIds.length === 0} onClick={() => { setBulkEditFields({ assunto: '', observacoes: '', cursos: [], dataInicio: null, laboratorio: '', horario: '', tipoAula: '' }); setBulkEditConflitos([]); setIsBulkEditModalOpen(true); }}>Editar Selecionadas</Button>
-                                <Button size="small" variant="contained" color="error" startIcon={<DeleteIcon />} disabled={selectedAulasIds.length === 0} onClick={() => setIsBulkDeleteModalOpen(true)}>Excluir Selecionadas</Button>
+                                <Button size="small" variant="outlined" color="primary" startIcon={<EditIcon />} disabled={selectedAulasIds.length === 0} onClick={() => { setBulkEditFields({ assunto: '', observacoes: '', cursos: [], dataInicio: null, laboratorio: '', horario: '', tipoAula: '' }); setBulkEditConflitos([]); setIsBulkEditModalOpen(true); }}>
+                                    Editar Aulas ({selectedAulasIds.length})
+                                </Button>
+                                <Button size="small" variant="contained" color="error" startIcon={<DeleteIcon />} disabled={(selectedAulasIds.length + selectedEventosIds.length) === 0} onClick={() => setIsBulkDeleteModalOpen(true)}>
+                                    Excluir Selecionados ({selectedAulasIds.length + selectedEventosIds.length})
+                                </Button>
                             </Box>
                         </Box>
                     </Fade>
@@ -953,11 +978,13 @@ function CalendarioCronograma({ userInfo }) {
                             onCelulaClick={({ labId, labNome, horario, ocupado }) => {
                                 if (ocupado) return;
                                 // Apenas coordenadores agendam direto clicando na grade.
-                                // Técnicos realizam a proposta exclusivamente pelo menu/formulário dedicado.
                                 if (userInfo?.role === 'coordenador') {
-                                    navigate('/propor-aula', {
-                                        state: { labIdPreSelecionado: labId, horarioPreSelecionado: horario, dataPreSelecionada: currentDate.format('YYYY-MM-DD') }
-                                    });
+                                    const confirm = window.confirm(`Deseja propor uma aula para o laboratório "${labNome}" no horário ${horario}?`);
+                                    if (confirm) {
+                                        navigate('/propor-aula', {
+                                            state: { labIdPreSelecionado: labId, horarioPreSelecionado: horario, dataPreSelecionada: currentDate.format('YYYY-MM-DD') }
+                                        });
+                                    }
                                 }
                             }}
                         />
@@ -994,6 +1021,8 @@ function CalendarioCronograma({ userInfo }) {
                                     isSelectionMode={isSelectionMode}
                                     selectedAulasIds={selectedAulasIds}
                                     setSelectedAulasIds={setSelectedAulasIds}
+                                    selectedEventosIds={selectedEventosIds}
+                                    setSelectedEventosIds={setSelectedEventosIds}
                                 />
                             ))}
                         </Grid>
@@ -1178,7 +1207,7 @@ function CalendarioCronograma({ userInfo }) {
                 <DialogConfirmacao 
                     open={isBulkDeleteModalOpen} 
                     onClose={() => setIsBulkDeleteModalOpen(false)} 
-                    title={`Excluir ${selectedAulasIds.length} Aulas?`} 
+                    title={`Excluir ${selectedAulasIds.length + selectedEventosIds.length} item(ns)?`} 
                     message="Tem certeza? Esta ação não pode ser desfeita."
                     confirmText="Excluir Tudo"
                     confirmColor="error"
