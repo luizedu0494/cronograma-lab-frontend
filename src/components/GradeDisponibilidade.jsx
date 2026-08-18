@@ -234,7 +234,7 @@ export default function GradeDisponibilidade({
                     {BLOCOS.map(b => {
                       const ocupado = isOcupado(lab, b.value);
                       const destacado = horariosDestacados.includes(b.value);
-                      const ocultarPorPerspectiva = (perspectivaFiltro === 'livres' && ocupado) || (perspectivaFiltro === 'ocupados' && !ocupado);
+                      const ocultarPorPerspectiva = (perspectivaFiltro === 'livres' && ocupado) || (perspectivaFiltro === 'ocupados' && !ocupado) || (apenasComVaga && ocupado);
                       if (ocultarPorPerspectiva) return null;
                       return (
                         <Paper
@@ -306,7 +306,7 @@ export default function GradeDisponibilidade({
                     {BLOCOS.map(b => {
                       const ocupado = isOcupado(lab, b.value);
                       const destacado = horariosDestacados.includes(b.value);
-                      const ocultarPorPerspectiva = (perspectivaFiltro === 'livres' && ocupado) || (perspectivaFiltro === 'ocupados' && !ocupado);
+                      const ocultarPorPerspectiva = (perspectivaFiltro === 'livres' && ocupado) || (perspectivaFiltro === 'ocupados' && !ocupado) || (apenasComVaga && ocupado);
                       const cor = ocupado ? 'error' : 'success';
                       const labelText = ocupado ? 'Ocupado' : 'Livre';
 
