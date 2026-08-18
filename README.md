@@ -182,6 +182,12 @@ Perfil de leitura, liberado pelo coordenador:
 ### 🟢 Reformulação da Grade de Disponibilidade & Filtros de Perspectiva
 - **Seletor de Dias da Semana (`GradeDisponibilidade.jsx`)**: matriz diária por laboratório e horário com seletor interativo para alternar rapidamente entre Segunda e Sábado.
 - **Filtro por Perspectiva (`🔴 Ocupados`, `🟢 Livres`, `Todos`)**: aplicação visual na matriz com esmaecimento de células irrelevantes e alternância automática da visão semanal para a Grade ao selecionar `🟢 Livres` em [`CalendarioCronograma.jsx`](file:///c:/Windows/System32/cronograma-lab-frontend/src/pages/Cronograma/CalendarioCronograma.jsx).
+- **Integração Completa de Eventos & Manutenções na Grade**: inclusão de eventos de manutenção, feriados e bloqueios institucionais nas consultas da grade tanto no formulário de Propor Aula quanto na visualização geral do calendário, garantindo a indicação correta dos horários ocupados.
+- **Ocultação Dinâmica com Switch "Só Labs com Vaga"**: ao ativar o switch, os blocos e células ocupados são automaticamente ocultados da visualização, exibindo apenas as vagas disponíveis de cara ao usuário.
+- **Confirmação ao Selecionar Horário Livre**: diálogo de confirmação explicativo ao clicar em células livres na grade para propor aula (`Deseja propor uma aula para o laboratório "X" no horário Y-Z?`), evitando navegação acidental.
+- **Botão `+ Novo Evento` & Seleção em Lote**: novo botão dedicado no topo do calendário para cadastro rápido de eventos pelo coordenador, e suporte a seleção em lote com checkboxes (`EventoCard.jsx`) permitindo gerenciar ou excluir simultaneamente aulas e eventos.
+- **Filtro Granular "Exibir Tipo" para Eventos**: adição da opção `🛠️ Eventos / Manutenção` no seletor de tipo de conteúdo, permitindo isolar a visualização exclusiva de manutenções/eventos no cronograma ou ocultá-los quando filtrando por aulas.
+- **Bloqueio de Filtros Irrelevantes na Visão Grade**: desativação dinâmica de filtros que não se aplicam à ocupação física da grade (como Cursos, Assunto e Tipo de Aula) quando a aba de Grade de Disponibilidade está ativa, com dicas explicativas em Tooltips.
 
 ---
 
