@@ -533,12 +533,17 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
         const labsValidos = formData.dynamicLabs.every(lab => lab.tipo && lab.laboratorios.length > 0);
         if (!labsValidos) newErrors.dynamicLabs = 'Preencha todos os campos de laboratório';
 
-        // Verifica se algum horário selecionado está ocupado
-        const horariosOcupados = formData.horarioSlotString.filter(slot => infoOcupacao.hasOwnProperty(slot));
+        // Verifica se algum horário selecionado está ocupado por aula aprovada ou evento
+        const horariosOcupados = formData.horarioSlotString.filter(slot => {
+            const info = infoOcupacao[slot];
+            return info && (info.status === 'aprovada' || info.status === 'evento');
+        });
         if (horariosOcupados.length > 0) {
             const detalhes = horariosOcupados.map(slot => {
                 const bloco = BLOCOS_HORARIO.find(b => b.value === slot);
-                return `${bloco?.label || slot} (ocupado por: ${infoOcupacao[slot]})`;
+                const info = infoOcupacao[slot];
+                const nome = typeof info === 'string' ? info : (info?.assunto || 'Agendamento Confirmado');
+                return `${bloco?.label || slot} (ocupado por: ${nome})`;
             }).join('; ');
             newErrors.horarioSlotString = `Horário(s) indisponível(is): ${detalhes}`;
         }
@@ -595,7 +600,12 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
                 const q = query(collection(db, "aulas"), where("laboratorioSelecionado", "==", nova.laboratorioSelecionado), where("dataInicio", "==", Timestamp.fromDate(nova.dataInicio.toDate())), where("horarioSlotString", "==", nova.horarioSlotString));
                 const querySnapshot = await getDocs(q);
                 querySnapshot.docs.forEach(doc => {
-                    if (doc.id !== aulaId) conflitosEncontrados.push({ novaAula: nova, conflito: { id: doc.id, ...doc.data() } });
+                    if (doc.id !== aulaId) {
+                        const data = doc.data();
+                        if (!data.status || data.status === 'aprovada') {
+                            conflitosEncontrados.push({ novaAula: nova, conflito: { id: doc.id, ...data } });
+                        }
+                    }
                 });
             }
 
