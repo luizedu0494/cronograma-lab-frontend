@@ -101,6 +101,12 @@ const AulaCard = ({ aula, onEdit, onDelete, isCoordenador, isSelectionMode, isSe
                     borderLeft: `4px solid ${corBorda}`,
                     transition: 'all 0.2s',
                     transform: isSelected ? 'scale(0.98)' : 'scale(1)',
+                    opacity: aula.status === 'pendente' ? 0.82 : 1,
+                    border: aula.status === 'pendente'
+                        ? '2px dashed #ed6c02'
+                        : isSelected
+                            ? '1px solid #1976d2'
+                            : undefined,
                     bgcolor: isSelected
                         ? (theme.palette.mode === 'dark' ? 'rgba(25, 118, 210, 0.2)' : 'rgba(25, 118, 210, 0.08)')
                         : aula.status === 'pendente'
@@ -110,7 +116,6 @@ const AulaCard = ({ aula, onEdit, onDelete, isCoordenador, isSelectionMode, isSe
                                 : aula.isRevisao
                                     ? (theme.palette.mode === 'dark' ? 'rgba(156, 39, 176, 0.07)' : 'rgba(156, 39, 176, 0.04)')
                                     : 'background.paper',
-                    border: isSelected ? '1px solid #1976d2' : undefined,
                     color: 'text.primary'
                 }}
             >
@@ -963,14 +968,35 @@ function CalendarioCronograma({ userInfo }) {
                     </Collapse>
                 </Paper>
 
-                <Tabs
-                    value={abaCalendario}
-                    onChange={(_, v) => setAbaCalendario(v)}
-                    sx={{ mb: 2 }}
-                >
-                    <Tab value="semana" label="Visão Cronograma" />
-                    <Tab value="grade" label="🟢 Grade de Disponibilidade" />
-                </Tabs>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1, mb: 2 }}>
+                    <Tabs
+                        value={abaCalendario}
+                        onChange={(_, v) => setAbaCalendario(v)}
+                    >
+                        <Tab value="semana" label="Visão Cronograma" />
+                        <Tab value="grade" label="🟢 Grade de Disponibilidade" />
+                    </Tabs>
+
+                    <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center', px: 1 }}>
+                        <Typography variant="caption" color="text.secondary" fontWeight="bold">Legenda:</Typography>
+                        <Box display="flex" alignItems="center" gap={0.5}>
+                            <Box sx={{ width: 12, height: 12, bgcolor: '#4caf50', borderRadius: 0.5 }} />
+                            <Typography variant="caption">Aprovada</Typography>
+                        </Box>
+                        <Box display="flex" alignItems="center" gap={0.5}>
+                            <Box sx={{ width: 12, height: 12, border: '2px dashed #ed6c02', bgcolor: 'rgba(255,152,0,0.15)', borderRadius: 0.5 }} />
+                            <Typography variant="caption">Pendente (Aguardando Aprovação)</Typography>
+                        </Box>
+                        <Box display="flex" alignItems="center" gap={0.5}>
+                            <Box sx={{ width: 12, height: 12, bgcolor: '#f44336', borderRadius: 0.5 }} />
+                            <Typography variant="caption">Prova</Typography>
+                        </Box>
+                        <Box display="flex" alignItems="center" gap={0.5}>
+                            <Box sx={{ width: 12, height: 12, bgcolor: '#9c27b0', borderRadius: 0.5 }} />
+                            <Typography variant="caption">Revisão</Typography>
+                        </Box>
+                    </Box>
+                </Box>
 
                 {abaCalendario === 'grade' && (
                     <Box sx={{ mb: 3 }}>

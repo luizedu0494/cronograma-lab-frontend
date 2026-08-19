@@ -3,7 +3,7 @@ import dayjs from 'dayjs';
 import { db } from '../firebaseConfig';
 
 /**
- * Realiza busca pontual no Firestore de todas as aulas aprovadas ou pendentes para um dia específico.
+ * Realiza busca pontual no Firestore de todas as aulas aprovadas para um dia específico.
  * @param {string|Date|dayjs.Dayjs} data - Data a ser consultada
  * @returns {Promise<Array>} Lista de aulas encontradas
  */
@@ -20,7 +20,7 @@ export async function buscarAulasPorDia(data) {
       collection(db, 'aulas'),
       where('dataInicio', '>=', inicio),
       where('dataInicio', '<=', fim),
-      where('status', 'in', ['aprovada', 'pendente'])
+      where('status', '==', 'aprovada')
     ));
 
     return snap.docs.map(d => ({ id: d.id, ...d.data() }));

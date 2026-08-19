@@ -317,7 +317,7 @@ async function verificarConflitos(aulas) {
         collection(db, 'aulas'),
         where('dataInicio', '>=', Timestamp.fromDate(dataMin.startOf('day').toDate())),
         where('dataInicio', '<=', Timestamp.fromDate(dataMax.endOf('day').toDate())),
-        where('status', 'in', ['aprovada', 'pendente'])
+        where('status', '==', 'aprovada')
     ));
     const existentes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 

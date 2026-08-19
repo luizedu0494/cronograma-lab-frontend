@@ -25,6 +25,7 @@ import GradeDisponibilidade from './components/GradeDisponibilidade';
 import { notificadorTelegram } from './services/NotificadorTelegram';
 import { toDataLocal } from './utils/dateHelper';
 import { buscarAulasPorDia } from './utils/aulaQueries';
+import { autoRejeitarPendentesConflitantes } from './utils/conflitoUtils';
 
 dayjs.locale('pt-br');
 
@@ -645,8 +646,22 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
                         dataInicio: Timestamp.fromDate(aula.dataInicio.toDate()),
                         dataFim: Timestamp.fromDate(aula.dataFim.toDate())
                     };
-                    await addDoc(collection(db, "aulas"), finalData);
-                    finalizadas.push(aula);
+                    const docRef = await addDoc(collection(db, "aulas"), finalData);
+                    finalizadas.push({ ...aula, id: docRef.id });
+                }
+            }
+
+            // Auto-rejeita propostas pendentes que colidiram com as aulas aprovadas criadas
+            for (const aula of finalizadas) {
+                if (aula.status === 'aprovada') {
+                    await autoRejeitarPendentesConflitantes({
+                        laboratorioSelecionado: aula.laboratorioSelecionado || aula.laboratorio,
+                        dataInicio: aula.dataInicio,
+                        dataFim: aula.dataFim,
+                        horarioSlotString: aula.horarioSlotString,
+                        assuntoAgendamento: aula.assunto,
+                        idAgendamentoIgnorar: aula.id
+                    });
                 }
             }
 

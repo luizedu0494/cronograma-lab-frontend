@@ -22,6 +22,7 @@ import 'dayjs/locale/pt-br';
 import { db } from '../../firebaseConfig';
 import { LISTA_CURSOS } from '../../constants/cursos';
 import { notificadorTelegram } from '../../services/NotificadorTelegram';
+import { autoRejeitarPendentesConflitantes } from '../../utils/conflitoUtils';
 
 const TELEGRAM_CHAT_ID = import.meta.env.VITE_TELEGRAM_CHAT_ID;
 
@@ -274,6 +275,17 @@ function GerenciarAprovacoes() {
             }
 
             await updateDoc(doc(db, 'aulas', aula.id), updatePayload);
+
+            if (acao === 'aprovada') {
+                await autoRejeitarPendentesConflitantes({
+                    laboratorioSelecionado: aula.laboratorioSelecionado,
+                    dataInicio: aula.dataInicio,
+                    dataFim: aula.dataFim,
+                    horarioSlotString: aula.horarioSlotString,
+                    assuntoAgendamento: aula.assunto,
+                    idAgendamentoIgnorar: aula.id,
+                });
+            }
 
             if (TELEGRAM_CHAT_ID) {
                 const dataObj = aula.dataInicio?.toDate ? dayjs(aula.dataInicio.toDate()) : dayjs(aula.dataInicio);

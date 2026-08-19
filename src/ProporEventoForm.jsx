@@ -25,6 +25,7 @@ import DialogConfirmacao from './components/DialogConfirmacao';
 import { notificadorTelegram } from './services/NotificadorTelegram';
 import GradeDisponibilidade from './components/GradeDisponibilidade';
 import { useDisponibilidade } from './hooks/useDisponibilidade';
+import { autoRejeitarPendentesConflitantes } from './utils/conflitoUtils';
 
 dayjs.locale('pt-br');
 dayjs.extend(isBetween);
@@ -453,6 +454,17 @@ function ProporEventoForm({ userInfo, currentUser, initialDate, onSuccess, onCan
                     const docRef = await addDoc(collection(db, "eventosManutencao"), finalData);
                     finalizadas.push({ ...ev, id: docRef.id });
                 }
+            }
+
+            // Auto-rejeita propostas pendentes atingidas pelos eventos criados
+            for (const ev of finalizadas) {
+                await autoRejeitarPendentesConflitantes({
+                    laboratorioSelecionado: ev.laboratorio,
+                    dataInicio: ev.dataInicio,
+                    dataFim: ev.dataFim,
+                    horarioSlotString: ev.horarioSlotString,
+                    assuntoAgendamento: `${ev.tipo}: ${ev.titulo}`,
+                });
             }
 
             // Atualiza ocupação local imediatamente para refletir o novo agendamento como ocupado sem recarregar a tela
