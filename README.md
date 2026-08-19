@@ -152,6 +152,13 @@ Perfil de leitura, liberado pelo coordenador:
 
 > Resumo das últimas melhorias de arquitetura, segurança, UX/UI e recursos de IA.
 
+### ⏳ Gestão Inteligente de Propostas Pendentes & Auto-Rejeição com Telegram
+- **Desbloqueio de Agendamento sobre Pendências**: Horários com propostas pendentes deixaram de ser travados como ocupados no formulário `ProporAulaForm.jsx`. O seletor exibe `⏳ Proposta Pendente: [Nome]` em tom laranja (`#ed6c02`) e **permite a seleção** por coordenadores e técnicos.
+- **Diferenciação Visual na Grade de Disponibilidade**: Células com solicitações pendentes ganharam estilização dedicada em tom laranja com o rótulo `Pendente` em `GradeDisponibilidade.jsx` e inclusão do estado `🟧 Pendente (Aguardando)` na legenda visual.
+- **Auto-Rejeição de Conflitos & Notificação no Telegram**: Utilitário `conflitoUtils.js` que identifica automaticamente propostas pendentes que colidem com um novo agendamento aprovado, alterando seu status para `rejeitada`, notificando no Telegram (sem enviar mensagens duplicadas) e atualizando o cronograma em tempo real.
+- **Ajuste de Regras de Leitura de Logs (`firestore.rules`)**: Permissão de leitura ajustada na coleção `/logs/{logId}` para `allow read: if isUserApproved()`, garantindo que usuários aprovados visualizem o card de exclusões recentes na Página Inicial sem erros de permissão.
+
+
 ### 🛠️ Reformulação da Verificação de Integridade de Dados (`VerificarIntegridadeDados.jsx` & `integridadeUtils.js`)
 - **Detecção de Schemas Legados e Órfãos**: identifica automaticamente agendamentos antigos sem `dataInicio` (Timestamp), com campos legados (`disciplina` x `assunto`, `laboratorio` x `laboratorioSelecionado`), sem `status` explícito ou fora dos períodos letivos cadastrados.
 - **Controle Prévia de Escopo (Economia do Plano Spark)**: o usuário escolhe a abrangência da varredura (*Mês Atual*, *Período Letivo*, *Datas Customizadas* ou *Varredura Completa*) antes de consultar o Firestore, evitando leituras desnecessárias da coleção inteira.
