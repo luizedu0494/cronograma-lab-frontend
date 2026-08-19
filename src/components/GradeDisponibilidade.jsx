@@ -108,6 +108,7 @@ export default function GradeDisponibilidade({
     };
 
     aulas
+      .filter(a => a.status !== 'rejeitada')
       .filter(a => {
         if (!dataSelecionada) return true;
         const dataAula = a.dataInicio ? extrairDataLocal(a.dataInicio) : dataSelecionada;

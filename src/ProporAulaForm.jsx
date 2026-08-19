@@ -671,9 +671,10 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
             }
 
             // Auto-rejeita propostas pendentes que colidiram com as aulas aprovadas criadas
+            const pendentesRejeitadasTotal = [];
             for (const aula of finalizadas) {
                 if (aula.status === 'aprovada') {
-                    await autoRejeitarPendentesConflitantes({
+                    const rejeitadas = await autoRejeitarPendentesConflitantes({
                         laboratorioSelecionado: aula.laboratorioSelecionado || aula.laboratorio,
                         dataInicio: aula.dataInicio,
                         dataFim: aula.dataFim,
@@ -681,6 +682,9 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
                         assuntoAgendamento: aula.assunto,
                         idAgendamentoIgnorar: aula.id
                     });
+                    if (rejeitadas && rejeitadas.length > 0) {
+                        pendentesRejeitadasTotal.push(...rejeitadas.map(r => r.id));
+                    }
                 }
             }
 
@@ -718,7 +722,10 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
                     horarioSlotString: a.horarioSlotString
                 }));
 
-                setAulasDoMesState(prev => [...prev, ...novasAulasFormatadas]);
+                setAulasDoMesState(prev => {
+                    const semRejeitadas = prev.filter(item => !pendentesRejeitadasTotal.includes(item.id));
+                    return [...semRejeitadas, ...novasAulasFormatadas];
+                });
             }
 
             setRefreshDisp(v => v + 1);

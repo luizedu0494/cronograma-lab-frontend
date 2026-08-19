@@ -76,6 +76,7 @@ export async function autoRejeitarPendentesConflitantes({
       if (idAgendamentoIgnorar && d.id === idAgendamentoIgnorar) continue;
 
       const pData = d.data();
+      if (pData.status === 'rejeitada') continue;
 
       // Verifica laboratório (se for agendamento geral/Todos ou o mesmo lab)
       const mesmoLab = laboratorioSelecionado === 'Todos' ||
