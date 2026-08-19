@@ -6,7 +6,8 @@ import {
     Select, MenuItem, OutlinedInput, Chip, TextField, Divider, Snackbar, Menu,
     Dialog, DialogTitle, DialogContent, DialogActions, DialogContentText,
     InputAdornment, Checkbox, Fade, useTheme,
-    useMediaQuery, SwipeableDrawer, Badge, ToggleButton, ToggleButtonGroup, Tabs, Tab
+    useMediaQuery, SwipeableDrawer, Badge, ToggleButton, ToggleButtonGroup, Tabs, Tab,
+    ListItemIcon, ListItemText
 } from '@mui/material';
 import {
     ChevronLeft, ChevronRight, FilterList as FilterListIcon, Edit as EditIcon,
@@ -128,9 +129,21 @@ const AulaCard = ({ aula, onEdit, onDelete, isCoordenador, isSelectionMode, isSe
                 {isCoordenador && !isSelectionMode && (
                     <>
                         <IconButton size="small" onClick={handleMenuClick} sx={{ position: 'absolute', top: 4, right: 4, zIndex: 2 }}><MoreVertIcon fontSize="small" /></IconButton>
-                        <Menu anchorEl={anchorEl} open={openMenu} onClose={() => setAnchorEl(null)}>
-                            <MenuItem onClick={() => { onEdit(aula); setAnchorEl(null); }}><EditIcon fontSize="small" sx={{ mr: 1 }}/> Editar</MenuItem>
-                            <MenuItem onClick={() => { onDelete(aula); setAnchorEl(null); }} sx={{ color: 'error.main' }}><DeleteIcon fontSize="small" sx={{ mr: 1 }}/> Excluir</MenuItem>
+                        <Menu 
+                            anchorEl={anchorEl} 
+                            open={openMenu} 
+                            onClose={() => setAnchorEl(null)}
+                            anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                            transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+                        >
+                            <MenuItem onClick={() => { onEdit(aula); setAnchorEl(null); }}>
+                                <ListItemIcon><EditIcon fontSize="small" /></ListItemIcon>
+                                <ListItemText primary="Editar" />
+                            </MenuItem>
+                            <MenuItem onClick={() => { onDelete(aula); setAnchorEl(null); }} sx={{ color: 'error.main' }}>
+                                <ListItemIcon><DeleteIcon fontSize="small" sx={{ color: 'error.main' }} /></ListItemIcon>
+                                <ListItemText primary="Excluir" />
+                            </MenuItem>
                         </Menu>
                     </>
                 )}

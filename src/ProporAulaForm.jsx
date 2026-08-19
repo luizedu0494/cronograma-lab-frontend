@@ -1322,7 +1322,7 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
                 </form>
 
                 <DialogConfirmacao open={openConfirmModal} onClose={() => setOpenConfirmModal(false)} onConfirm={handleConfirmSave} title="Confirmar Agendamento" message={`Deseja confirmar o agendamento de ${aulasParaConfirmar.length} aula(s)?`} loading={loadingSubmit} />
-                <Dialog open={openDuplicateDialog} onClose={() => setOpenDuplicateDialog(false)}>
+                <Dialog open={openDuplicateDialog} onClose={() => setOpenDuplicateDialog(false)} maxWidth="sm" fullWidth>
                     <DialogTitle>Conflito de Horário</DialogTitle>
                     <DialogContent>
                         <Typography>Alguns horários selecionados já possuem agendamentos. O que deseja fazer?</Typography>
@@ -1340,7 +1340,7 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
                         <Button onClick={() => handleAulasComConflito(true)} color="error" variant="contained">Substituir Existentes</Button>
                     </DialogActions>
                 </Dialog>
-                <Dialog open={openKeepDataDialog} onClose={() => handleKeepData(false)}>
+                <Dialog open={openKeepDataDialog} onClose={() => handleKeepData(false)} maxWidth="sm" fullWidth>
                     <DialogTitle>Agendamento Realizado!</DialogTitle>
                     <DialogContent><Typography>Deseja manter os dados do formulário para realizar outro agendamento similar?</Typography></DialogContent>
                     <DialogActions><Button onClick={() => handleKeepData(false)}>Não, ir para o calendário</Button><Button onClick={() => handleKeepData(true)} variant="contained">Sim, manter dados</Button></DialogActions>

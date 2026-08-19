@@ -132,14 +132,14 @@ function App() {
     const handleProfileMenuOpen = (event) => setAnchorEl(event.currentTarget);
     const handleMenuClose = () => { setAnchorEl(null); setMobileMoreAnchorEl(null); setCoordenadorMenuAnchorEl(null); };
     const handleMobileMenuOpen = (event) => setMobileMoreAnchorEl(event.currentTarget);
-    const handleCoordenadorMenuOpen = (event) => setCoordenadorMenuAnchorEl(event.currentTarget);
+    const handleCoordenadorMenuOpen = (event) => {
+        setMobileMoreAnchorEl(null);
+        setCoordenadorMenuAnchorEl(event.currentTarget);
+    };
     
     const role = userProfileData?.role;
     const approvalPending = userProfileData?.approvalPending;
     const isCoordenadorOrTecnico = role === 'coordenador' || role === 'tecnico';
-
-    // Estilo unificado para ícones dos menus para garantir contraste
-    const menuIconStyle = { marginRight: 10, color: 'inherit' };
     
     if (loading) return <LoadingFallback />;
     
@@ -147,47 +147,116 @@ function App() {
     const LoginScreen = () => (<Container sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh' }}><Paper elevation={3} sx={{ p: 4, textAlign: 'center' }}><img src={cesmacLogo} alt="Logo" style={{ height: '50px', marginBottom: '16px' }} /><Typography variant="h5">Cronograma Lab</Typography><Button variant="contained" sx={{ mt: 2 }} onClick={handleGoogleLogin} disabled={isLoggingIn}>{isLoggingIn ? 'Entrando...' : 'Login com Google'}</Button></Paper></Container>);
 
     const CoordenadorGerenciarMenu = () => (
-        <Menu anchorEl={coordenadorMenuAnchorEl} open={Boolean(coordenadorMenuAnchorEl)} onClose={handleMenuClose}>
-        
-            <MenuItem component={Link} to="/gerenciar-aprovacoes" onClick={handleMenuClose}><Badge badgeContent={pendingProposalsCount} color="error" sx={{ mr: 1 }}><ThumbsUp size={18} style={menuIconStyle}/></Badge>Aprovações</MenuItem>
-            <MenuItem component={Link} to="/analise-aulas" onClick={handleMenuClose}><BarChart size={18} style={menuIconStyle}/> Análise de Aulas</MenuItem>
-<MenuItem component={Link} to="/analise-eventos" onClick={handleMenuClose}><BarChart size={18} style={menuIconStyle}/> Análise de Eventos</MenuItem>
+        <Menu 
+            anchorEl={coordenadorMenuAnchorEl} 
+            open={Boolean(coordenadorMenuAnchorEl)} 
+            onClose={handleMenuClose}
+            anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+            transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+        >
+            <MenuItem component={Link} to="/gerenciar-aprovacoes" onClick={handleMenuClose}>
+                <ListItemIcon>
+                    <Badge badgeContent={pendingProposalsCount} color="error">
+                        <ThumbsUp size={18} />
+                    </Badge>
+                </ListItemIcon>
+                <ListItemText primary="Aprovações" primaryTypographyProps={{ noWrap: true }} />
+            </MenuItem>
+            <MenuItem component={Link} to="/analise-aulas" onClick={handleMenuClose}>
+                <ListItemIcon><BarChart size={18} /></ListItemIcon>
+                <ListItemText primary="Análise de Aulas" primaryTypographyProps={{ noWrap: true }} />
+            </MenuItem>
+            <MenuItem component={Link} to="/analise-eventos" onClick={handleMenuClose}>
+                <ListItemIcon><BarChart size={18} /></ListItemIcon>
+                <ListItemText primary="Análise de Eventos" primaryTypographyProps={{ noWrap: true }} />
+            </MenuItem>
             <Divider sx={{ my: 0.5 }} />
-            <MenuItem component={Link} to="/verificar-integridade" onClick={handleMenuClose}><Bug size={18} style={menuIconStyle}/> Integridade</MenuItem>
+            <MenuItem component={Link} to="/verificar-integridade" onClick={handleMenuClose}>
+                <ListItemIcon><Bug size={18} /></ListItemIcon>
+                <ListItemText primary="Integridade" primaryTypographyProps={{ noWrap: true }} />
+            </MenuItem>
         </Menu>
     );
     
     const navMenuItems = [
-        <MenuItem key="painel" component={Link} to="/" onClick={handleMenuClose}><LayoutDashboard size={18} style={menuIconStyle}/> Painel</MenuItem>,
-        <MenuItem key="cal" component={Link} to="/calendario" onClick={handleMenuClose}><Calendar size={18} style={menuIconStyle}/> Calendário</MenuItem>,
-        !approvalPending ? <MenuItem key="historico" component={Link} to="/historico-aulas" onClick={handleMenuClose}><History size={18} style={menuIconStyle}/> Histórico</MenuItem> : null,
-        !approvalPending ? <MenuItem key="avisos" component={Link} to="/avisos" onClick={handleMenuClose}><Bell size={18} style={menuIconStyle}/> Avisos</MenuItem> : null,
+        <MenuItem key="painel" component={Link} to="/" onClick={handleMenuClose}><ListItemIcon><LayoutDashboard size={18} /></ListItemIcon><ListItemText primary="Painel" primaryTypographyProps={{ noWrap: true }} /></MenuItem>,
+        <MenuItem key="cal" component={Link} to="/calendario" onClick={handleMenuClose}><ListItemIcon><Calendar size={18} /></ListItemIcon><ListItemText primary="Calendário" primaryTypographyProps={{ noWrap: true }} /></MenuItem>,
+        !approvalPending ? <MenuItem key="historico" component={Link} to="/historico-aulas" onClick={handleMenuClose}><ListItemIcon><History size={18} /></ListItemIcon><ListItemText primary="Histórico" primaryTypographyProps={{ noWrap: true }} /></MenuItem> : null,
+        !approvalPending ? <MenuItem key="avisos" component={Link} to="/avisos" onClick={handleMenuClose}><ListItemIcon><Bell size={18} /></ListItemIcon><ListItemText primary="Avisos" primaryTypographyProps={{ noWrap: true }} /></MenuItem> : null,
+        !approvalPending ? <MenuItem key="ia" component={Link} to="/assistente-ia" onClick={handleMenuClose}><ListItemIcon><Bot size={18} /></ListItemIcon><ListItemText primary="Assistente IA" primaryTypographyProps={{ noWrap: true }} /></MenuItem> : null,
         <Divider key="div1" sx={{ my: 0.5 }} />,
         ...(role === 'coordenador' && !approvalPending ? [
-            <MenuItem key="agend" component={Link} to="/propor-aula" onClick={handleMenuClose}><PlusCircle size={18} style={menuIconStyle}/> Agendar Aula</MenuItem>,
-            <MenuItem key="agend-evento" component={Link} to="/propor-evento" onClick={handleMenuClose}><PlusCircle size={18} style={menuIconStyle}/> Agendar Evento</MenuItem>,
-            <MenuItem key="gerenciar-eventos-avancado" component={Link} to="/gerenciar-eventos-avancado" onClick={handleMenuClose}><CalendarOff size={18} style={menuIconStyle}/> Gerenciar Eventos</MenuItem>,
-            <MenuItem key="consulta-disponibilidade" component={Link} to="/consulta-disponibilidade" onClick={handleMenuClose}><Search size={18} style={menuIconStyle}/> Consulta Disponibilidade</MenuItem>,
-            <MenuItem key="gerenciar-menu" onClick={handleCoordenadorMenuOpen}><ListTodo size={18} style={menuIconStyle}/> Gerenciar</MenuItem>,
-            <MenuItem key="users" component={Link} to="/gerenciar-usuarios" onClick={handleMenuClose}><Users size={18} style={menuIconStyle}/> Usuários</MenuItem>,
-            <MenuItem key="importar-externo" component={Link} to="/importar-cronograma-externo" onClick={handleMenuClose}><Download size={18} style={menuIconStyle}/> Importar Cronograma Externo</MenuItem>,
-            <MenuItem key="periodos" component={Link} to="/gerenciar-periodos" onClick={handleMenuClose}><CalendarOff size={18} style={menuIconStyle}/> Periodos Eventos</MenuItem>,
-            <MenuItem key="gerenciar-avisos" component={Link} to="/gerenciar-avisos" onClick={handleMenuClose}><Settings size={18} style={menuIconStyle}/> Gerenciar Avisos</MenuItem>,
+            <MenuItem key="agend" component={Link} to="/propor-aula" onClick={handleMenuClose}><ListItemIcon><PlusCircle size={18} /></ListItemIcon><ListItemText primary="Agendar Aula" primaryTypographyProps={{ noWrap: true }} /></MenuItem>,
+            <MenuItem key="agend-evento" component={Link} to="/propor-evento" onClick={handleMenuClose}><ListItemIcon><PlusCircle size={18} /></ListItemIcon><ListItemText primary="Agendar Evento" primaryTypographyProps={{ noWrap: true }} /></MenuItem>,
+            <MenuItem key="gerenciar-eventos-avancado" component={Link} to="/gerenciar-eventos-avancado" onClick={handleMenuClose}><ListItemIcon><CalendarOff size={18} /></ListItemIcon><ListItemText primary="Gerenciar Eventos" primaryTypographyProps={{ noWrap: true }} /></MenuItem>,
+            <MenuItem key="consulta-disponibilidade" component={Link} to="/consulta-disponibilidade" onClick={handleMenuClose}><ListItemIcon><Search size={18} /></ListItemIcon><ListItemText primary="Consulta Disponibilidade" primaryTypographyProps={{ noWrap: true }} /></MenuItem>,
+            <MenuItem key="gerenciar-menu" onClick={handleCoordenadorMenuOpen}><ListItemIcon><ListTodo size={18} /></ListItemIcon><ListItemText primary="Gerenciar" primaryTypographyProps={{ noWrap: true }} /></MenuItem>,
+            <MenuItem key="users" component={Link} to="/gerenciar-usuarios" onClick={handleMenuClose}><ListItemIcon><Users size={18} /></ListItemIcon><ListItemText primary="Usuários" primaryTypographyProps={{ noWrap: true }} /></MenuItem>,
+            <MenuItem key="importar-externo" component={Link} to="/importar-cronograma-externo" onClick={handleMenuClose}><ListItemIcon><Download size={18} /></ListItemIcon><ListItemText primary="Importar Cronograma" primaryTypographyProps={{ noWrap: true }} /></MenuItem>,
+            <MenuItem key="periodos" component={Link} to="/gerenciar-periodos" onClick={handleMenuClose}><ListItemIcon><CalendarOff size={18} /></ListItemIcon><ListItemText primary="Períodos Eventos" primaryTypographyProps={{ noWrap: true }} /></MenuItem>,
+            <MenuItem key="gerenciar-avisos" component={Link} to="/gerenciar-avisos" onClick={handleMenuClose}><ListItemIcon><Settings size={18} /></ListItemIcon><ListItemText primary="Gerenciar Avisos" primaryTypographyProps={{ noWrap: true }} /></MenuItem>,
         ] : []),
         ...(role === 'tecnico' && !approvalPending ? [
-            <MenuItem key="aula" component={Link} to="/propor-aula" onClick={handleMenuClose}><PlusCircle size={18} style={menuIconStyle}/> Propor Atividade</MenuItem>,
-            <MenuItem key="consulta-disponibilidade-tec" component={Link} to="/consulta-disponibilidade" onClick={handleMenuClose}><Search size={18} style={menuIconStyle}/> Consulta Disponibilidade</MenuItem>,
-            <MenuItem key="design" component={Link} to="/minhas-designacoes" onClick={handleMenuClose}><UserCheck size={18} style={menuIconStyle}/> Designações</MenuItem>,
-            <MenuItem key="prop" component={Link} to="/minhas-propostas" onClick={handleMenuClose}><ListTodo size={18} style={menuIconStyle}/> Minhas Propostas</MenuItem>,
-            <MenuItem key="revisoes" component={Link} to="/revisoes" onClick={handleMenuClose}><FlaskConical size={18} style={menuIconStyle}/> Revisões</MenuItem>,
+            <MenuItem key="aula" component={Link} to="/propor-aula" onClick={handleMenuClose}><ListItemIcon><PlusCircle size={18} /></ListItemIcon><ListItemText primary="Propor Atividade" primaryTypographyProps={{ noWrap: true }} /></MenuItem>,
+            <MenuItem key="consulta-disponibilidade-tec" component={Link} to="/consulta-disponibilidade" onClick={handleMenuClose}><ListItemIcon><Search size={18} /></ListItemIcon><ListItemText primary="Consulta Disponibilidade" primaryTypographyProps={{ noWrap: true }} /></MenuItem>,
+            <MenuItem key="design" component={Link} to="/minhas-designacoes" onClick={handleMenuClose}><ListItemIcon><UserCheck size={18} /></ListItemIcon><ListItemText primary="Designações" primaryTypographyProps={{ noWrap: true }} /></MenuItem>,
+            <MenuItem key="prop" component={Link} to="/minhas-propostas" onClick={handleMenuClose}><ListItemIcon><ListTodo size={18} /></ListItemIcon><ListItemText primary="Minhas Propostas" primaryTypographyProps={{ noWrap: true }} /></MenuItem>,
+            <MenuItem key="revisoes" component={Link} to="/revisoes" onClick={handleMenuClose}><ListItemIcon><FlaskConical size={18} /></ListItemIcon><ListItemText primary="Revisões" primaryTypographyProps={{ noWrap: true }} /></MenuItem>,
         ] : []),
         <Divider key="div2" sx={{ my: 0.5 }} />,
-        isCoordenadorOrTecnico && !approvalPending ? (<MenuItem key="download-cronograma" component={Link} to="/download-cronograma" onClick={handleMenuClose}><Download size={18} style={menuIconStyle}/> Baixar Cronograma</MenuItem>) : null,
-        !approvalPending ? <MenuItem key="ajuda" component={Link} to="/ajuda" onClick={handleMenuClose}><HelpCircle size={18} style={menuIconStyle}/> Ajuda/FAQ</MenuItem> : null
-    ].filter(Boolean);
+        isCoordenadorOrTecnico && !approvalPending ? (<MenuItem key="download-cronograma" component={Link} to="/download-cronograma" onClick={handleMenuClose}><ListItemIcon><Download size={18} /></ListItemIcon><ListItemText primary="Baixar Cronograma" primaryTypographyProps={{ noWrap: true }} /></MenuItem>) : null,
+        !approvalPending ? <MenuItem key="ajuda" component={Link} to="/ajuda" onClick={handleMenuClose}><ListItemIcon><HelpCircle size={18} /></ListItemIcon><ListItemText primary="Ajuda/FAQ" primaryTypographyProps={{ noWrap: true }} /></MenuItem> : null
+    ];
 
-    const renderMobileMenu = (<Menu anchorEl={mobileMoreAnchorEl} open={Boolean(mobileMoreAnchorEl)} onClose={handleMenuClose}>{navMenuItems}<Divider /><MenuItem component={Link} to="/perfil" onClick={handleMenuClose}><User size={18} style={menuIconStyle}/> Perfil</MenuItem><MenuItem onClick={handleLogout}><LogOut size={18} style={menuIconStyle}/> Sair</MenuItem></Menu>);
-    const renderProfileMenu = (<Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose}><MenuItem component={Link} to="/perfil" onClick={handleMenuClose}>Perfil</MenuItem><MenuItem onClick={handleLogout}>Sair</MenuItem></Menu>);
+    const cleanMenuItems = (items) => {
+        const activeItems = items.filter(Boolean);
+        return activeItems.filter((item, idx) => {
+            if (item.type === Divider) {
+                if (idx === 0 || idx === activeItems.length - 1) return false;
+                if (activeItems[idx - 1]?.type === Divider) return false;
+            }
+            return true;
+        });
+    };
+
+    const renderMobileMenu = (
+        <Menu 
+            anchorEl={mobileMoreAnchorEl} 
+            open={Boolean(mobileMoreAnchorEl)} 
+            onClose={handleMenuClose}
+            anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+            transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+        >
+            {cleanMenuItems(navMenuItems)}
+            <Divider sx={{ my: 0.5 }} />
+            <MenuItem component={Link} to="/perfil" onClick={handleMenuClose}>
+                <ListItemIcon><User size={18} /></ListItemIcon>
+                <ListItemText primary="Perfil" primaryTypographyProps={{ noWrap: true }} />
+            </MenuItem>
+            <MenuItem onClick={handleLogout}>
+                <ListItemIcon><LogOut size={18} /></ListItemIcon>
+                <ListItemText primary="Sair" primaryTypographyProps={{ noWrap: true }} />
+            </MenuItem>
+        </Menu>
+    );
+    const renderProfileMenu = (
+        <Menu 
+            anchorEl={anchorEl} 
+            open={Boolean(anchorEl)} 
+            onClose={handleMenuClose}
+            anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+            transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+        >
+            <MenuItem component={Link} to="/perfil" onClick={handleMenuClose}>
+                <ListItemIcon><User size={18} /></ListItemIcon>
+                <ListItemText primary="Perfil" primaryTypographyProps={{ noWrap: true }} />
+            </MenuItem>
+            <MenuItem onClick={handleLogout}>
+                <ListItemIcon><LogOut size={18} /></ListItemIcon>
+                <ListItemText primary="Sair" primaryTypographyProps={{ noWrap: true }} />
+            </MenuItem>
+        </Menu>
+    );
 
     return (
         <ThemeProvider theme={theme}>
@@ -198,9 +267,8 @@ function App() {
                         <AppBar 
                             position="static"
                             sx={{
-                                // Lógica para as cores do menu superior
-                                bgcolor: darkMode ? 'primary.main' : '#ffffff', // Fundo: Branco no Light, Primário/Padrão no Dark
-                                color: darkMode ? '#ffffff' : '#000000'         // Texto: Preto no Light, Branco no Dark
+                                bgcolor: darkMode ? 'primary.main' : '#ffffff',
+                                color: darkMode ? '#ffffff' : '#000000'
                             }}
                         >
                             <Toolbar>
@@ -208,10 +276,20 @@ function App() {
                                     <img src={cesmacLogo} alt="Logo CESMAC" style={{ height: '35px', marginRight: '8px' }} />
                                     {!isMobile && <Typography variant="h6" noWrap>Cronograma Lab</Typography>}
                                 </Box>
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                    <IconButton sx={{ ml: 1 }} onClick={handleThemeChange} color="inherit">{darkMode ? <Sun size={20}/> : <Moon size={20}/>}</IconButton>
-                                    <IconButton size="large" onClick={handleProfileMenuOpen} color="inherit">{userProfileData?.photoURL ? <Avatar src={userProfileData.photoURL} sx={{ width: 32, height: 32 }} /> : <AccountCircle />}</IconButton>
-                                    <IconButton size="large" edge="end" onClick={handleMobileMenuOpen} color="inherit"><MenuIcon /></IconButton>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                    <IconButton onClick={handleThemeChange} color="inherit" aria-label="Alternar tema">
+                                        {darkMode ? <Sun size={20}/> : <Moon size={20}/>}
+                                    </IconButton>
+                                    <IconButton onClick={handleProfileMenuOpen} color="inherit" aria-label="Menu de perfil">
+                                        {userProfileData?.photoURL ? (
+                                            <Avatar src={userProfileData.photoURL} sx={{ width: 24, height: 24 }} />
+                                        ) : (
+                                            <AccountCircle sx={{ fontSize: 24 }} />
+                                        )}
+                                    </IconButton>
+                                    <IconButton edge="end" onClick={handleMobileMenuOpen} color="inherit" aria-label="Menu principal">
+                                        <MenuIcon size={22} />
+                                    </IconButton>
                                 </Box>
                             </Toolbar>
                         </AppBar>

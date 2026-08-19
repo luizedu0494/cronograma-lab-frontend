@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Paper, Box, Typography, Collapse, Divider, Tooltip, IconButton, Menu, MenuItem, Chip, ButtonBase, Checkbox } from '@mui/material';
+import { Paper, Box, Typography, Collapse, Divider, Tooltip, IconButton, Menu, MenuItem, Chip, ButtonBase, Checkbox, ListItemIcon, ListItemText } from '@mui/material';
 import { MoreVert as MoreVertIcon, Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import dayjs from 'dayjs';
 
@@ -77,9 +77,21 @@ const EventoCard = ({ evento, onEdit, onDelete, isCoordenador, isSelectionMode, 
                             <MoreVertIcon fontSize="small" />
                         </IconButton>
                     </Tooltip>
-                    <Menu anchorEl={anchorEl} open={openMenu} onClose={handleMenuClose}>
-                        <MenuItem onClick={handleEditClick}><EditIcon fontSize="small" sx={{ mr: 1 }}/> Editar</MenuItem>
-                        <MenuItem onClick={handleDeleteClick} sx={{ color: 'error.main' }}><DeleteIcon fontSize="small" sx={{ mr: 1 }}/> Excluir</MenuItem>
+                    <Menu 
+                        anchorEl={anchorEl} 
+                        open={openMenu} 
+                        onClose={handleMenuClose}
+                        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+                    >
+                        <MenuItem onClick={handleEditClick}>
+                            <ListItemIcon><EditIcon fontSize="small" /></ListItemIcon>
+                            <ListItemText primary="Editar" />
+                        </MenuItem>
+                        <MenuItem onClick={handleDeleteClick} sx={{ color: 'error.main' }}>
+                            <ListItemIcon><DeleteIcon fontSize="small" sx={{ color: 'error.main' }} /></ListItemIcon>
+                            <ListItemText primary="Excluir" />
+                        </MenuItem>
                     </Menu>
                 </>
             )}

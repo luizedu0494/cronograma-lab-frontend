@@ -799,7 +799,7 @@ function ProporEventoForm({ userInfo, currentUser, initialDate, onSuccess, onCan
                     </Grid>
                 </form>
                 <DialogConfirmacao open={openConfirmModal} onClose={() => setOpenConfirmModal(false)} onConfirm={handleConfirmSave} title="Confirmar Agendamento" message={`Deseja confirmar o agendamento de ${eventosParaConfirmar.length} evento(s)?`} loading={loadingSubmit} />
-                <Dialog open={openDuplicateDialog} onClose={() => setOpenDuplicateDialog(false)}>
+                <Dialog open={openDuplicateDialog} onClose={() => setOpenDuplicateDialog(false)} maxWidth="sm" fullWidth>
                     <DialogTitle>Conflito de Horário</DialogTitle>
                     <DialogContent>
                         <Typography>Alguns horários selecionados já possuem agendamentos. O que deseja fazer?</Typography>
@@ -811,7 +811,7 @@ function ProporEventoForm({ userInfo, currentUser, initialDate, onSuccess, onCan
                         <Button onClick={() => handleConflitos(true)} color="error" variant="contained">Substituir Existentes</Button>
                     </DialogActions>
                 </Dialog>
-                <Dialog open={openKeepDataDialog} onClose={() => handleKeepData(false)}>
+                <Dialog open={openKeepDataDialog} onClose={() => handleKeepData(false)} maxWidth="sm" fullWidth>
                     <DialogTitle>Agendamento Realizado!</DialogTitle>
                     <DialogContent>
                         <Typography>Deseja manter os dados do formulário para realizar outro agendamento similar?</Typography>

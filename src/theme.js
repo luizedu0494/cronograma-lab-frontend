@@ -281,6 +281,32 @@ const getAppTheme = (mode) => {
                 },
             },
 
+            MuiMenu: {
+                styleOverrides: {
+                    paper: {
+                        maxWidth: 'calc(100vw - 32px)',
+                        borderRadius: 12,
+                    },
+                },
+            },
+
+            MuiMenuItem: {
+                styleOverrides: {
+                    root: {
+                        minHeight: 44,
+                        paddingTop: 8,
+                        paddingBottom: 8,
+                        borderRadius: 6,
+                        margin: '2px 4px',
+                        gap: 10,
+                        '& .MuiListItemIcon-root': {
+                            minWidth: 32,
+                            color: 'inherit',
+                        },
+                    },
+                },
+            },
+
             MuiIconButton: {
                 styleOverrides: {
                     root: {
@@ -373,6 +399,11 @@ const getAppTheme = (mode) => {
                         border: mode === 'light'
                             ? '1px solid rgba(30,126,200,0.10)'
                             : '1px solid rgba(74,173,232,0.08)',
+                        '@media (max-width:600px)': {
+                            margin: 12,
+                            width: 'calc(100% - 24px)',
+                            maxHeight: 'calc(100% - 24px)',
+                        },
                     },
                 },
             },
