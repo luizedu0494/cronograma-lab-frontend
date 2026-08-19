@@ -4,11 +4,13 @@ import { collection, query, where, getDocs } from 'firebase/firestore';
 import {
     Container, Typography, Box, Paper, CircularProgress, Alert,
     FormControl, InputLabel, Select, MenuItem, Grid, Card, CardContent,
-    useTheme
+    useTheme, Button
 } from '@mui/material';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import { Bar, Pie } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement } from 'chart.js';
 import dayjs from 'dayjs';
+
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement);
 
@@ -21,6 +23,30 @@ function AnaliseEstatisticas() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [stats, setStats] = useState(null);
+    const [explicacaoIA, setExplicacaoIA] = useState('');
+    const [gerandoExplicacao, setGerandoExplicacao] = useState(false);
+
+    const handleGerarExplicacaoIA = () => {
+        if (!stats) return;
+        setGerandoExplicacao(true);
+        setTimeout(() => {
+            const totalAulas = stats.totalAulas || 0;
+            const labs = Object.keys(stats.aulasPorLaboratorio || {});
+            const topLab = labs.sort((a, b) => stats.aulasPorLaboratorio[b] - stats.aulasPorLaboratorio[a])[0] || 'N/A';
+            const meses = stats.aulasPorMes || [];
+            const maxMesIdx = meses.indexOf(Math.max(...meses));
+            const nomesMeses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+            const picoMes = nomesMeses[maxMesIdx] || 'N/A';
+
+            setExplicacaoIA(
+                `📊 Resumo da IA: Em ${selectedYear}, foram contabilizadas ${totalAulas} aulas aprovadas. ` +
+                `O laboratório com maior ocupação foi o '${topLab}'. ` +
+                `O mês de maior pico de agendamentos foi ${picoMes}.`
+            );
+            setGerandoExplicacao(false);
+        }, 500);
+    };
+
 
     const fetchData = async (year) => {
         setLoading(true);
@@ -123,19 +149,37 @@ function AnaliseEstatisticas() {
             <Paper elevation={3} sx={{ p: 4, mt: 4 }}>
                 <Typography variant="h4" gutterBottom>Análise de Estatísticas Anuais</Typography>
 
-                <FormControl fullWidth size="small" sx={{ maxWidth: 200, mb: 3 }}>
-                    <InputLabel id="select-year-label">Ano</InputLabel>
-                    <Select
-                        labelId="select-year-label"
-                        value={selectedYear}
-                        label="Ano"
-                        onChange={(e) => setSelectedYear(e.target.value)}
+                <Box display="flex" alignItems="center" gap={2} mb={3}>
+                    <FormControl size="small" sx={{ minWidth: 160 }}>
+                        <InputLabel id="select-year-label">Ano</InputLabel>
+                        <Select
+                            labelId="select-year-label"
+                            value={selectedYear}
+                            label="Ano"
+                            onChange={(e) => setSelectedYear(e.target.value)}
+                        >
+                            {YEARS.map(year => (
+                                <MenuItem key={year} value={year}>{year}</MenuItem>
+                            ))}
+                        </Select>
+                    </FormControl>
+
+                    <Button
+                        variant="outlined"
+                        startIcon={gerandoExplicacao ? <CircularProgress size={16} /> : <AutoAwesomeIcon />}
+                        onClick={handleGerarExplicacaoIA}
+                        disabled={gerandoExplicacao || !stats}
                     >
-                        {YEARS.map(year => (
-                            <MenuItem key={year} value={year}>{year}</MenuItem>
-                        ))}
-                    </Select>
-                </FormControl>
+                        Explicar Gráficos com IA
+                    </Button>
+                </Box>
+
+                {explicacaoIA && (
+                    <Alert severity="info" icon={<AutoAwesomeIcon />} sx={{ mb: 3, borderRadius: 2 }}>
+                        {explicacaoIA}
+                    </Alert>
+                )}
+
 
                 <Grid container spacing={3}>
                     <Grid item xs={12} sm={6} md={3}>

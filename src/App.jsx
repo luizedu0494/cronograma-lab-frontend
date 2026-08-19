@@ -9,14 +9,16 @@ import cesmacLogo from './assets/images/cesmac-logo.png';
 import {
     AppBar, Toolbar, Typography, Button, Container, Box,
     CircularProgress, Snackbar, Alert, IconButton, Menu, MenuItem, Badge,
-    ThemeProvider, CssBaseline, useMediaQuery, Avatar, Divider, Paper
+    ThemeProvider, CssBaseline, useMediaQuery, Avatar, Divider, Paper,
+    Drawer, BottomNavigation, BottomNavigationAction, List, ListItemButton,
+    ListItemIcon, ListItemText, Collapse
 } from '@mui/material';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import 'dayjs/locale/pt-br';
 import AccountCircle from '@mui/icons-material/AccountCircle';
 import {
-    Menu as MenuIcon, Sun, Moon, LogOut, User, HelpCircle, UserCheck, Users, CalendarOff, Settings, Bell, ListTodo, Calendar, LayoutDashboard, ThumbsUp, PlusCircle, Download, BarChart, Bug, History, Bot, FlaskConical, Search
+    Menu as MenuIcon, Sun, Moon, LogOut, User, HelpCircle, UserCheck, Users, CalendarOff, Settings, Bell, ListTodo, Calendar, LayoutDashboard, ThumbsUp, PlusCircle, Download, BarChart, Bug, History, Bot, FlaskConical, Search, ChevronDown, ChevronUp
 } from 'lucide-react';
 
 
@@ -66,7 +68,8 @@ const GerenciarEventosAvancado = lazyWithRetry(() => import('./GerenciarEventosA
 const ConsultaDisponibilidade = lazyWithRetry(() => import('./ConsultaDisponibilidade'));
 
 const LoadingFallback = () => (<Box display="flex" justifyContent="center" alignItems="center" height="80vh"><CircularProgress /></Box>);
-const MainLayout = () => (<Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}><Outlet /></Container>);
+const MainLayout = () => (<Container maxWidth="xl" sx={{ mt: { xs: 1.5, sm: 4 }, mb: { xs: 8, sm: 4 }, px: { xs: 1.5, sm: 3 } }}><Outlet /></Container>);
+
 
 function App() {
     const [user, setUser] = useState(null);

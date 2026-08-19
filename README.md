@@ -152,7 +152,13 @@ Perfil de leitura, liberado pelo coordenador:
 
 > Resumo das últimas melhorias de arquitetura, segurança, UX/UI e recursos de IA.
 
+### 📱 Redesign Mobile, Orquestração LangGraph & IA Distribuída
+- **Redesign Mobile & Tema Responsivo**: adição de breakpoints customizados do MUI e `responsiveFontSizes` em `theme.js`. Criação do componente reutilizável `<ResponsiveDataView />` que altera dinamicamente entre tabela MUI no desktop e cards empilhados no mobile. Modais como `<DesignarTecnicosModal />` atualizados para `fullScreen={isMobile}` em telas pequenas e ajustado o padding responsivo do `MainLayout` no `App.jsx`.
+- **Orquestração de IA com LangGraph (`langgraphAgent.ts`)**: estruturação da pipeline do assistente via `@langchain/langgraph` `StateGraph` conectando ferramentas (`langchainTools.ts`) diretamente ao `ExecutorAcoes` no Firestore e refatoração do `ragService.js` para busca por termos relevantes em memória (removendo mocks zerados).
+- **IA Distribuída no App (UI In-Context)**: inserida barra de busca em linguagem natural em `ConsultaDisponibilidade.jsx` para auto-preencher os filtros do formulário e novo recurso "Explicar Gráficos com IA" em `AnaliseEstatisticas.jsx` para síntese textual de estatísticas e picos sob demanda.
+
 ### ⏳ Gestão Inteligente de Propostas Pendentes & Auto-Rejeição com Telegram
+
 - **Desbloqueio de Agendamento sobre Pendências**: Horários com propostas pendentes deixaram de ser travados como ocupados no formulário `ProporAulaForm.jsx`. O seletor exibe `⏳ Proposta Pendente: [Nome]` em tom laranja (`#ed6c02`) e **permite a seleção** por coordenadores e técnicos.
 - **Diferenciação Visual na Grade de Disponibilidade**: Células com solicitações pendentes ganharam estilização dedicada em tom laranja com o rótulo `Pendente` em `GradeDisponibilidade.jsx` e inclusão do estado `🟧 Pendente (Aguardando)` na legenda visual.
 - **Auto-Rejeição de Conflitos & Notificação no Telegram**: Utilitário `conflitoUtils.js` que identifica automaticamente propostas pendentes que colidem com um novo agendamento aprovado, alterando seu status para `rejeitada`, notificando no Telegram (sem enviar mensagens duplicadas) e atualizando o cronograma em tempo real.

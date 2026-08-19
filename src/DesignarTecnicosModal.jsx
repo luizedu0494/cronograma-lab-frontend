@@ -2,8 +2,10 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
     Dialog, DialogTitle, DialogContent, DialogActions, Button,
     Checkbox, FormControlLabel, FormGroup, CircularProgress, Box, Typography,
-    Alert, IconButton, FormControl, InputLabel, Select, MenuItem, Divider
+    Alert, IconButton, FormControl, InputLabel, Select, MenuItem, Divider,
+    useMediaQuery, useTheme
 } from '@mui/material';
+
 import ClearIcon from '@mui/icons-material/Clear';
 import { collection, getDocs, query, where, doc, updateDoc, orderBy } from 'firebase/firestore';
 import { db } from './firebaseConfig';
@@ -123,8 +125,12 @@ function DesignarTecnicosModal({ open, onClose, aula, setSnackBar }) {
         }
     };
 
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
     return (
-        <Dialog open={open} onClose={() => onClose(false)} fullWidth maxWidth="sm">
+        <Dialog open={open} onClose={() => onClose(false)} fullScreen={isMobile} fullWidth maxWidth="sm">
+
             <DialogTitle>
                 Designar/Alterar Técnico(s)
                 <IconButton aria-label="close" onClick={() => onClose(false)} sx={{position:'absolute',right:8,top:8}}>

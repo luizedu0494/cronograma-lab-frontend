@@ -1,5 +1,6 @@
 import { DynamicStructuredTool } from "@langchain/core/tools";
 import { z } from "zod";
+import { ExecutorAcoes } from "./ExecutorAcoes";
 
 /**
  * Ferramenta do LangChain para montar proposta de agendamento (Técnico/Coordenador)
@@ -18,7 +19,7 @@ export const proporAulaTool = new DynamicStructuredTool({
   func: async ({ assunto, laboratorio, data, horario, cursos, observacoes }) => {
     return JSON.stringify({
       status: "rascunho_criado",
-      mensagem: "Proposta estruturada com sucesso. Apresentar confirmação ao usuário.",
+      mensagem: `Proposta para '${assunto}' em ${laboratorio} no dia ${data} (${horario}) gerada com sucesso. Ação requer confirmação.`,
       proposta: {
         assunto,
         laboratorio,
@@ -42,12 +43,18 @@ export const buscarDisponibilidadeTool = new DynamicStructuredTool({
     laboratorio: z.string().optional().describe("Nome do laboratório opcional")
   }),
   func: async ({ data, laboratorio }) => {
-    return JSON.stringify({
-      dataConsulta: data,
-      laboratorioAlvo: laboratorio || "Todos",
-      status: "executado",
-      instrucoes: "Consultar base Firestore para determinar slots vagos."
-    });
+    try {
+      const executor = new ExecutorAcoes();
+      const res = await executor.executar({
+        intencao: "consultar_disponibilidade",
+        acao: "consultar",
+        criterios_busca: { data, laboratorio },
+        tipo_visual: "grade_disponibilidade"
+      });
+      return JSON.stringify(res);
+    } catch (err: any) {
+      return JSON.stringify({ erro: err.message || "Falha ao consultar disponibilidade" });
+    }
   }
 });
 
@@ -61,10 +68,18 @@ export const consultarPropostasPendentesTool = new DynamicStructuredTool({
     status: z.string().default("pendente").describe("Status das propostas")
   }),
   func: async ({ status }) => {
-    return JSON.stringify({
-      filtroStatus: status,
-      mensagem: "Buscando propostas com status 'pendente'."
-    });
+    try {
+      const executor = new ExecutorAcoes();
+      const res = await executor.executar({
+        intencao: "consultar_pendentes",
+        acao: "consultar",
+        criterios_busca: { status: status || "pendente" },
+        tipo_visual: "lista_simples"
+      });
+      return JSON.stringify(res);
+    } catch (err: any) {
+      return JSON.stringify({ erro: err.message || "Falha ao consultar propostas pendentes" });
+    }
   }
 });
 
@@ -73,3 +88,4 @@ export const TODAS_FERRAMENTAS_LANGCHAIN = [
   buscarDisponibilidadeTool,
   consultarPropostasPendentesTool
 ];
+

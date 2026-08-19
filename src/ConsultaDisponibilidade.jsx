@@ -19,9 +19,14 @@ import WarningIcon from '@mui/icons-material/Warning';
 import CancelIcon from '@mui/icons-material/Cancel';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import TextField from '@mui/material/TextField';
+import InputAdornment from '@mui/material/InputAdornment';
 
 import { useDisponibilidade } from './hooks/useDisponibilidade';
 import { LISTA_LABORATORIOS, TIPOS_LABORATORIO } from './constants/laboratorios';
+import ExtratorParametros from './ia-estruturada/ExtratorParametros';
+
 
 dayjs.locale('pt-br');
 
@@ -56,7 +61,42 @@ export default function ConsultaDisponibilidade() {
   const [consultaRealizada, setConsultaRealizada] = useState(false);
   const [expandedCards, setExpandedCards] = useState({});
 
+  const [textoBuscaIA, setTextoBuscaIA] = useState('');
+
+  const handleProcessarLinguagemNatural = () => {
+    if (!textoBuscaIA.trim()) return;
+    const extrator = new ExtratorParametros();
+    const params = extrator.extrair(textoBuscaIA);
+
+    if (params.laboratorio) {
+      const matchLab = LISTA_LABORATORIOS.find(l => 
+        l.name.toLowerCase().includes(params.laboratorio.toLowerCase()) ||
+        l.apelido?.toLowerCase().includes(params.laboratorio.toLowerCase())
+      );
+      if (matchLab) {
+        setLaboratorios([matchLab.name]);
+      }
+    }
+
+    if (params.termoBusca) {
+      if (params.termoBusca.includes('manhã') || params.termoBusca.includes('manha')) {
+        setHorarios(['07:00-09:10', '09:30-12:00']);
+      } else if (params.termoBusca.includes('tarde')) {
+        setHorarios(['13:00-15:10', '15:30-18:00']);
+      } else if (params.termoBusca.includes('noite')) {
+        setHorarios(['18:30-20:10', '20:30-22:00']);
+      }
+    }
+
+    setFeedback({
+      open: true,
+      message: 'Filtros atualizados via inteligência natural com sucesso!',
+      severity: 'success',
+    });
+  };
+
   const [feedback, setFeedback] = useState({ open: false, message: '', severity: 'info' });
+
 
   // Toggle handlers
   const handleToggleDiaSemana = (val) => {
@@ -251,11 +291,39 @@ export default function ConsultaDisponibilidade() {
           <Typography variant="h5" fontWeight="bold" color="primary" mb={1} display="flex" alignItems="center" gap={1}>
             <SearchIcon color="primary" /> Consulta de Disponibilidade por Período
           </Typography>
-          <Typography variant="body2" color="text.secondary" mb={3}>
+          <Typography variant="body2" color="text.secondary" mb={2}>
             Localize datas e horários disponíveis em múltiplos laboratórios para agendamentos recorrentes ou eventos especiais.
           </Typography>
 
+          {/* BUSCA COM IA (LINGUAGEM NATURAL) */}
+          <Paper elevation={0} sx={{ p: 2, mb: 3, backgroundColor: 'action.hover', border: '1px solid', borderColor: 'primary.main', borderRadius: 2 }}>
+            <Typography variant="subtitle2" fontWeight="bold" color="primary" display="flex" alignItems="center" gap={1} mb={1}>
+              <AutoAwesomeIcon fontSize="small" /> Assistente de Busca Inteligente
+            </Typography>
+            <Box display="flex" gap={1}>
+              <TextField
+                fullWidth
+                size="small"
+                placeholder="Ex: Lab livre quinta à tarde para 30 alunos..."
+                value={textoBuscaIA}
+                onChange={(e) => setTextoBuscaIA(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleProcessarLinguagemNatural(); }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <AutoAwesomeIcon color="primary" fontSize="small" />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+              <Button variant="contained" onClick={handleProcessarLinguagemNatural} sx={{ whitespace: 'nowrap' }}>
+                Preencher Filtros
+              </Button>
+            </Box>
+          </Paper>
+
           {/* PASSO 1: Configurar a Consulta */}
+
           <Paper variant="outlined" sx={{ p: 3, backgroundColor: 'background.default', borderRadius: 2 }}>
             <Grid container spacing={3}>
               {/* Período */}

@@ -66,7 +66,7 @@ export interface ResultadoExecucao {
   erro?: string;
 }
 
-class ExecutorAcoes {
+export class ExecutorAcoes {
   private currentUser: UsuarioAtual | null;
 
   constructor(currentUser?: UsuarioAtual | null) {
