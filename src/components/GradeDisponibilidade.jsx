@@ -131,31 +131,43 @@ export default function GradeDisponibilidade({
     return mapaDetalhes[lab.id]?.[horario] || mapaDetalhes[lab.name]?.[horario] || [];
   };
 
+  const getStatusCelula = (lab, horario) => {
+    const itens = getAulasDaCelula(lab, horario);
+    if (!itens || itens.length === 0) return 'livre';
+    const temConfirmado = itens.some(i => i.origem === 'evento' || !i.status || i.status === 'aprovada');
+    if (temConfirmado) return 'ocupado';
+    const temPendente = itens.some(i => i.status === 'pendente');
+    if (temPendente) return 'pendente';
+    return 'livre';
+  };
+
   const isOcupado = (lab, horario) => {
-    return getAulasDaCelula(lab, horario).length > 0;
+    return getStatusCelula(lab, horario) === 'ocupado';
   };
 
   // Filtro de labs com vaga
   const labsParaRenderizar = useMemo(() => {
     if (!apenasComVaga) return labsVisiveis;
     return labsVisiveis.filter(lab =>
-      BLOCOS.some(b => !isOcupado(lab, b.value))
+      BLOCOS.some(b => getStatusCelula(lab, b.value) !== 'ocupado')
     );
   }, [labsVisiveis, apenasComVaga, mapaDetalhes]);
 
   const handleCellClick = (lab, bloco) => {
     const aulasEncontradas = getAulasDaCelula(lab, bloco.value);
-    const ocupado = aulasEncontradas.length > 0;
+    const st = getStatusCelula(lab, bloco.value);
+    const ocupado = st === 'ocupado';
 
     setModalDetalhes({
       lab,
       bloco,
       ocupado,
+      statusCelula: st,
       aulas: aulasEncontradas
     });
 
     if (onCelulaClick) {
-      onCelulaClick({ labId: lab.id, labNome: lab.name, horario: bloco.value, ocupado, aulas: aulasEncontradas });
+      onCelulaClick({ labId: lab.id, labNome: lab.name, horario: bloco.value, ocupado, statusCelula: st, aulas: aulasEncontradas });
     }
   };
 
@@ -166,6 +178,10 @@ export default function GradeDisponibilidade({
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
           <Box sx={{ width: 14, height: 14, borderRadius: 0.5, bgcolor: 'success.light' }} />
           <Typography variant="caption" color="text.secondary">Livre</Typography>
+        </Box>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+          <Box sx={{ width: 14, height: 14, borderRadius: 0.5, bgcolor: 'warning.light', border: '1px dashed #ed6c02' }} />
+          <Typography variant="caption" color="text.secondary">Pendente (Aguardando)</Typography>
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
           <Box sx={{ width: 14, height: 14, borderRadius: 0.5, bgcolor: 'error.light' }} />
@@ -239,7 +255,9 @@ export default function GradeDisponibilidade({
                 <AccordionDetails sx={{ pt: 0 }}>
                   <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
                     {BLOCOS.map(b => {
-                      const ocupado = isOcupado(lab, b.value);
+                      const st = getStatusCelula(lab, b.value);
+                      const ocupado = st === 'ocupado';
+                      const pendente = st === 'pendente';
                       const destacado = horariosDestacados.includes(b.value);
                       const ocultarPorPerspectiva = (perspectivaFiltro === 'livres' && ocupado) || (perspectivaFiltro === 'ocupados' && !ocupado) || (apenasComVaga && ocupado);
                       if (ocultarPorPerspectiva) return null;
@@ -252,11 +270,12 @@ export default function GradeDisponibilidade({
                             p: 1,
                             textAlign: 'center',
                             cursor: 'pointer',
-                            bgcolor: ocupado ? 'rgba(239, 83, 80, 0.08)' : 'rgba(76, 175, 80, 0.08)',
-                            borderColor: ocupado ? 'error.light' : 'success.light',
+                            bgcolor: ocupado ? 'rgba(239, 83, 80, 0.08)' : pendente ? 'rgba(255, 152, 0, 0.12)' : 'rgba(76, 175, 80, 0.08)',
+                            borderColor: ocupado ? 'error.light' : pendente ? '#ed6c02' : 'success.light',
+                            borderStyle: pendente ? 'dashed' : 'solid',
                             outline: destacado ? '2px solid #1976d2' : 'none',
                             outlineOffset: '-2px',
-                            '&:hover': { bgcolor: ocupado ? 'rgba(239, 83, 80, 0.16)' : 'rgba(76, 175, 80, 0.16)' }
+                            '&:hover': { bgcolor: ocupado ? 'rgba(239, 83, 80, 0.16)' : pendente ? 'rgba(255, 152, 0, 0.22)' : 'rgba(76, 175, 80, 0.16)' }
                           }}
                         >
                           <Typography variant="caption" display="block" fontWeight={600}>
@@ -266,10 +285,10 @@ export default function GradeDisponibilidade({
                             {b.value}
                           </Typography>
                           <Chip
-                            label={ocupado ? 'Ocupado' : 'Livre'}
-                            color={ocupado ? 'error' : 'success'}
+                            label={ocupado ? 'Ocupado' : pendente ? 'Pendente' : 'Livre'}
+                            color={ocupado ? 'error' : pendente ? 'warning' : 'success'}
                             size="small"
-                            sx={{ height: 18, fontSize: '0.65rem' }}
+                            sx={{ height: 18, fontSize: '0.65rem', fontWeight: pendente ? 'bold' : 'normal' }}
                           />
                         </Paper>
                       );
@@ -296,7 +315,7 @@ export default function GradeDisponibilidade({
             </TableHead>
             <TableBody>
               {labsParaRenderizar.map(lab => {
-                const livresCount = BLOCOS.filter(b => !isOcupado(lab, b.value)).length;
+                const livresCount = BLOCOS.filter(b => getStatusCelula(lab, b.value) === 'livre').length;
                 return (
                   <TableRow key={lab.id} hover>
                     <TableCell sx={{ fontSize: '0.8rem', fontWeight: 500 }}>
@@ -311,11 +330,13 @@ export default function GradeDisponibilidade({
                       </Box>
                     </TableCell>
                     {BLOCOS.map(b => {
-                      const ocupado = isOcupado(lab, b.value);
+                      const st = getStatusCelula(lab, b.value);
+                      const ocupado = st === 'ocupado';
+                      const pendente = st === 'pendente';
                       const destacado = horariosDestacados.includes(b.value);
                       const ocultarPorPerspectiva = (perspectivaFiltro === 'livres' && ocupado) || (perspectivaFiltro === 'ocupados' && !ocupado) || (apenasComVaga && ocupado);
-                      const cor = ocupado ? 'error' : 'success';
-                      const labelText = ocupado ? 'Ocupado' : 'Livre';
+                      const cor = ocupado ? 'error' : pendente ? 'warning' : 'success';
+                      const labelText = ocupado ? 'Ocupado' : pendente ? 'Pendente' : 'Livre';
 
                       if (ocultarPorPerspectiva) {
                         return (
@@ -327,12 +348,12 @@ export default function GradeDisponibilidade({
 
                       return (
                         <TableCell key={b.value} align="center" sx={{ p: 0.5 }}>
-                          <Tooltip title={`${lab.name} - ${b.label} (${b.value}): clique para selecionar/detalhes`}>
+                          <Tooltip title={`${lab.name} - ${b.label} (${b.value}): ${labelText}`}>
                             <Chip
                               label={labelText}
                               color={cor}
                               size="small"
-                              variant={ocupado ? 'outlined' : 'filled'}
+                              variant={ocupado ? 'outlined' : pendente ? 'outlined' : 'filled'}
                               clickable
                               onClick={() => handleCellClick(lab, b)}
                               sx={{
@@ -340,6 +361,7 @@ export default function GradeDisponibilidade({
                                 minWidth: 58,
                                 cursor: 'pointer',
                                 fontWeight: 600,
+                                border: pendente ? '1px dashed #ed6c02' : undefined,
                                 outline: destacado ? '2px solid #1976d2' : 'none',
                                 outlineOffset: '1px'
                               }}

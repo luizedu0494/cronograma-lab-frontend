@@ -94,7 +94,7 @@ service cloud.firestore {
     // Regras para a coleção 'logs'
     // =====================================================================
     match /logs/{logId} {
-      allow read: if isCoordinator();
+      allow read: if isUserApproved();
       allow create: if isUserApproved();
       allow update, delete: if false; // Logs são imutáveis
     }

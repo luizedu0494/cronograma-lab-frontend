@@ -409,7 +409,14 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
                 querySnapshot.docs.forEach(doc => {
                     if (doc.id !== aulaId) {
                         const data = doc.data();
-                        ocupacaoMap[data.horarioSlotString] = data.assunto; // Guarda o nome da matéria
+                        const st = data.status || 'aprovada';
+                        // Se já tem aula aprovada ou evento, prevalece aprovada/evento
+                        if (!ocupacaoMap[data.horarioSlotString] || ocupacaoMap[data.horarioSlotString].status !== 'aprovada') {
+                            ocupacaoMap[data.horarioSlotString] = {
+                                assunto: data.assunto,
+                                status: st
+                            };
+                        }
                     }
                 });
 
@@ -417,9 +424,11 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
                 querySnapshotEventos.docs.forEach(doc => {
                     const data = doc.data();
                     if (data.laboratorio === 'Todos' || laboratoriosParaVerificar.includes(data.laboratorio)) {
-                        // Se o evento não tiver slot (dia todo), não marcamos slot específico aqui (mas poderia bloquear tudo)
                         if (data.horarioSlotString) {
-                            ocupacaoMap[data.horarioSlotString] = data.titulo || "Evento/Manutenção";
+                            ocupacaoMap[data.horarioSlotString] = {
+                                assunto: data.titulo || "Evento/Manutenção",
+                                status: 'evento'
+                            };
                         }
                     }
                 });
@@ -1097,15 +1106,22 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
                                                     label="Horário *"
                                                 >
                                                     {BLOCOS_HORARIO.map((bloco) => {
-                                                        const isOccupied = infoOcupacao.hasOwnProperty(bloco.value);
-                                                        const aulaQueOcupa = infoOcupacao[bloco.value];
+                                                        const info = infoOcupacao[bloco.value];
+                                                        const isOccupied = info && (info.status === 'aprovada' || info.status === 'evento');
+                                                        const isPending = info && info.status === 'pendente';
+                                                        const textLabel = info ? (typeof info === 'string' ? info : info.assunto) : '';
                                                         return (
-                                                            <MenuItem key={bloco.value} value={bloco.value} disabled={isOccupied} sx={isOccupied ? { opacity: 0.9 } : {}}>
+                                                            <MenuItem key={bloco.value} value={bloco.value} disabled={isOccupied} sx={isOccupied ? { opacity: 0.9 } : isPending ? { bgcolor: 'rgba(255, 152, 0, 0.08)' } : {}}>
                                                                 <Box>
                                                                     <Typography variant="body1">{bloco.label}</Typography>
                                                                     {isOccupied && (
                                                                         <Typography variant="caption" color="error" display="block">
-                                                                            🚫 Ocupado: {aulaQueOcupa}
+                                                                            🚫 Ocupado: {textLabel}
+                                                                        </Typography>
+                                                                    )}
+                                                                    {isPending && (
+                                                                        <Typography variant="caption" sx={{ color: '#ed6c02', fontWeight: 'bold' }} display="block">
+                                                                            ⏳ Proposta Pendente: {textLabel}
                                                                         </Typography>
                                                                     )}
                                                                 </Box>
@@ -1130,15 +1146,22 @@ function ProporAulaForm({ userInfo, currentUser, initialDate, onSuccess, onCance
                                                     )}
                                                 >
                                                     {BLOCOS_HORARIO.map((bloco) => {
-                                                        const isOccupied = infoOcupacao.hasOwnProperty(bloco.value);
-                                                        const aulaQueOcupa = infoOcupacao[bloco.value];
+                                                        const info = infoOcupacao[bloco.value];
+                                                        const isOccupied = info && (info.status === 'aprovada' || info.status === 'evento');
+                                                        const isPending = info && info.status === 'pendente';
+                                                        const textLabel = info ? (typeof info === 'string' ? info : info.assunto) : '';
                                                         return (
-                                                            <MenuItem key={bloco.value} value={bloco.value} disabled={isOccupied} sx={isOccupied ? { opacity: 0.9 } : {}}>
+                                                            <MenuItem key={bloco.value} value={bloco.value} disabled={isOccupied} sx={isOccupied ? { opacity: 0.9 } : isPending ? { bgcolor: 'rgba(255, 152, 0, 0.08)' } : {}}>
                                                                 <Box>
                                                                     <Typography variant="body1">{bloco.label}</Typography>
                                                                     {isOccupied && (
                                                                         <Typography variant="caption" color="error" display="block">
-                                                                            🚫 Ocupado: {aulaQueOcupa}
+                                                                            🚫 Ocupado: {textLabel}
+                                                                        </Typography>
+                                                                    )}
+                                                                    {isPending && (
+                                                                        <Typography variant="caption" sx={{ color: '#ed6c02', fontWeight: 'bold' }} display="block">
+                                                                            ⏳ Proposta Pendente: {textLabel}
                                                                         </Typography>
                                                                     )}
                                                                 </Box>
